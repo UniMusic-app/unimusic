@@ -8,12 +8,18 @@ importers:
 
   .:
     dependencies:
+      '@fabianlars/tauri-plugin-oauth':
+        specifier: '2'
+        version: 2.0.0
       '@tauri-apps/api':
         specifier: ^2
         version: 2.1.1
       '@tauri-apps/plugin-opener':
         specifier: ^2
         version: 2.2.2
+      '@tauri-apps/plugin-shell':
+        specifier: ^2.2.0
+        version: 2.2.0
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: ^3.0.6
@@ -27,6 +33,9 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.1.0
+      '@types/musickit-js':
+        specifier: ^1.0.10
+        version: 1.0.10
       svelte:
         specifier: ^5.0.0
         version: 5.16.0
@@ -195,6 +204,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fabianlars/tauri-plugin-oauth@2.0.0':
+    resolution: {integrity: sha512-I1s08ZXrsFuYfNWusAcpLyiCfr5TCvaBrRuKfTG+XQrcaqnAcwjdWH0U5J9QWuMDLwCUMnVxdobtMJzPR8raxQ==}
 
   '@jridgewell/gen-mapping@0.3.8':
     resolution: {integrity: sha512-imAbBGkb+ebQyxKgzv5Hu2nmROxoDOXHh80evxdoXNOrvAnVx7zimzc1Oo5h9RlfV4vPXaE2iM5pOFbvOCClWA==}
@@ -412,11 +424,17 @@ packages:
   '@tauri-apps/plugin-opener@2.2.2':
     resolution: {integrity: sha512-E/XIHKqGV+FT8PDdkfMETmgPUxcR79Rk8USuzbadD/ZdvsKCfQR5q+6rpZC9zEnG2wzi9lVQM4D3xwrtGGIB8A==}
 
+  '@tauri-apps/plugin-shell@2.2.0':
+    resolution: {integrity: sha512-iC3Ic1hLmasoboG7BO+7p+AriSoqAwKrIk+Hpk+S/bjTQdXqbl2GbdclghI4gM32X0bls7xHzIFqhRdrlvJeaA==}
+
   '@types/cookie@0.6.0':
     resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
 
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
+
+  '@types/musickit-js@1.0.10':
+    resolution: {integrity: sha512-puBKnswvciuRuGxqN9NGUb7jKJUVHCpEKpKrWlgwRduI1I/Y0pC0HOgOLGaeB22xwL2h3rGsKU+qI+YsjMtbug==}
 
   acorn-typescript@1.4.13:
     resolution: {integrity: sha512-xsc9Xv0xlVfwp2o7sQ+GCQ1PgbkdcpWdTzrwXxO3xDMTAywVS3oXVOcOHuRjAPkS4P9b+yc/qNF15460v+jp4Q==}
@@ -714,6 +732,10 @@ snapshots:
   '@esbuild/win32-x64@0.24.2':
     optional: true
 
+  '@fabianlars/tauri-plugin-oauth@2.0.0':
+    dependencies:
+      '@tauri-apps/api': 2.1.1
+
   '@jridgewell/gen-mapping@0.3.8':
     dependencies:
       '@jridgewell/set-array': 1.2.1
@@ -883,9 +905,15 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.1.1
 
+  '@tauri-apps/plugin-shell@2.2.0':
+    dependencies:
+      '@tauri-apps/api': 2.1.1
+
   '@types/cookie@0.6.0': {}
 
   '@types/estree@1.0.6': {}
+
+  '@types/musickit-js@1.0.10': {}
 
   acorn-typescript@1.4.13(acorn@8.14.0):
     dependencies:
