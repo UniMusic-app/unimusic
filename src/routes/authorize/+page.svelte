@@ -1,41 +1,53 @@
 <script lang="ts">
-	import { Window } from "@tauri-apps/api/window";
-	import { getCurrentWebview, Webview } from "@tauri-apps/api/webview";
-	import { LogicalSize, Size } from "@tauri-apps/api/dpi";
-	import { webviewWindow } from "@tauri-apps/api";
+	import { invoke } from "@tauri-apps/api/core";
+	import { getCurrentPlatform, isMobile } from "$lib/utils";
 
 	let authorized = $state(false);
 
+	function runWithMusicKit(callback: () => void): void {
+		if (globalThis.MusicKit) {
+			callback();
+		} else {
+			document.addEventListener("musickitloaded", callback);
+		}
+	}
+
 	async function configureMusicKit() {
-		try {
-			await MusicKit.configure({
-				developerToken: import.meta.env.VITE_DEVELOPER_TOKEN,
-				app: {
-					name: "Music player",
-					build: "0.0.1",
-				},
-			});
-		} catch (err) {
-			console.error(err);
-			return;
+		await MusicKit.configure({
+			developerToken: import.meta.env.VITE_DEVELOPER_TOKEN,
+			app: {
+				name: "Music player",
+				build: "0.0.1",
+			},
+		});
+	}
+
+	runWithMusicKit(async () => {
+		const params = new URLSearchParams(window.location.href);
+		const musicUserToken = params.get("musicUserToken");
+
+		if (musicUserToken) {
+			await configureMusicKit();
+			// @ts-ignore It's not readonly
+			MusicKit.getInstance().musicUserToken = musicUserToken;
+		} else {
+			await configureMusicKit();
 		}
 
 		authorized = MusicKit.getInstance().isAuthorized;
-	}
-
-	document.addEventListener("musickitloaded", configureMusicKit);
+	});
 
 	// MusicKit uses window.open for OAuth authentication
 	// however Tauri does not support it for various reasons
-	// Thankfully it also works by just redirecting to it (although it seems to not be documented anywhere)
-	// Alternatively its also possible to open a new Webview window, however then it is required to "catch" the Music User Token and force-replace it manually, which seems iffy
+	// so we just shim it
 	window.open = (url, _target, features) => {
-		// On macOS on debug builds this might get stuck on the loading spinner
-		// minimize and then maximize the app to un-stuck it
-		// It's most likely related to the macOS TouchID logic to make the logging in seamless, as debug builds require logging in with email and password
-		// While production builds does not freeze and allows touchid to be used
-		// iOS doesn't seem to suffer from that issue
-		window.location.href = String(url);
+		invoke<string>("authorize_apple_music", {
+			url: String(url),
+		}).then((musicUserToken) => {
+			// @ts-ignore not readonly
+			MusicKit.getInstance().musicUserToken = musicUserToken;
+			location.reload();
+		});
 
 		return {
 			focus() {},
@@ -51,8 +63,12 @@
 		const music = MusicKit.getInstance();
 		authorized = music.isAuthorized;
 		const MUT = await music.authorize();
+		console.log("MUUT", MUT);
 	}
 </script>
+
+Platform: {getCurrentPlatform()}
+Mobile: {isMobile()}
 
 <p>
 	You are {authorized ? "authorized" : "not authorized"}

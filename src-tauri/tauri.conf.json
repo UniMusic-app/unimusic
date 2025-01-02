@@ -18,7 +18,13 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self' asset:",
+        "style-src": "'self' 'unsafe-inline'",
+        "media-src": "'self' asset: http://asset.localhost blob: data:",
+        "connect-src": "'self' ipc: http://ipc.localhost https://idmsa.apple.com https://appleid.apple.com/ https://*.itunes.apple.com https://*.music.apple.com/",
+        "script-src": "'self' https://idmsa.apple.com https://appleid.apple.com/ https://*.itunes.apple.com https://*.music.apple.com/ 'unsafe-inline'"
+      }
     }
   },
   "bundle": {
