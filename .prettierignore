@@ -3,3 +3,4 @@ src-tauri/gen
 
 build
 .svelte-kit
+pnpm-lock.yaml
