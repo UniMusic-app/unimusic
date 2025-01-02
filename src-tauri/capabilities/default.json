@@ -1,18 +1,18 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": ["main"],
-  "permissions": [
-    "core:default",
-    "opener:default",
-    "opener:allow-open-path",
-    "opener:allow-open-url",
-    "core:window:allow-create",
-    "shell:allow-open",
-    "core:webview:allow-create-webview",
-    "core:webview:allow-webview-show",
-    "core:window:allow-show",
-    "core:window:allow-set-size"
-  ]
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Capability for the main window",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"opener:default",
+		"opener:allow-open-path",
+		"opener:allow-open-url",
+		"core:window:allow-create",
+		"shell:allow-open",
+		"core:webview:allow-create-webview",
+		"core:webview:allow-webview-show",
+		"core:window:allow-show",
+		"core:window:allow-set-size"
+	]
 }
