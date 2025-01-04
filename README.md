@@ -85,15 +85,17 @@ I will try to update the roadmap as the development progresses.
 ## Run locally
 
 Package manager: `pnpm`.\
-Make sure you have downloaded all [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/).
+Make sure you have downloaded all [Capacitor](https://capacitorjs.com/docs/getting-started/environment-setup) and [Ionic](https://ionicframework.com/docs/intro/environment) Prerequisites.
 
 ```sh
-pnpm i
-pnpm tauri dev # Dev build
-pnpm tauri build # Prod build
-pnpm tauri {ios,android} {dev,build} # For mobile devices
+pnpm install -g @ionic/cli # install ionic cli globally
+ionic config set -g npmClient pnpm # Make ionic use pnpm
+
+pnpm install
+ionic servce # Run on desktop
+ionic capacitor run {ios,android} # Run on mobile devices
 ```
 
 ## Recommended IDE Setup
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+[VS Code](https://code.visualstudio.com/) + [Vue](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Ionic](https://marketplace.visualstudio.com/items?itemName=ionic.ionic).

@@ -1,33 +1,47 @@
 {
 	"name": "music-player",
-	"version": "0.1.0",
-	"description": "",
+	"private": true,
+	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
+		"dev": "vite",
+		"build": "vue-tsc && vite build",
 		"preview": "vite preview",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"tauri": "tauri",
-		"fmt": "pnpx prettier --write ."
+		"test:e2e": "cypress run",
+		"test:unit": "vitest",
+		"lint": "eslint .",
+		"fmt": "pnpx prettier . --write"
 	},
 	"dependencies": {
-		"@tauri-apps/api": "^2.1.1",
-		"@tauri-apps/plugin-opener": "^2.2.2",
-		"@tauri-apps/plugin-shell": "^2.2.0"
+		"@capacitor/android": "6.2.0",
+		"@capacitor/app": "6.0.2",
+		"@capacitor/core": "6.2.0",
+		"@capacitor/haptics": "6.0.2",
+		"@capacitor/ios": "6.2.0",
+		"@capacitor/keyboard": "6.0.3",
+		"@capacitor/status-bar": "6.0.2",
+		"@ionic/vue": "^8.4.1",
+		"@ionic/vue-router": "^8.4.1",
+		"ionicons": "^7.4.0",
+		"vue": "^3.5.13",
+		"vue-router": "^4.5.0"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-static": "^3.0.8",
-		"@sveltejs/kit": "^2.15.1",
-		"@sveltejs/vite-plugin-svelte": "^5.0.3",
-		"@tauri-apps/cli": "^2.1.0",
-		"@types/musickit-js": "^1.0.10",
+		"@capacitor/cli": "6.2.0",
+		"@vitejs/plugin-legacy": "^5.4.3",
+		"@vitejs/plugin-vue": "^4.6.2",
+		"@vue/eslint-config-typescript": "^12.0.0",
+		"@vue/test-utils": "^2.4.6",
+		"cypress": "^13.17.0",
+		"eslint": "^8.57.1",
+		"eslint-plugin-vue": "^9.32.0",
+		"jsdom": "^22.1.0",
 		"prettier": "3.4.2",
-		"prettier-plugin-svelte": "^3.3.2",
-		"svelte": "^5.16.0",
-		"svelte-check": "^4.1.1",
+		"terser": "^5.37.0",
 		"typescript": "~5.6.3",
-		"vite": "^6.0.6"
-	}
+		"vite": "~5.2.14",
+		"vitest": "^0.34.6",
+		"vue-tsc": "^2.2.0"
+	},
+	"description": "An Ionic project"
 }

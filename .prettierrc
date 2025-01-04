@@ -1,6 +1,7 @@
 {
 	"useTabs": true,
-	"singleQuote": false,
-	"plugins": ["prettier-plugin-svelte"],
-	"overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
+	"tabWidth": 1,
+	"printWidth": 100,
+	"htmlWhitespaceSensitivity": "ignore",
+	"singleQuote": false
 }

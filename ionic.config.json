@@ -1,0 +1,7 @@
+{
+	"name": "music-player",
+	"integrations": {
+		"capacitor": {}
+	},
+	"type": "vue-vite"
+}
