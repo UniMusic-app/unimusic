@@ -12,12 +12,49 @@
 					<ion-title size="large">Music Player</ion-title>
 				</ion-toolbar>
 			</ion-header>
+
+			<div v-if="authorized" id="container">
+				<h1>You are authorized</h1>
+				<ion-button @click="unauthorizeAppleMusic">Unauthorize Apple Music</ion-button>
+			</div>
+			<div v-else id="container">
+				<h1>You are unauthorized</h1>
+				<ion-button @click="authorizeAppleMusic">Authorize Apple Music</ion-button>
+			</div>
+
+			<p id="error" v-if="error">
+				{{ error }}
+			</p>
 		</ion-content>
 	</ion-page>
 </template>
 
 <script setup lang="ts">
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from "@ionic/vue";
+import { ref } from "vue";
+import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton } from "@ionic/vue";
+import MusicKitAuthorization from "@/plugins/MusicKitAuthorization";
+
+const authorized = ref(false);
+const error = ref("");
+
+async function authorizeAppleMusic(): Promise<void> {
+	try {
+		const music = await MusicKitAuthorization.authorize();
+		authorized.value = music.isAuthorized;
+	} catch (err) {
+		if (err instanceof Error) {
+			error.value = err.message;
+		} else {
+			error.value = String(err);
+		}
+	}
+}
+
+async function unauthorizeAppleMusic(): Promise<void> {
+	const music = MusicKit.getInstance()!;
+	await music.unauthorize();
+	authorized.value = music.isAuthorized;
+}
 </script>
 
 <style scoped>
