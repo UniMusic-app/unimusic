@@ -14,26 +14,23 @@ export class MusicKitAuthorization extends WebPlugin implements MusicKitAuthoriz
 			});
 
 			await music.authorize();
-			return music;
-		};
-
-		if (globalThis.MusicKit) {
-			const music = await authorizeMusicKit();
+			if (!music.isAuthorized) {
+				throw new Error("Could not authorize MusicKit");
+			}
 
 			return {
 				developerToken: music.developerToken,
 				musicUserToken: music.musicUserToken!,
 			};
+		};
+
+		if (globalThis.MusicKit) {
+			return await authorizeMusicKit();
 		}
 
 		return await new Promise((resolve) => {
 			document.addEventListener("musickitloaded", async () => {
-				const music = await authorizeMusicKit();
-
-				resolve({
-					developerToken: music.developerToken,
-					musicUserToken: music.musicUserToken!,
-				});
+				resolve(await authorizeMusicKit());
 			});
 		});
 	}
