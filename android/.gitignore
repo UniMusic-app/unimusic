@@ -5,6 +5,8 @@
 *.aar
 *.ap_
 *.aab
+#  Except for dependencies
+!app/libs/*
 
 # Files for the ART/Dalvik VM
 *.dex
@@ -99,3 +101,6 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# File containing develoeper token
+app/src/main/res/values/tokens.xml
