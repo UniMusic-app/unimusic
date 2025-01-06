@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-	appId: "com.music-player.app",
+	appId: "com.musicplayer.app",
 	appName: "music-player",
 	webDir: "dist",
 };
