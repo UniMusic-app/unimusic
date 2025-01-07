@@ -16,6 +16,8 @@
 			<div v-if="musicKit.authorized" id="container">
 				<h1>You are authorized</h1>
 				<ion-button @click="unauthorizeAppleMusic">Unauthorize Apple Music</ion-button>
+				<ion-input v-model="songName" label="Song name" />
+				<ion-button @click="playSong">Play the song!</ion-button>
 			</div>
 			<div v-else id="container">
 				<h1>You are unauthorized</h1>
@@ -31,11 +33,46 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton } from "@ionic/vue";
+import {
+	IonContent,
+	IonHeader,
+	IonPage,
+	IonTitle,
+	IonToolbar,
+	IonButton,
+	IonInput,
+} from "@ionic/vue";
 import { useMusicKit } from "@/stores/musickit";
 
 const musicKit = useMusicKit();
 const error = ref("");
+const songName = ref("Rick Astley - Never Gonna Give You Up");
+
+async function playSong() {
+	await musicKit.withMusic(async (music) => {
+		const queryParameters = {
+			term: songName.value,
+			types: ["songs"],
+		};
+
+		const result = await music.api.music<MusicKit.SearchResponse>(
+			"/v1/catalog/{{storefrontId}}/search",
+			queryParameters,
+		);
+
+		const songs = result.data.results.songs?.data;
+		if (songs) {
+			const firstSong = songs[0];
+			const attributes = firstSong.attributes;
+
+			console.log("Start playing", attributes?.name, "by", attributes?.artistName);
+			await music.setQueue({ song: firstSong.id });
+			console.log(music.queue.length);
+			music.play();
+			console.log(music.nowPlayingItem);
+		}
+	});
+}
 
 async function authorizeAppleMusic(): Promise<void> {
 	try {
@@ -56,13 +93,16 @@ async function unauthorizeAppleMusic(): Promise<void> {
 
 <style scoped>
 #container {
+	display: flex;
+	flex-direction: column;
 	text-align: center;
 
 	position: absolute;
-	left: 0;
-	right: 0;
 	top: 50%;
-	transform: translateY(-50%);
+	left: 50%;
+	transform: translateX(-50%);
+	width: 100%;
+	max-width: min(800px, 100vw);
 }
 
 #container strong {
