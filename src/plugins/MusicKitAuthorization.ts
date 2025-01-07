@@ -11,23 +11,4 @@ const MusicKitAuthorization = registerPlugin<MusicKitAuthorizationPlugin>("Music
 		),
 });
 
-export default {
-	async authorize(): Promise<MusicKit.MusicKitInstance> {
-		const instance = globalThis.MusicKit.getInstance();
-		if (instance?.isAuthorized) return instance;
-
-		const { developerToken, musicUserToken } = await MusicKitAuthorization.authorize();
-
-		const music = await MusicKit.configure({
-			developerToken: developerToken || import.meta.env.VITE_DEVELOPER_TOKEN,
-			app: {
-				name: import.meta.env.VITE_APP_NAME,
-				build: import.meta.env.VITE_APP_VERSION,
-			},
-		});
-
-		music.musicUserToken = musicUserToken;
-
-		return music;
-	},
-};
+export default MusicKitAuthorization;

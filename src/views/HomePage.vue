@@ -13,7 +13,7 @@
 				</ion-toolbar>
 			</ion-header>
 
-			<div v-if="authorized" id="container">
+			<div v-if="musicKit.authorized" id="container">
 				<h1>You are authorized</h1>
 				<ion-button @click="unauthorizeAppleMusic">Unauthorize Apple Music</ion-button>
 			</div>
@@ -32,28 +32,25 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton } from "@ionic/vue";
-import MusicKitAuthorization from "@/plugins/MusicKitAuthorization";
+import { useMusicKit } from "@/stores/musickit";
 
-const authorized = ref(false);
+const musicKit = useMusicKit();
 const error = ref("");
 
 async function authorizeAppleMusic(): Promise<void> {
 	try {
-		const music = await MusicKitAuthorization.authorize();
-		authorized.value = music.isAuthorized;
-	} catch (err) {
-		if (err instanceof Error) {
-			error.value = err.message;
-		} else {
-			error.value = String(err);
-		}
+		await musicKit.authService.authorize();
+	} catch (e) {
+		error.value = String(e);
 	}
 }
 
 async function unauthorizeAppleMusic(): Promise<void> {
-	const music = MusicKit.getInstance()!;
-	await music.unauthorize();
-	authorized.value = music.isAuthorized;
+	try {
+		await musicKit.authService.unauthorize();
+	} catch (e) {
+		error.value = String(e);
+	}
 }
 </script>
 
