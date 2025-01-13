@@ -1,2 +1,6 @@
 /* For information on how to create your own theme, please see:
 http://ionicframework.com/docs/theming/ */
+
+:root {
+	--apple-music-color: #fa2d48;
+}

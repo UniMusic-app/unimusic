@@ -1,5 +1,40 @@
 declare global {
 	namespace MusicKit {
+		type CatalogSearchType =
+			| "activities"
+			| "albums"
+			| "apple-curators"
+			| "artists"
+			| "curators"
+			| "music-videos"
+			| "playlists"
+			| "record-labels"
+			| "songs"
+			| "stations";
+
+		/**
+		 * Search the catalog by using a query.
+		 * @see https://api.music.apple.com/v1/catalog/{storefront}/search
+		 */
+		interface CatalogSearchQuery {
+			/** The entered text for the search with ‘+’ characters between each word, to replace spaces (for example term=james+br). */
+			term: string;
+			/** The localization to use, specified by a language tag. The possible values are in the supportedLanguageTags array belonging to the Storefront object specified by storefront. Otherwise, the default is defaultLanguageTag in Storefront. */
+			l?: string;
+			/**
+			 * The number of objects or number of objects in the specified relationship returned.\
+			 * Default: 5\
+			 * Maximum Value: 25
+			 */
+			limit?: number;
+			/** The next page or group of objects to fetch. */
+			offset?: string;
+			/** The list of the types of resources to include in the results. */
+			types: CatalogSearchType[];
+			/** A list of modifications to apply to the request. */
+			with?: string[];
+		}
+
 		/**
 		 * The response to a search request.
 		 * @see https://developer.apple.com/documentation/applemusicapi/searchresponse

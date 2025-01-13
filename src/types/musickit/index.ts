@@ -132,6 +132,18 @@ declare global {
 		function getInstance(): MusicKit.MusicKitInstance | undefined;
 		function configure(...args: any): MusicKit.MusicKitInstance;
 
+		/**
+		 * Takes an artwork object, which is common in Apple Music API Responses.
+		 *
+		 * @param artwork - see {@linkcode MusicKit.Artwork}
+		 * @param width - The desired artwork width*
+		 * @param height - The desired artwork height*
+		 * @returns - A URL that can be used as the source for an image or picture tag, etc.
+		 *
+		 * NOTE: *The resulting image dimensions may not match the values provided, as the image rendering service attempts to pick the correct values without distorting the original aspect ratio or content. For best results, match the aspect ratio of the width and height values from the artwork object itself.
+		 */
+		function formatArtworkURL(artwork: MusicKit.Artwork, width?: number, height?: number): string;
+
 		enum PlayerRepeatMode {
 			none = 0,
 			one = 1,

@@ -14,19 +14,21 @@ export const useMusicKit = defineStore("MusicKit", () => {
 	authService.addEventListener("unauthorized", () => (authorized.value = false));
 	authService.passivelyAuthorize();
 
+	function withMusic<T>(callback: (music: MusicKit.MusicKitInstance) => T): Promise<T> {
+		return new Promise((resolve) => {
+			if (music.value) {
+				resolve(callback(music.value));
+			} else {
+				watch(music, (music) => resolve(callback(music!)), { once: true });
+			}
+		});
+	}
+
 	return {
 		music,
+		withMusic,
+
 		authorized,
 		authService,
-
-		withMusic<T>(callback: (music: MusicKit.MusicKitInstance) => T): Promise<T> {
-			return new Promise((resolve) => {
-				if (music.value) {
-					resolve(callback(music.value));
-				} else {
-					watch(music, (music) => resolve(callback(music!)), { once: true });
-				}
-			});
-		},
 	};
 });

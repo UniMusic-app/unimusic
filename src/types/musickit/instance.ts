@@ -2,7 +2,7 @@ import { EitherType } from "@/utils/types";
 
 declare global {
 	namespace MusicKit {
-		interface MediaItem {}
+		type MediaItem = Songs;
 
 		/**
 		 * The Queue represents an ordered list of MediaItems to play, and a pointer to the currently playing item, when applicable.\
@@ -85,10 +85,25 @@ declare global {
 			musicUserToken?: string;
 			isAuthorized: boolean;
 
+			readonly nowPlayingItem?: MediaItem;
+			/** The volume of audio playback, which is set directly on the HTMLMediaElement as the HTMLMediaElement.volume property. This value ranges between 0, which would be muting the audio, and 1, which would be the loudest possible. */
+			volume: number;
+			/** The duration of the nowPlayingItem, in seconds. */
+			readonly currentPlaybackDuration: number;
+			/** Progress percentage between 0 and 1 indicating the current play head position for the nowPlayingItem. Useful for showing a playback progress bar UI, for instance. */
+			readonly currentPlaybackProgress: number;
+			/** The current position of the play head for the nowPlayingItem, in seconds. */
+			readonly currentPlaybackTime: number;
+			/** Set this to an Enum value from MusicKit.PlayerRepeatMode to control the repeat behavior during playback. */
+			repeatMode: PlayerRepeatMode;
+
+			/**
+			 * Sets the play head to a specified time within the nowPlayingItem.
+			 */
+			seekToTime(timeInS: number): Promise<void>;
+
 			authorize(): string;
 			unauthorize(): void;
-
-			readonly nowPlayingItem?: MediaItem;
 
 			queue: Queue;
 			/**
@@ -115,9 +130,16 @@ declare global {
 			playNext(options: QueueOptions, clear?: boolean): Promise<Queue | void>;
 			/** Initiates playback of the nowPlayingItem. */
 			play(): void;
+			/** Pauses playback of the nowPlayingItem. */
+			pause(): void;
 
 			api: {
-				music<ResponseType = unknown>(
+				/**
+				 * Passthrough API Method
+				 * The api.music() method will handle appending the Developer Token (JWT) in the Authorization header, the Music User Token (MUT) for personalized requests, and can help abstract the user’s storefront from the URLs passed in.
+				 * @see https://js-cdn.music.apple.com/musickit/v3/docs/index.html?path=/story/reference-javascript-api--page
+				 */
+				music<Response = unknown, const QueryParameters = Record<string, unknown>>(
 					/**
 					 * The path to the Apple Music API endpoint, without a hostname, and including a leading slash
 					 * @see https://developer.apple.com/documentation/applemusicapi
@@ -130,13 +152,27 @@ declare global {
 					 *
 					 * @see https://developer.apple.com/documentation/applemusicapi
 					 */
-					queryParameters?: Record<string, unknown>,
+					queryParameters?: QueryParameters,
 					/** An object with additional options to control how requests are made */
 					options?: Record<string, unknown>,
 					/** An object with additional options to control how requests are made */
 					fetchOptions?: Record<string, unknown>,
-				): Promise<{ data: ResponseType }>;
+				): Promise<{ data: Response }>;
 			};
+
+			/**
+			 * Listen to an Event on the MusicKit Instance.
+			 */
+			addEventListener(
+				name: string,
+				callback: (...args: unknown[]) => unknown,
+				options?: { once?: boolean },
+			): void;
+
+			/**
+			 * Remove an event listener previously configured on the MusicKit Instance via addEventListener.
+			 */
+			removeEventListener(name: string, callback: (...args: unknown[]) => unknown): void;
 		}
 	}
 }

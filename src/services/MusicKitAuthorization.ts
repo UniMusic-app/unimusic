@@ -73,14 +73,18 @@ export class MusicKitAuthorizationService extends Service {
 
 	/** Unauthorize MusicKit instance and forget stored tokens */
 	async unauthorize(): Promise<void> {
+		this.log("Unauthorizing session");
+
 		const music = await MusicKit.getInstance();
 		if (music) await music.unauthorize();
 		await this.#forget();
+
+		await this.#dispatchAuthorizationEvent(music);
 	}
 
 	/** Dispatches "authorized" or "unauthorized" event depending on the music.isAuthorized */
-	#dispatchAuthorizationEvent(music: MusicKit.MusicKitInstance): void {
-		this.dispatchEvent(new Event(music.isAuthorized ? "authorized" : "unauthorized"));
+	#dispatchAuthorizationEvent(music?: MusicKit.MusicKitInstance): void {
+		this.dispatchEvent(new Event(music?.isAuthorized ? "authorized" : "unauthorized"));
 	}
 
 	/** Configure MusicKit given the tokens */
