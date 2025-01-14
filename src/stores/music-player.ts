@@ -19,8 +19,9 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	});
 	const timeRemaining = computed(() => duration.value * (1 - progress.value));
 	const loading = ref(false);
-	// FIXME: volume control does not work on ios
+	// NOTE: volume control does not work on iOS due to Apple putting arbitrary restrictions around setting app volume
 	const volume = ref(1);
+
 	watch(volume, (volume) => {
 		musicKit.music!.volume = volume;
 	});
@@ -42,7 +43,6 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 		music.addEventListener("playbackTimeDidChange", () => {
 			currentTime.value = music.currentPlaybackTime;
-
 			if (currentTime.value === duration.value) skipNext();
 		});
 	});

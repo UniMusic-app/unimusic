@@ -52,7 +52,8 @@
 			</ion-button>
 		</ion-buttons>
 
-		<div class="volume-controls">
+		<!-- NOTE: volume control does not work on ios due to Apple being Apple -->
+		<div class="volume-controls" v-if="Capacitor.getPlatform() !== 'ios'">
 			<ion-range
 				aria-label="Volume"
 				:min="0"
@@ -168,6 +169,7 @@ import {
 } from "ionicons/icons";
 import { IonButton, IonButtons, IonIcon, IonSpinner, IonRange, IonLabel } from "@ionic/vue";
 import { secondsToMMSS } from "@/utils/time";
+import { Capacitor } from "@capacitor/core";
 
 const musicPlayer = useMusicPlayer();
 const {
