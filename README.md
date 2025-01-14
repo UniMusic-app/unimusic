@@ -84,16 +84,31 @@ I will try to update the roadmap as the development progresses.
 
 ## Run locally
 
-Package manager: `pnpm`.\
-Make sure you have downloaded all [Capacitor](https://capacitorjs.com/docs/getting-started/environment-setup) and [Ionic](https://ionicframework.com/docs/intro/environment) Prerequisites.
+> [!IMPORTANT]
+> To run iOS app you will have to use physical device, as MusicKit is not supported in Simulator.
+> This is not the case for Android, where you can use Android Virtual Devices (AVD) in Android Studio or any other Emulator
 
+> [!NOTE]
+> MusicKit authorization on mobile (both Android and iOS) requires you to already have Apple Music app installed.
+
+1. Make sure you have all dependencies required to build the app:
+	- Package manager: [pnpm](https://pnpm.io).
+	- Make sure you have downloaded all prerequisites for:
+ 		- [Capacitor](https://capacitorjs.com/docs/getting-started/environment-setup)
+		- [Ionic](https://ionicframework.com/docs/intro/environment)
+2. Place your [MusicKit Developer Token](https://developer.apple.com/documentation/applemusicapi/generating_developer_tokens) in corresponding files:
+	- /.example.env ⇢ /.env
+	- /android/app/src/main/res/values/tokens.example.xml ⇢ /android/app/src/main/res/values/tokens.xml
+3. Install the project dependencies and run the app
 ```sh
 pnpm install -g @ionic/cli # install ionic cli globally
 ionic config set -g npmClient pnpm # Make ionic use pnpm
 
 pnpm install
-ionic servce # Run on desktop
-ionic capacitor run {ios,android} # Run on mobile devices
+ionic serve # Preview the app in browser
+ionic capacitor build {ios,android} # Build on mobile, then run them in their respective IDE's
+# or
+ionic capacitor run android # Run android app directly on android
 ```
 
 ## Recommended IDE Setup
