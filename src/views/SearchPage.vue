@@ -117,7 +117,7 @@ async function updateSearchResults(): Promise<void> {
 			"/v1/catalog/{{storefrontId}}/search",
 			{
 				term: search.value.replaceAll(" ", "+"),
-				types: ["songs", "albums", "artists"],
+				types: ["songs"],
 				limit: 25,
 			},
 		);
