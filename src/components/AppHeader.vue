@@ -1,9 +1,9 @@
 <template>
-	<Transition name="roll">
-		<ion-header v-if="show" :translucent="true">
-			<slot name="leading" />
+	<ion-header :translucent="true">
+		<slot name="leading" />
 
-			<ion-toolbar id="app-toolbar">
+		<Transition name="roll">
+			<ion-toolbar v-if="showToolbar" id="app-toolbar">
 				<slot name="toolbar" />
 
 				<ion-buttons slot="end">
@@ -12,10 +12,10 @@
 					</ion-button>
 				</ion-buttons>
 			</ion-toolbar>
+		</Transition>
 
-			<slot name="trailing" />
-		</ion-header>
-	</Transition>
+		<slot name="trailing" />
+	</ion-header>
 
 	<ion-modal ref="userModal" :is-open="userModalOpen" @didDismiss="userModalOpen = false">
 		<UserModal :modal="userModal" />
@@ -29,8 +29,8 @@ import { personCircle } from "ionicons/icons";
 import UserModal from "@/components/UserModal.vue";
 import { ref } from "vue";
 
-const { show = true } = defineProps<{
-	show?: boolean;
+const { showToolbar = true } = defineProps<{
+	showToolbar?: boolean;
 }>();
 
 const userModal = ref();

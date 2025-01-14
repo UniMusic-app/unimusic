@@ -1,30 +1,32 @@
 <template>
 	<ion-page>
-		<app-header :show="!isSearching">
+		<app-header :showToolbar="!isSearching">
 			<template #toolbar>
 				<ion-title>Search</ion-title>
 			</template>
-		</app-header>
 
-		<ion-toolbar>
-			<ion-searchbar
-				id="searchbar"
-				:class="{
-					searching: isSearching,
-				}"
-				:debounce="250"
-				v-model="search"
-				cancel-button-text="Cancel"
-				show-cancel-button="focus"
-				inputmode="search"
-				enterkeyhint="search"
-				@ion-focus="isSearching = true"
-				@ion-cancel="isSearching = false"
-				@ion-blur="!search && (isSearching = false)"
-				@ion-input="updateSearchHints"
-				@keyup.enter="searchFor($event.target.value)"
-			/>
-		</ion-toolbar>
+			<template #trailing>
+				<ion-toolbar>
+					<ion-searchbar
+						id="searchbar"
+						:class="{
+							searching: isSearching,
+						}"
+						:debounce="250"
+						v-model="search"
+						cancel-button-text="Cancel"
+						show-cancel-button="focus"
+						inputmode="search"
+						enterkeyhint="search"
+						@ion-focus="isSearching = true"
+						@ion-cancel="isSearching = false"
+						@ion-blur="!search && (isSearching = false)"
+						@ion-input="updateSearchHints"
+						@keyup.enter="searchFor($event.target.value)"
+					/>
+				</ion-toolbar>
+			</template>
+		</app-header>
 
 		<ion-content :fullscreen="true">
 			<ion-list id="search-suggestions" v-if="isSearching && searchSuggestions.length">
@@ -126,10 +128,6 @@ async function updateSearchResults(): Promise<void> {
 </script>
 
 <style scoped>
-#searchbar.searching {
-	padding-top: var(--ion-safe-area-top);
-}
-
 #search-suggestions {
 	.search-suggestion {
 		& > ion-icon {
