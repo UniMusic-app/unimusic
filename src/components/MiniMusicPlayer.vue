@@ -1,5 +1,5 @@
 <template>
-	<ion-item button @click.self="modalOpen = true" v-if="currentSong?.id">
+	<ion-item button :detail="false" @click.self="modalOpen = true" v-if="currentSong?.id">
 		<ion-thumbnail slot="start">
 			<img :src="currentSong.artworkUrl" :alt="`Artwork for song '${currentSong.name}'`" />
 		</ion-thumbnail>

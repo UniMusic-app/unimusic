@@ -7,18 +7,52 @@
 			'--bg-color': `#${currentSong.data?.attributes?.artwork.bgColor ?? '000'}`,
 		}"
 	>
-		<img
-			class="artwork"
-			:src="currentSong.artworkUrl"
-			:alt="`Artwork for song '${currentSong.name}'`"
-		/>
+		<div class="song" :class="{ compact: showQueue }">
+			<img
+				class="artwork"
+				:src="currentSong.artworkUrl"
+				:alt="`Artwork for song '${currentSong.name}'`"
+			/>
 
-		<h1 class="title ion-text-nowrap">
-			{{ currentSong.name }}
-		</h1>
-		<h2 class="artist ion-text-nowrap">
-			{{ currentSong.artist }}
-		</h2>
+			<div class="song-info">
+				<h1 class="title ion-text-nowrap">
+					{{ currentSong.name }}
+				</h1>
+				<h2 class="artist ion-text-nowrap">
+					{{ currentSong.artist }}
+				</h2>
+			</div>
+		</div>
+
+		<ion-content class="queue" v-if="showQueue">
+			<!-- TODO: Add reorder -->
+			<h1>Queue</h1>
+			<ion-list lines="none">
+				<ion-item
+					button
+					:detail="false"
+					v-for="(song, i) in queuedSongs"
+					:key="i"
+					:class="{ current: i === queueIndex }"
+					@click.self="((queueIndex = i), musicPlayer.play())"
+				>
+					<ion-thumbnail slot="start">
+						<img :src="song.artworkUrl" :alt="`Artwork for song '${song.name}'`" />
+					</ion-thumbnail>
+
+					<ion-label class="ion-text-nowrap">
+						<h2>{{ song.name }}</h2>
+						<ion-note>
+							{{ song.artist }}
+						</ion-note>
+					</ion-label>
+
+					<ion-button @click="musicPlayer.remove(i)" fill="clear" slot="end">
+						<ion-icon slot="icon-only" :icon="removeIcon" />
+					</ion-button>
+				</ion-item>
+			</ion-list>
+		</ion-content>
 
 		<div class="time-controls">
 			<ion-range
@@ -39,20 +73,35 @@
 			</div>
 		</div>
 
-		<ion-buttons>
-			<ion-button size="large" :disabled="!hasPrevious" @click="musicPlayer.skipPrevious">
-				<ion-icon :icon="skipPreviousIcon" slot="icon-only" />
+		<ion-buttons class="media-controls">
+			<ion-button
+				aria-label="Skip to previous song"
+				size="large"
+				:disabled="!hasPrevious"
+				@click="musicPlayer.skipPrevious"
+			>
+				<ion-icon aria-hidden="true" :icon="skipPreviousIcon" slot="icon-only" />
 			</ion-button>
-			<ion-button :disabled="loading" size="large" @click="musicPlayer.togglePlay">
+			<ion-button
+				aria-label="Play or pause the song"
+				:disabled="loading"
+				size="large"
+				@click="musicPlayer.togglePlay"
+			>
 				<ion-spinner v-if="loading" />
-				<ion-icon v-else :icon="playing ? pauseIcon : playIcon" slot="icon-only" />
+				<ion-icon v-else aria-hidden="true" :icon="playing ? pauseIcon : playIcon" slot="icon-only" />
 			</ion-button>
-			<ion-button size="large" :disabled="!hasNext" @click="musicPlayer.skipNext">
-				<ion-icon :icon="skipNextIcon" slot="icon-only" />
+			<ion-button
+				aria-label="Skip to next song"
+				size="large"
+				:disabled="!hasNext"
+				@click="musicPlayer.skipNext"
+			>
+				<ion-icon aria-hidden="true" :icon="skipNextIcon" slot="icon-only" />
 			</ion-button>
 		</ion-buttons>
 
-		<!-- NOTE: volume control does not work on ios due to Apple being Apple -->
+		<!-- NOTE: volume control does not work on iOS due to Apple putting arbitrary restrictions around setting app volume -->
 		<div class="volume-controls" v-if="Capacitor.getPlatform() !== 'ios'">
 			<ion-range
 				aria-label="Volume"
@@ -62,18 +111,29 @@
 				:value="volume"
 				@ion-change="volume = $event.detail.value as number"
 			>
-				<ion-icon slot="start" :icon="volumeLowIcon" />
-				<ion-icon slot="end" :icon="volumeHighIcon" />
+				<ion-icon aria-hidden="true" slot="start" :icon="volumeLowIcon" />
+				<ion-icon aria-hidden="true" slot="end" :icon="volumeHighIcon" />
 			</ion-range>
 		</div>
 
-		<!-- TODO: Queue -->
+		<div class="actions">
+			<ion-button fill="clear" aria-label="Lyrics">
+				<ion-icon slot="icon-only" :icon="musicalNotesIcon" />
+			</ion-button>
+
+			<ion-button
+				:fill="showQueue ? 'solid' : 'clear'"
+				aria-label="Queue"
+				@click="showQueue = !showQueue"
+			>
+				<ion-icon slot="icon-only" :icon="listIcon" />
+			</ion-button>
+		</div>
 	</div>
 </template>
 
 <style scoped>
 #music-player-modal {
-	position: relative;
 	user-select: none;
 
 	background: linear-gradient(0deg, color-mix(in srgb, var(--bg-color), black), var(--bg-color));
@@ -93,10 +153,112 @@
 	justify-content: center;
 	align-items: center;
 
-	& > .artwork {
-		pointer-events: none;
-		border-radius: 16px;
-		box-shadow: 0 0 60px #0004;
+	& > .song {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		height: 60%;
+
+		&.compact {
+			flex-direction: row;
+			height: 160px;
+			gap: 8px;
+
+			& > .artwork {
+				width: 128px;
+			}
+
+			& > .song-info {
+				width: calc(100% - 128px);
+			}
+
+			margin: 0;
+		}
+
+		& > .artwork {
+			width: 256px;
+			pointer-events: none;
+			border-radius: 16px;
+			box-shadow: 0 0 60px #0004;
+		}
+
+		& > .song-info {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+
+			& > .title {
+				font-size: 1.2rem;
+			}
+
+			& > .artist {
+				margin-top: 0;
+				font-weight: bold;
+			}
+
+			& > .title,
+			& > .artist {
+				max-width: min(100%, 80vw);
+				text-overflow: ellipsis;
+				overflow: hidden;
+				margin-bottom: 0;
+			}
+		}
+	}
+
+	& > .queue {
+		max-height: calc(60% - 160px);
+		margin: 0;
+		--background: transparent;
+
+		& > h1 {
+			color: white;
+			font-weight: bolder;
+		}
+
+		& > ion-list {
+			background: transparent;
+			& > ion-item {
+				&.current {
+					background-color: #fff2;
+					border-radius: 12px;
+				}
+
+				&::part(native) {
+					--background: transparent;
+				}
+
+				& h2 {
+					pointer-events: none;
+					color: white;
+					font-weight: bold;
+				}
+
+				& ion-label {
+					pointer-events: none;
+				}
+
+				& ion-note {
+					pointer-events: none;
+					font-weight: 500;
+					color: #dedede;
+				}
+
+				& > ion-thumbnail {
+					--border-radius: 8px;
+					pointer-events: none;
+				}
+
+				& > ion-button {
+					height: 48px;
+					width: 48px;
+					font-size: 1rem;
+				}
+			}
+		}
 	}
 
 	& > .time-controls,
@@ -133,30 +295,33 @@
 		--knob-size: 0;
 	}
 
-	ion-button {
-		height: 72px;
-		width: 72px;
-		font-size: 1.5rem;
+	& > .media-controls {
+		& > ion-button {
+			height: 72px;
+			width: 72px;
+			font-size: 1.5rem;
+		}
 	}
 
-	& > .title {
-		max-width: 90vw;
-		font-size: 1.2rem;
-		text-overflow: ellipsis;
-		overflow: hidden;
-		margin-bottom: 0;
-	}
+	& > .actions {
+		display: flex;
+		width: 100%;
+		justify-content: space-evenly;
+		align-items: center;
 
-	& > .artist {
-		margin-top: 0;
-		font-weight: bold;
+		& > ion-button {
+			width: 64px;
+			height: 64px;
+			font-size: 1.5rem;
+		}
 	}
 }
 </style>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { storeToRefs } from "pinia";
-import { useMusicPlayer } from "@/stores/music-player";
+import { Capacitor } from "@capacitor/core";
 
 import {
 	play as playIcon,
@@ -165,14 +330,31 @@ import {
 	playSkipForward as skipNextIcon,
 	volumeLow as volumeLowIcon,
 	volumeHigh as volumeHighIcon,
-	time as timeIcon,
+	list as listIcon,
+	musicalNotes as musicalNotesIcon,
+	trash as removeIcon,
 } from "ionicons/icons";
-import { IonButton, IonButtons, IonIcon, IonSpinner, IonRange, IonLabel } from "@ionic/vue";
+import {
+	IonList,
+	IonButton,
+	IonButtons,
+	IonIcon,
+	IonNote,
+	IonContent,
+	IonSpinner,
+	IonRange,
+	IonLabel,
+	IonItem,
+	IonThumbnail,
+} from "@ionic/vue";
 import { secondsToMMSS } from "@/utils/time";
-import { Capacitor } from "@capacitor/core";
+
+import { useMusicPlayer } from "@/stores/music-player";
 
 const musicPlayer = useMusicPlayer();
 const {
+	queueIndex,
+	queuedSongs,
 	playing,
 	currentSong,
 	volume,
@@ -183,4 +365,6 @@ const {
 	progress,
 	timeRemaining,
 } = storeToRefs(musicPlayer);
+
+const showQueue = ref(false);
 </script>

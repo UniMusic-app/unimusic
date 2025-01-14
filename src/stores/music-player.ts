@@ -100,6 +100,13 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		queuedSongs.value.splice(index, 0, song);
 	}
 
+	function remove(index: number): void {
+		queuedSongs.value.splice(index, 1);
+		if (index < queueIndex.value) {
+			queueIndex.value = queueIndex.value - 1;
+		}
+	}
+
 	async function skipNext(): Promise<void> {
 		if (!hasNext.value) return;
 		queueIndex.value++;
@@ -131,6 +138,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		queuedSongs,
 		queueIndex,
 		add,
+		remove,
 		hasPrevious,
 		hasNext,
 		skipPrevious,
