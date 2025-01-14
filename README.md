@@ -2,6 +2,10 @@
 
 Unified cross-platform music player.
 
+## Demo showcase
+
+https://github.com/user-attachments/assets/ef20a3ac-5b66-4002-a10e-615af8d44119
+
 ## Roadmap
 
 Development is currently prioritized for iOS and macOS, however first stable release should also work on Android, Linux and Windows.
