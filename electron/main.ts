@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, components, BrowserWindow, ipcMain } from "electron";
 import electronServe from "electron-serve";
 import { authorizeMusicKit } from "./musickit/auth";
 import { fileURLToPath } from "url";
@@ -39,6 +39,7 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+	await components.whenReady();
 	await createWindow();
 
 	ipcMain.handle("musickit:authorize", () => authorizeMusicKit());
