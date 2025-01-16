@@ -1,8 +1,8 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, Cookie } from "electron";
 
 export function authorizeMusicKit() {
 	const authWindow = new BrowserWindow({
-		with: 600,
+		width: 600,
 		height: 600,
 		title: "Apple Music Authorization",
 		alwaysOnTop: true,
@@ -13,7 +13,7 @@ export function authorizeMusicKit() {
 	const { cookies } = authWindow.webContents.session;
 
 	return new Promise((resolve, reject) => {
-		const mediaUserTokenListener = (event, cookie) => {
+		const mediaUserTokenListener = (_event: unknown, cookie: Cookie) => {
 			if (cookie.name === "media-user-token") {
 				if (cookie.value) {
 					resolve(cookie.value);

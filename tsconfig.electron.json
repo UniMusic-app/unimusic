@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"composite": true,
+		"target": "ESNext",
+		"useDefineForClassFields": true,
+		"module": "ESNext",
+		"moduleResolution": "Node",
+		"strict": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"esModuleInterop": true,
+		"allowJs": true,
+		"lib": ["ESNext", "DOM"],
+		"outDir": "build/electron",
+		"noEmit": false,
+		"types": ["vite/client"]
+	},
+	"include": ["electron/**/*.ts", "electron/**/*.d.ts"]
+}
