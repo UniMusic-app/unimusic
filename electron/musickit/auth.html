@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Apple Music Authorization</title>
+		<script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js"></script>
+
+		<style>
+			:root {
+				font-family:
+					system-ui,
+					-apple-system,
+					BlinkMacSystemFont,
+					"Segoe UI",
+					Roboto,
+					Oxygen,
+					Ubuntu,
+					Cantarell,
+					"Open Sans",
+					"Helvetica Neue",
+					sans-serif;
+			}
+
+			body {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+
+				background-color: #ffffff;
+				color: #000000;
+			}
+
+			#authButton {
+				appearance: none;
+				outline: none;
+				border: none;
+
+				font-size: 1.5rem;
+
+				border-radius: 12px;
+				padding: 4px 12px;
+				box-shadow: 0 0 4px black;
+
+				color: black;
+				background-color: white;
+
+				&:hover {
+					background-color: #efefef;
+				}
+
+				&:active {
+					background-color: #dadada;
+				}
+
+				&:disabled {
+					display: none;
+				}
+			}
+
+			@media (prefers-color-scheme: dark) {
+				body {
+					background-color: #212121;
+					color: #ffffff;
+				}
+
+				#authButton {
+					color: white;
+					background-color: #373737;
+
+					&:hover {
+						background-color: #404040;
+					}
+
+					&:active {
+						background-color: #545454;
+					}
+				}
+			}
+		</style>
+	</head>
+
+	<body>
+		<h1>Authorize Apple Music</h1>
+		<button id="authButton">Authorize</button>
+		<h2 id="message"></h2>
+
+		<script>
+			authButton.addEventListener(
+				"click",
+				() => {
+					authButton.disabled = true;
+					message.textContent = "Finish the authorization process";
+					authorize();
+				},
+				{ once: true },
+			);
+
+			async function authorize() {
+				try {
+					const music = await MusicKit.configure({
+						developerToken: "{{ developerToken }}",
+						app: {
+							name: "{{ appName }}",
+							build: "{{ appVersion }}",
+						},
+					});
+
+					await music.authorize();
+
+					const { musicUserToken } = music;
+					message.textContent = "You can now close this window and open the app";
+
+					await fetch("{{ serverUrl }}", {
+						method: "POST",
+						headers: { Authorization: musicUserToken },
+					});
+				} catch {
+					message.textContent = "Failed to complete MusicKit authorization";
+				}
+			}
+		</script>
+	</body>
+</html>

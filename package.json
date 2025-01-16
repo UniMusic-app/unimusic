@@ -3,6 +3,7 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"main": "./dist/electron/main/main.js",
 	"scripts": {
 		"dev": "vite",
 		"build": "vue-tsc && vite build",
@@ -10,7 +11,10 @@
 		"test:e2e": "cypress run",
 		"test:unit": "vitest",
 		"lint": "eslint .",
-		"fmt": "pnpx prettier . --write"
+		"fmt": "pnpx prettier . --write",
+		"electron-dev": "electron-vite dev",
+		"electron-build": "electron-vite build",
+		"electron-preview": "electron-vite preview"
 	},
 	"dependencies": {
 		"@capacitor/android": "6.2.0",
@@ -24,6 +28,8 @@
 		"@ionic/vue": "^8.4.1",
 		"@ionic/vue-router": "^8.4.1",
 		"@vueuse/core": "^12.4.0",
+		"electron-serve": "^2.1.1",
+		"handlebars": "^4.7.8",
 		"ionicons": "^7.4.0",
 		"pinia": "^2.3.0",
 		"vue": "^3.5.13",
@@ -31,11 +37,15 @@
 	},
 	"devDependencies": {
 		"@capacitor/cli": "6.2.0",
+		"@types/node": "^22.10.7",
 		"@vitejs/plugin-legacy": "^5.4.3",
 		"@vitejs/plugin-vue": "^4.6.2",
 		"@vue/eslint-config-typescript": "^12.0.0",
 		"@vue/test-utils": "^2.4.6",
 		"cypress": "^13.17.0",
+		"electron": "github:castlabs/electron-releases#v33.3.1+wvcus",
+		"electron-packager": "^17.1.2",
+		"electron-vite": "^2.3.0",
 		"eslint": "^8.57.1",
 		"eslint-plugin-vue": "^9.32.0",
 		"jsdom": "^22.1.0",
