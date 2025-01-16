@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import electronServe from "electron-serve";
-import { authorizeMusicKit } from "./musickit/auth.js";
+import { authorizeMusicKit } from "./musickit/auth";
 import { fileURLToPath } from "url";
 
 const loadUrl = electronServe({

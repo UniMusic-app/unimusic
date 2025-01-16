@@ -1,32 +1,52 @@
-import { BrowserWindow, Cookie } from "electron";
+import http from "node:http";
 
-export function authorizeMusicKit() {
-	const authWindow = new BrowserWindow({
-		width: 600,
-		height: 600,
-		title: "Apple Music Authorization",
-		alwaysOnTop: true,
-		resizable: false,
+import { shell } from "electron";
+import Handlebars from "handlebars";
+
+import AuthTemplate from "./auth.html?raw";
+
+const authClientTemplate = Handlebars.compile(AuthTemplate);
+
+// Authorize Apple Music:
+//  - Host localhost server
+//  - Open website that calls MusicKit.Instance.authorize in the web browser
+//  - After authorization send the token to the server
+export async function authorizeMusicKit() {
+	const { promise, resolve, reject } = Promise.withResolvers();
+
+	let serverUrl: string;
+	const server = http.createServer((req, res) => {
+		res.statusCode = 200;
+
+		if (req.method === "POST") {
+			resolve(req.headers.authorization);
+			server.close();
+			return;
+		}
+
+		res.setHeader("Content-Type", "text/html");
+		res.end(
+			authClientTemplate({
+				serverUrl,
+				appName: import.meta.env.VITE_APP_NAME,
+				appVersion: import.meta.env.VITE_APP_VERSION,
+				developerToken: import.meta.env.VITE_DEVELOPER_TOKEN,
+			}),
+		);
 	});
-	authWindow.loadURL("https://beta.music.apple.com/login");
 
-	const { cookies } = authWindow.webContents.session;
+	server.listen(() => {
+		const address = server.address();
+		if (!address) {
+			reject("Couldn't receive server address");
+			server.close();
+			return;
+		}
 
-	return new Promise((resolve, reject) => {
-		const mediaUserTokenListener = (_event: unknown, cookie: Cookie) => {
-			if (cookie.name === "media-user-token") {
-				if (cookie.value) {
-					resolve(cookie.value);
-					console.log(cookie.value);
-					authWindow.close();
-				} else {
-					reject("Could not get media-user-token value");
-				}
-
-				cookies.removeAllListeners();
-			}
-		};
-
-		cookies.addListener("changed", mediaUserTokenListener);
+		serverUrl = typeof address === "object" ? `http://localhost:${address.port}` : address;
+		console.log(`Server running at ${serverUrl}`);
+		shell.openExternal(serverUrl);
 	});
+
+	return await promise;
 }
