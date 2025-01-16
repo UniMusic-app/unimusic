@@ -12,7 +12,9 @@
 		"test:unit": "vitest",
 		"lint": "eslint .",
 		"fmt": "pnpx prettier . --write",
-		"electron": "electron ./electron/main.mjs"
+		"electron-dev": "electron-vite dev",
+		"electron-build": "electron-vite build",
+		"electron-preview": "electron-vite preview"
 	},
 	"dependencies": {
 		"@capacitor/android": "6.2.0",
