@@ -9,5 +9,6 @@ class MusicPlayerViewController: CAPBridgeViewController {
 
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(MusicKitAuthorizationPlugin())
+        bridge?.registerPluginInstance(AudioLibraryPlugin())
     }
 }

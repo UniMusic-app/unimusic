@@ -1,4 +1,5 @@
 export class Service extends EventTarget {
+	logName = "Service";
 	logColor = "rebeccapurple";
 
 	log(...args: unknown[]): void {

@@ -12,6 +12,7 @@ interface MusicKitPreferences {
  * Service which streamlines the MusicKit authorization
  */
 export class MusicKitAuthorizationService extends Service {
+	logName = "MusicKitAuthorizationService";
 	logColor = "#ff7080";
 
 	constructor() {

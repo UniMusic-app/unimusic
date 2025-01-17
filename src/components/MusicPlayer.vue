@@ -3,20 +3,18 @@
 		id="music-player-modal"
 		class="ion-padding"
 		v-if="currentSong"
-		:style="{
-			'--bg-color': `#${currentSong.data?.attributes?.artwork.bgColor ?? '000'}`,
-		}"
+		:style="{ '--bg-color': bgColor }"
 	>
 		<div class="song" :class="{ compact: showQueue }">
 			<img
 				class="artwork"
 				:src="currentSong.artworkUrl"
-				:alt="`Artwork for song '${currentSong.name}'`"
+				:alt="`Artwork for song '${currentSong.title}'`"
 			/>
 
 			<div class="song-info">
 				<h1 class="title ion-text-nowrap">
-					{{ currentSong.name }}
+					{{ currentSong.title }}
 				</h1>
 				<h2 class="artist ion-text-nowrap">
 					{{ currentSong.artist }}
@@ -37,11 +35,11 @@
 					@click.self="((queueIndex = i), musicPlayer.play())"
 				>
 					<ion-thumbnail slot="start">
-						<img :src="song.artworkUrl" :alt="`Artwork for song '${song.name}'`" />
+						<img :src="song.artworkUrl" :alt="`Artwork for song '${song.title}'`" />
 					</ion-thumbnail>
 
 					<ion-label class="ion-text-nowrap">
-						<h2>{{ song.name }}</h2>
+						<h2>{{ song.title }}</h2>
 						<ion-note>
 							{{ song.artist }}
 						</ion-note>
@@ -65,7 +63,7 @@
 			/>
 
 			<div class="labels">
-				<ion-label>{{ secondsToMMSS(currentTime) }}</ion-label>
+				<ion-label>{{ secondsToMMSS(time) }}</ion-label>
 				<ion-label class="platform">
 					<template v-if="currentSong.type === 'musickit'">Apple Music</template>
 				</ion-label>
@@ -319,7 +317,7 @@
 </style>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { Capacitor } from "@capacitor/core";
 
@@ -361,10 +359,38 @@ const {
 	hasPrevious,
 	hasNext,
 	loading,
-	currentTime,
+	time,
 	progress,
 	timeRemaining,
 } = storeToRefs(musicPlayer);
 
 const showQueue = ref(false);
+
+const bgColor = computed(() => {
+	const song = currentSong.value;
+
+	switch (song?.type) {
+		case "musickit":
+			return song.data?.attributes?.artwork.bgColor ?? "000";
+		case "library": {
+			// Get an "average" color from the artwork image
+			if (song?.artworkUrl) {
+				const image = new Image(1, 1);
+				image.src = song.artworkUrl;
+
+				const context = document.createElement("canvas").getContext("2d");
+				if (!context) {
+					return "#000";
+				}
+
+				context.drawImage(image, 0, 0);
+				const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+				return `rgb(${r}, ${g}, ${b})`;
+			}
+			return "#000";
+		}
+		default:
+			return "#000";
+	}
+});
 </script>

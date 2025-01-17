@@ -1,148 +1,38 @@
 import { defineStore } from "pinia";
-import { computed, readonly, ref, watch } from "vue";
-import { useStorage } from "@vueuse/core";
+import { computed, readonly } from "vue";
 
-import { AnySong } from "@/types/music-player";
-import { useMusicKit } from "./musickit";
+import { MusicPlayerService } from "@/services/MusicPlayer";
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
-	const musicKit = useMusicKit();
+	// Platform specific methods are put into the MusicPlayerService
+	const musicPlayerService = new MusicPlayerService();
 
-	const playing = ref(false);
-	const currentTime = ref(0);
-	const duration = ref(1);
-	const progress = computed({
-		get: () => currentTime.value / duration.value,
-		set(progress) {
-			musicKit.music!.seekToTime(progress * duration.value);
-		},
-	});
-	const timeRemaining = computed(() => duration.value * (1 - progress.value));
-	const loading = ref(false);
-	// NOTE: volume control does not work on iOS due to Apple putting arbitrary restrictions around setting app volume
-	const volume = ref(1);
-
-	watch(volume, (volume) => {
-		musicKit.music!.volume = volume;
-	});
-
-	const queuedSongs = useStorage<AnySong[]>("queuedSongs", []);
-	const queueIndex = useStorage("queueIndex", 0);
-
-	const hasPrevious = computed(() => queueIndex.value > 0);
-	const hasNext = computed(() => queuedSongs.value.length > queueIndex.value + 1);
-
-	musicKit.withMusic(async (music) => {
-		music.repeatMode = MusicKit.PlayerRepeatMode.none;
-
-		music.addEventListener("mediaCanPlay", () => {
-			duration.value = music.currentPlaybackDuration;
-			currentTime.value = music.currentPlaybackTime;
-			loading.value = false;
-		});
-
-		music.addEventListener("playbackTimeDidChange", () => {
-			currentTime.value = music.currentPlaybackTime;
-			if (currentTime.value === duration.value) skipNext();
-		});
-	});
-
-	async function play(): Promise<void> {
-		const song = currentSong.value;
-		if (!song) {
-			console.warn("Tried to play a song thats undefined");
-			return;
-		}
-
-		switch (song.type) {
-			case "musickit": {
-				const music = musicKit.music!;
-				if (music.nowPlayingItem?.id !== song.id) {
-					loading.value = true;
-					await music.setQueue({ song: song.id });
-				}
-				await music.play();
-				playing.value = true;
-				break;
-			}
-			default:
-				throw new Error("unimplemented");
-		}
-	}
-
-	async function pause(): Promise<void> {
-		const song = currentSong.value;
-		if (!song) {
-			console.warn("Tried to play a song thats undefined");
-			return;
-		}
-
-		console.info("Trying to pause", song);
-
-		switch (song.type) {
-			case "musickit": {
-				const music = musicKit.music!;
-				await music.pause();
-				playing.value = false;
-				break;
-			}
-			default:
-				throw new Error("unimplemented");
-		}
-	}
-
-	function togglePlay(): void {
-		if (playing.value) pause();
-		else play();
-	}
-
-	function add(song: AnySong, index = queuedSongs.value.length): void {
-		queuedSongs.value.splice(index, 0, song);
-	}
-
-	function remove(index: number): void {
-		queuedSongs.value.splice(index, 1);
-		if (index < queueIndex.value) {
-			queueIndex.value = queueIndex.value - 1;
-		}
-	}
-
-	async function skipNext(): Promise<void> {
-		if (!hasNext.value) return;
-		queueIndex.value++;
-		await play();
-	}
-
-	async function skipPrevious(): Promise<void> {
-		if (!hasPrevious.value) return;
-		queueIndex.value--;
-		await play();
-	}
-
-	const currentSong = computed<AnySong | undefined>(() => queuedSongs.value[queueIndex.value]);
+	const timeRemaining = computed(
+		() => musicPlayerService.duration.value * (1 - musicPlayerService.progress.value),
+	);
 
 	return {
-		loading,
+		loading: readonly(musicPlayerService.loading),
+		playing: readonly(musicPlayerService.playing),
+		play: musicPlayerService.play.bind(musicPlayerService),
+		pause: musicPlayerService.pause.bind(musicPlayerService),
+		togglePlay: musicPlayerService.togglePlay.bind(musicPlayerService),
 
-		playing: readonly(playing),
-		play,
-		pause,
-		togglePlay,
+		volume: musicPlayerService.volume,
+		progress: musicPlayerService.progress,
 
-		volume,
-		progress,
-		currentTime,
-		duration,
+		time: musicPlayerService.time,
+		duration: musicPlayerService.duration,
 		timeRemaining,
 
-		queuedSongs,
-		queueIndex,
-		add,
-		remove,
-		hasPrevious,
-		hasNext,
-		skipPrevious,
-		skipNext,
-		currentSong,
+		queuedSongs: musicPlayerService.queuedSongs,
+		queueIndex: musicPlayerService.queueIndex,
+		add: musicPlayerService.add.bind(musicPlayerService),
+		remove: musicPlayerService.remove.bind(musicPlayerService),
+		hasPrevious: musicPlayerService.hasPrevious,
+		hasNext: musicPlayerService.hasNext,
+		skipPrevious: musicPlayerService.skipPrevious.bind(musicPlayerService),
+		skipNext: musicPlayerService.skipNext.bind(musicPlayerService),
+		currentSong: musicPlayerService.currentSong,
 	};
 });

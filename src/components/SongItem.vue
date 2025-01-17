@@ -1,15 +1,15 @@
 <template>
 	<ion-item>
-		<ion-thumbnail slot="start">
-			<img :src="artworkUrl" :alt="`Artwork for song '${songName}'`" />
+		<ion-thumbnail v-if="artworkUrl" slot="start">
+			<img :src="artworkUrl" :alt="`Artwork for song '${title}' by ${artist}`" />
 		</ion-thumbnail>
 
 		<ion-label class="ion-text-nowrap">
-			<h2>{{ songName }}</h2>
+			<h2>{{ title ?? "Unknown title" }}</h2>
 			<ion-note>
 				Song
 				<ion-icon :icon="musicalNoteIcon" />
-				{{ songArtist }}
+				{{ artist }}
 			</ion-note>
 		</ion-label>
 
@@ -38,10 +38,10 @@ import { musicalNote as musicalNoteIcon, play as playIcon, add as addIcon } from
 
 const emit = defineEmits<{ addToQueue: []; play: [] }>();
 
-const { songName, songArtist, artworkUrl } = defineProps<{
-	artworkUrl: string;
-	songArtist: string;
-	songName: string;
+const { title, artist, artworkUrl } = defineProps<{
+	artworkUrl?: string;
+	artist?: string;
+	title?: string;
 }>();
 </script>
 
