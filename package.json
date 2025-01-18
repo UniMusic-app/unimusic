@@ -16,6 +16,12 @@
 		"electron-build": "electron-vite build",
 		"electron-preview": "electron-vite preview"
 	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"electron",
+			"esbuild"
+		]
+	},
 	"dependencies": {
 		"@capacitor/android": "6.2.0",
 		"@capacitor/app": "6.0.2",
