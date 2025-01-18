@@ -7,11 +7,11 @@
 		</app-header>
 
 		<ion-content :fullscreen="true" class="ion-padding">
-			<ion-button @click="getSongs">get songs</ion-button>
-
-			<ion-list v-for="song in songs" :key="song.id">
-				<library-song-item :song />
+			<ion-list>
+				<local-song-item v-for="song in songs" :key="song.id" :song />
 			</ion-list>
+
+			{{ songs.length }}
 		</ion-content>
 
 		<app-footer />
@@ -19,15 +19,16 @@
 </template>
 
 <script setup lang="ts">
-import { IonPage, IonTitle, IonContent, IonButton, IonList } from "@ionic/vue";
+import { IonPage, IonTitle, IonContent, IonList } from "@ionic/vue";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
-import AudioLibrary, { AudioLibrarySong } from "@/plugins/AudioLibrary";
-import { ref } from "vue";
-import LibrarySongItem from "@/components/SongItem/LibrarySongItem.vue";
+import { onMounted, ref } from "vue";
+import LocalMusicPlugin, { type LocalMusicSong } from "@/plugins/LocalMusicPlugin";
+import LocalSongItem from "@/components/SongItem/LocalSongItem.vue";
 
-const songs = ref<AudioLibrarySong[]>([]);
-async function getSongs() {
-	songs.value = (await AudioLibrary.getSongs()).songs;
-}
+const songs = ref<LocalMusicSong[]>([]);
+
+onMounted(async () => {
+	songs.value = await LocalMusicPlugin.getSongs();
+});
 </script>

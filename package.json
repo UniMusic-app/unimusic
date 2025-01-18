@@ -26,6 +26,7 @@
 		"@capacitor/android": "6.2.0",
 		"@capacitor/app": "6.0.2",
 		"@capacitor/core": "6.2.0",
+		"@capacitor/filesystem": "^6.0.3",
 		"@capacitor/haptics": "6.0.2",
 		"@capacitor/ios": "6.2.0",
 		"@capacitor/keyboard": "6.0.3",
@@ -37,6 +38,7 @@
 		"electron-serve": "^2.1.1",
 		"handlebars": "^4.7.8",
 		"ionicons": "^7.4.0",
+		"music-metadata": "^10.7.0",
 		"pinia": "^2.3.0",
 		"vue": "^3.5.13",
 		"vue-router": "^4.5.0"

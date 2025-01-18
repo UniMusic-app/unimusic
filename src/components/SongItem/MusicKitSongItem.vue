@@ -11,8 +11,8 @@ import { MusicKitSong } from "@/types/music-player";
 
 const { song } = defineProps<{ song: MusicKit.Songs }>();
 
-const title = song.attributes?.name ?? "Unknown song name";
-const artist = song.attributes?.artistName ?? "Unknown artist";
+const title = song.attributes?.name;
+const artist = song.attributes?.artistName;
 const artworkUrl = ref<string>();
 if (song.attributes) {
 	const musicKit = useMusicKit();

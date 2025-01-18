@@ -5,18 +5,20 @@
 <script setup lang="ts">
 import SongItem from "@/components/SongItem.vue";
 import { useMusicPlayer } from "@/stores/music-player";
-import { AudioLibrarySong } from "@/plugins/AudioLibrary";
-import { LibrarySong } from "@/types/music-player";
+import { LocalSong } from "@/types/music-player";
+import { LocalMusicSong } from "@/plugins/LocalMusicPlugin";
 
-const { song } = defineProps<{ song: AudioLibrarySong }>();
+const { song } = defineProps<{ song: LocalMusicSong }>();
 
-const { title, artist } = song;
+const title = song.title;
+const artist = song.artist;
 const artworkUrl = song.artwork;
+
 const musicPlayer = useMusicPlayer();
 
-function librarySong(): LibrarySong {
+function localSong(): LocalSong {
 	return {
-		type: "library",
+		type: "local",
 
 		id: song.id,
 		title,
@@ -28,11 +30,11 @@ function librarySong(): LibrarySong {
 }
 
 function play(): void {
-	musicPlayer.add(librarySong(), musicPlayer.queueIndex);
+	musicPlayer.add(localSong(), musicPlayer.queueIndex);
 	musicPlayer.play();
 }
 
 function addToQueue(): void {
-	musicPlayer.add(librarySong());
+	musicPlayer.add(localSong());
 }
 </script>

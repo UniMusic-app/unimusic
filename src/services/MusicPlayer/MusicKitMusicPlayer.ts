@@ -13,8 +13,6 @@ export class MusicKitMusicPlayer {
 	}
 
 	static async initialize(service: MusicPlayerService): Promise<void> {
-		service.log("Initialized MusicKitPlayer");
-
 		const { volume } = service;
 		const music = await useMusicKit().music;
 
@@ -27,6 +25,8 @@ export class MusicKitMusicPlayer {
 			unwatch();
 			music.removeEventListener("playbackTimeDidChange", callback);
 		});
+
+		service.log("Initialized MusicKitPlayer");
 	}
 
 	static async play(service: MusicPlayerService, song: MusicKitSong): Promise<void> {

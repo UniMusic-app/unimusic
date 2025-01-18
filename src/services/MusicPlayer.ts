@@ -2,12 +2,12 @@ import { Service } from "./Service";
 import type { AnySong } from "@/types/music-player";
 import { computed, ref, watch } from "vue";
 import { MusicKitMusicPlayer } from "./MusicPlayer/MusicKitMusicPlayer";
-import { LibraryMusicPlayer } from "./MusicPlayer/LibraryMusicPlayer";
 import { useStorage } from "@vueuse/core";
+import { LocalMusicPlayer } from "./MusicPlayer/LocalMusicPlayer";
 
 export class MusicPlayerService extends Service {
 	logName = "MusicPlayerService";
-	logColor = "#f8FF00";
+	logColor = "#00FFf8";
 
 	loading = ref(false);
 	playing = ref(false);
@@ -43,8 +43,8 @@ export class MusicPlayerService extends Service {
 			case "musickit":
 				await MusicKitMusicPlayer.initialize(this);
 				break;
-			case "library":
-				LibraryMusicPlayer.initialize(this, song);
+			case "local":
+				await LocalMusicPlayer.initialize(this, song);
 				break;
 		}
 	}
@@ -55,8 +55,8 @@ export class MusicPlayerService extends Service {
 			case "musickit":
 				await MusicKitMusicPlayer.play(this, song);
 				break;
-			case "library":
-				await LibraryMusicPlayer.play(this, song);
+			case "local":
+				await LocalMusicPlayer.play(this, song);
 				break;
 		}
 	}
@@ -67,8 +67,8 @@ export class MusicPlayerService extends Service {
 			case "musickit":
 				await MusicKitMusicPlayer.pause(this);
 				break;
-			case "library":
-				await LibraryMusicPlayer.pause(this);
+			case "local":
+				await LocalMusicPlayer.pause(this);
 				break;
 		}
 	}
@@ -87,8 +87,8 @@ export class MusicPlayerService extends Service {
 			case "musickit":
 				await MusicKitMusicPlayer.setCurrentPlaybackTime(timeInSeconds);
 				break;
-			case "library":
-				await LibraryMusicPlayer.setCurrentPlaybackTime(timeInSeconds);
+			case "local":
+				LocalMusicPlayer.setCurrentPlaybackTime(timeInSeconds);
 				break;
 		}
 	}
