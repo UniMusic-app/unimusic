@@ -2,7 +2,25 @@ import { IAudioMetadata, parseBlob, parseBuffer } from "music-metadata";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 
 import { Capacitor } from "@capacitor/core";
-import { LocalSong } from "@/types/music-player";
+
+import { registerPlugin } from "@capacitor/core";
+import { base64StringToBuffer } from "@/utils/buffer";
+
+interface LocalMusicPlugin {
+	readSong(data: { path: string }): Promise<{ data: string }>;
+	getSongs(): Promise<{
+		songs: {
+			id: string;
+			title?: string;
+			artist?: string;
+			genre?: string;
+			path: string;
+			duration?: number;
+		}[];
+	}>;
+}
+
+const LocalMusic = registerPlugin<LocalMusicPlugin>("LocalMusic", {});
 
 export interface LocalMusicSong {
 	id: string;
@@ -12,36 +30,74 @@ export interface LocalMusicSong {
 	path: string;
 	duration?: number;
 	artwork?: string;
-	metadata: IAudioMetadata;
 }
 
 export class LocalMusicPluginWrapper {
-	async getSongBlob(song: LocalSong): Promise<Blob> {
-		console.log("!@# Reading");
-		const { data } = await Filesystem.readFile({
-			path: song.data.path,
-		});
-		console.log("!@# READ");
+	async getSongBlob(song: LocalMusicSong): Promise<Blob> {
+		let data: Blob | string;
+		if (Capacitor.getPlatform() === "android") {
+			({ data } = await LocalMusic.readSong({ path: song.path }));
+		} else {
+			({ data } = await Filesystem.readFile({ path: song.path }));
+		}
 
 		if (data instanceof Blob) {
 			return data;
 		}
 
 		// Data is in base64 string, so we convert it into a buffer
-		const decodedData = atob(data);
-		const buffer = new Uint8Array(decodedData.length).map((_, i) => {
-			return decodedData.charCodeAt(i);
-		});
+		const buffer = base64StringToBuffer(data);
+		return new Blob([buffer], {});
+	}
 
-		console.log("!@# RETURNINGGGGGGGG");
+	async parseLocalSong(data: Blob | string, path: string, size?: number): Promise<LocalMusicSong> {
+		let metadata: IAudioMetadata;
+		if (data instanceof Blob) {
+			metadata = await parseBlob(data);
+		} else {
+			// Data is in base64 string, so we convert it into a buffer
+			const buffer = base64StringToBuffer(data);
+			metadata = await parseBuffer(buffer, { size, path });
+		}
 
-		return new Blob([buffer], {
-			type: "audio/flac",
-		});
+		const { common, format } = metadata;
+
+		let base64Artwork: string | undefined;
+		// TODO: Use canvas to resize the image to not store overly sized images
+		// 		 Then store blobs in IndexedDB and lazily create a list of blob urls
+		if (common.picture?.[0]?.data) {
+			const buffer = common.picture[0].data;
+			const base64Data = btoa(
+				buffer.reduce<string>((data, byte) => data + String.fromCharCode(byte), ""),
+			);
+			base64Artwork = `data:text/plain;base64,${base64Data}`;
+		}
+
+		return {
+			id: path,
+			artist: common.artist,
+			title: common.title,
+			duration: format.duration,
+			genre: common.genre?.[0],
+			artwork: base64Artwork,
+			path,
+		};
 	}
 
 	async getSongs(): Promise<LocalMusicSong[]> {
 		const songs: LocalMusicSong[] = [];
+
+		if (Capacitor.getPlatform() === "android") {
+			const { songs: localSongs } = await LocalMusic.getSongs();
+
+			for (const localSong of localSongs) {
+				const { data } = await LocalMusic.readSong({ path: localSong.path });
+				const song = await this.parseLocalSong(data, localSong.path);
+				songs.push(song);
+			}
+
+			return songs;
+		}
 
 		await Filesystem.requestPermissions();
 
@@ -75,39 +131,9 @@ export class LocalMusicPluginWrapper {
 					path: file.uri,
 				});
 
-				let metadata: IAudioMetadata;
-				if (data instanceof Blob) {
-					metadata = await parseBlob(data);
-				} else {
-					// Data is in base64 string, so we convert it into a buffer
-					const decodedData = atob(data);
-					const buffer = new Uint8Array(decodedData.length).map((_, i) => {
-						return decodedData.charCodeAt(i);
-					});
-					metadata = await parseBuffer(buffer, {
-						size: file.size,
-						path: file.uri,
-					});
-				}
+				const song = await this.parseLocalSong(data, file.uri, file.size);
 
-				const { common, format } = metadata;
-
-				let base64Artwork: string | undefined;
-				if (common.picture?.[0]?.data) {
-					const base64Data = btoa(String.fromCharCode(...common.picture[0].data));
-					base64Artwork = `data:text/plain;base64,${base64Data}`;
-				}
-
-				songs.push({
-					id: file.name,
-					artist: common.artist,
-					title: common.title,
-					duration: format.duration,
-					genre: common.genre?.[0],
-					artwork: base64Artwork,
-					path: file.uri,
-					metadata,
-				});
+				songs.push(song);
 			} catch (error) {
 				console.log(
 					"getSongs() errored on:",

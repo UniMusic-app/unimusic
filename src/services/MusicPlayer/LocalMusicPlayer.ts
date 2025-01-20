@@ -19,11 +19,14 @@ export class LocalMusicPlayer {
 		time.value = 0;
 		duration.value = song.data.duration ?? 1;
 
-		navigator.mediaSession.metadata = new MediaMetadata({
-			title: song.title,
-			artist: song.artist,
-			artwork: song.artworkUrl ? [{ src: song.artworkUrl }] : undefined,
-		});
+		// TODO: Use capacitor-music-controls-plugin
+		if ("mediaSession" in navigator) {
+			navigator.mediaSession.metadata = new window.MediaMetadata({
+				title: song.title,
+				artist: song.artist,
+				artwork: song.artworkUrl ? [{ src: song.artworkUrl }] : undefined,
+			});
+		}
 
 		const callback = () => this.updateCurrentTime(service);
 		this.audio.addEventListener("timeupdate", callback);
@@ -50,7 +53,7 @@ export class LocalMusicPlayer {
 
 		loading.value = true;
 
-		const blob = await LocalMusicPlugin.getSongBlob(song);
+		const blob = await LocalMusicPlugin.getSongBlob(song.data);
 		const url = URL.createObjectURL(blob);
 		service.addEventListener("initialize", () => URL.revokeObjectURL(url), { once: true });
 
