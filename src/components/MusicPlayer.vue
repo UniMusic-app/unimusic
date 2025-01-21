@@ -370,8 +370,10 @@ const bgColor = computed(() => {
 	const song = currentSong.value;
 
 	switch (song?.type) {
-		case "musickit":
-			return song.data?.attributes?.artwork.bgColor ?? "000";
+		case "musickit": {
+			const color = song.data?.attributes?.artwork.bgColor;
+			return color ? `#${color}` : "#000";
+		}
 		case "local": {
 			// Get an "average" color from the artwork image
 			if (song?.artworkUrl) {
