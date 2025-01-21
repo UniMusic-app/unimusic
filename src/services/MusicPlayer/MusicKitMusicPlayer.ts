@@ -2,11 +2,14 @@ import { MusicKitSong } from "@/types/music-player";
 import { MusicPlayerService } from "../MusicPlayer";
 import { watch } from "vue";
 import { useMusicKit } from "@/stores/musickit";
+import { addMusicSessionActionHandlers } from "@/stores/music-player";
 
 export class MusicKitMusicPlayer {
+	static musicKit: ReturnType<typeof useMusicKit>;
+
 	static async updateCurrentTime(service: MusicPlayerService): Promise<void> {
 		const { duration, time } = service;
-		const music = await useMusicKit().music;
+		const music = await this.musicKit.music;
 
 		time.value = music.currentPlaybackTime;
 		if (time.value === duration.value) service.skipNext();
@@ -14,24 +17,33 @@ export class MusicKitMusicPlayer {
 
 	static async initialize(service: MusicPlayerService): Promise<void> {
 		const { volume } = service;
-		const music = await useMusicKit().music;
+		this.musicKit ??= useMusicKit();
 
-		const callback = () => MusicKitMusicPlayer.updateCurrentTime(service);
-		music!.addEventListener("playbackTimeDidChange", callback);
+		const music = await this.musicKit.music;
 
-		const unwatch = watch(volume, (volume) => (music!.volume = volume), { immediate: true });
+		const timeUpdateCallback = () => MusicKitMusicPlayer.updateCurrentTime(service);
+		music.addEventListener("playbackTimeDidChange", timeUpdateCallback);
 
-		service.addEventListener("initialize", async () => {
-			unwatch();
-			music.removeEventListener("playbackTimeDidChange", callback);
+		const unwatchVolume = watch(volume, (volume) => (music.volume = volume), {
+			immediate: true,
 		});
+
+		service.addEventListener(
+			"initialize",
+			async () => {
+				await music.stop();
+				unwatchVolume();
+				music.removeEventListener("playbackTimeDidChange", timeUpdateCallback);
+			},
+			{ once: true },
+		);
 
 		service.log("Initialized MusicKitPlayer");
 	}
 
 	static async play(service: MusicPlayerService, song: MusicKitSong): Promise<void> {
 		const { duration, time, loading, playing } = service;
-		const music = await useMusicKit().music;
+		const music = await this.musicKit.music;
 
 		if (music.queue.currentItem?.id === song.id) {
 			await music.play();
@@ -44,6 +56,8 @@ export class MusicKitMusicPlayer {
 		music.addEventListener(
 			"mediaCanPlay",
 			() => {
+				console.log("CAN PLAYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+				addMusicSessionActionHandlers(service);
 				duration.value = music.currentPlaybackDuration;
 				time.value = music.currentPlaybackTime;
 				loading.value = false;
@@ -60,14 +74,13 @@ export class MusicKitMusicPlayer {
 
 	static async pause(service: MusicPlayerService): Promise<void> {
 		const { playing } = service;
-		const music = await useMusicKit().music;
-
+		const music = await this.musicKit.music;
 		await music.pause();
 		playing.value = false;
 	}
 
 	static async setCurrentPlaybackTime(timeInSeconds: number): Promise<void> {
-		const music = await useMusicKit().music;
+		const music = await this.musicKit.music;
 		music.seekToTime(timeInSeconds);
 	}
 }

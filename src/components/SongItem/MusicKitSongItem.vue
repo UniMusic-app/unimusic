@@ -10,9 +10,12 @@ import { useMusicPlayer } from "@/stores/music-player";
 import { MusicKitSong } from "@/types/music-player";
 
 const { song } = defineProps<{ song: MusicKit.Songs }>();
+const { attributes } = song;
 
-const title = song.attributes?.name;
-const artist = song.attributes?.artistName;
+const title = attributes?.name;
+const artist = attributes?.artistName;
+const album = attributes?.albumName;
+const duration = attributes?.durationInMillis ? attributes?.durationInMillis * 1000 : undefined;
 const artworkUrl = ref<string>();
 if (song.attributes) {
 	const musicKit = useMusicKit();
@@ -30,15 +33,18 @@ function musicKitSong(): MusicKitSong {
 		id: song.id,
 		title,
 		artist,
+		album,
 		artworkUrl: artworkUrl.value,
+		duration,
 
 		data: song,
 	};
 }
 
-function play(): void {
+async function play(): Promise<void> {
 	musicPlayer.add(musicKitSong(), musicPlayer.queueIndex);
-	musicPlayer.play();
+	await musicPlayer.initialize();
+	await musicPlayer.play();
 }
 
 function addToQueue(): void {

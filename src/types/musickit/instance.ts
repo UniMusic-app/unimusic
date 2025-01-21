@@ -129,9 +129,11 @@ declare global {
 			 */
 			playNext(options: QueueOptions, clear?: boolean): Promise<Queue | void>;
 			/** Initiates playback of the nowPlayingItem. */
-			play(): void;
+			play(): Promise<void>;
 			/** Pauses playback of the nowPlayingItem. */
-			pause(): void;
+			pause(): Promise<void>;
+			/** Stops the currently playing item. */
+			stop(): Promise<void>;
 
 			api: {
 				/**

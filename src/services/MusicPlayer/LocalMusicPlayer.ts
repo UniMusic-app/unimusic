@@ -2,50 +2,54 @@ import { LocalSong } from "@/types/music-player";
 
 import { MusicPlayerService } from "../MusicPlayer";
 import LocalMusicPlugin from "@/plugins/LocalMusicPlugin";
+import { addMusicSessionActionHandlers } from "@/stores/music-player";
+import { watch } from "vue";
 
-// FIXME: After app has been relaunched files seem to change their paths or something else (?)
+// FIXME: On iOS after app has been relaunched files seem to change their paths or something else (?)
 //		  So that local songs that are cached in queue from previous session aren't able to be played
 //		  And have to be freshly re-added.
 export class LocalMusicPlayer {
-	static audio = document.createElement("audio");
+	static audio = new Audio();
 
 	static updateCurrentTime(service: MusicPlayerService): void {
 		service.time.value = this.audio.currentTime;
 	}
 
 	static async initialize(service: MusicPlayerService, song: LocalSong): Promise<void> {
-		const { time, duration } = service;
+		const { time, duration, volume } = service;
 
 		time.value = 0;
 		duration.value = song.data.duration ?? 1;
 
-		// TODO: Use capacitor-music-controls-plugin
-		if ("mediaSession" in navigator) {
-			navigator.mediaSession.metadata = new window.MediaMetadata({
-				title: song.title,
-				artist: song.artist,
-				artwork: song.artworkUrl ? [{ src: song.artworkUrl }] : undefined,
-			});
-		}
-
-		const callback = () => this.updateCurrentTime(service);
-		this.audio.addEventListener("timeupdate", callback);
+		const timeUpdateCallback = () => this.updateCurrentTime(service);
+		this.audio.addEventListener("timeupdate", timeUpdateCallback);
+		this.audio.addEventListener("playing", () => addMusicSessionActionHandlers(service), {
+			once: true,
+		});
+		const unwatchVolume = watch(volume, (volume) => (this.audio.volume = volume), {
+			immediate: true,
+		});
 
 		service.addEventListener(
 			"initialize",
-			() => this.audio.removeEventListener("timeupdate", callback),
+			async () => {
+				await this.audio.pause();
+				this.audio.remove();
+				this.audio = new Audio();
+
+				unwatchVolume();
+			},
 			{ once: true },
 		);
 
 		service.log("Initialized LocalMusicPlayer");
 	}
 
-	static #currentSongId: string;
 	static async play(service: MusicPlayerService, song: LocalSong): Promise<void> {
 		const { playing, loading } = service;
 		const { audio } = this;
 
-		if (this.#currentSongId === song.id) {
+		if (this.audio.src) {
 			await audio.play();
 			playing.value = true;
 			return;
@@ -59,10 +63,9 @@ export class LocalMusicPlayer {
 
 		audio.src = url;
 		await audio.play();
+
 		loading.value = false;
 		playing.value = true;
-
-		this.#currentSongId = song.id;
 	}
 
 	static async pause(service: MusicPlayerService): Promise<void> {

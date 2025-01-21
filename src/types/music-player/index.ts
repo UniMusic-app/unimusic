@@ -6,7 +6,9 @@ export interface Song<Type extends string, Data> {
 	id: string;
 	title?: string;
 	artist?: string;
+	album?: string;
 	artworkUrl?: string;
+	duration?: number;
 
 	data: Data;
 }

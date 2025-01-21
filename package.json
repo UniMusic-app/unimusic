@@ -35,6 +35,7 @@
 		"@ionic/vue": "^8.4.1",
 		"@ionic/vue-router": "^8.4.1",
 		"@vueuse/core": "^12.4.0",
+		"capacitor-music-controls-plugin": "^6.1.0",
 		"electron-serve": "^2.1.1",
 		"handlebars": "^4.7.8",
 		"ionicons": "^7.4.0",

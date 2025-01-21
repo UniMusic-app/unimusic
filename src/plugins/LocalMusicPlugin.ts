@@ -26,6 +26,7 @@ export interface LocalMusicSong {
 	id: string;
 	title?: string;
 	artist?: string;
+	album?: string;
 	genre?: string;
 	path: string;
 	duration?: number;
@@ -47,7 +48,9 @@ export class LocalMusicPluginWrapper {
 
 		// Data is in base64 string, so we convert it into a buffer
 		const buffer = base64StringToBuffer(data);
-		return new Blob([buffer], {});
+		return new Blob([buffer], {
+			type: "audio/flac",
+		});
 	}
 
 	async parseLocalSong(data: Blob | string, path: string, size?: number): Promise<LocalMusicSong> {
@@ -76,6 +79,7 @@ export class LocalMusicPluginWrapper {
 		return {
 			id: path,
 			artist: common.artist,
+			album: common.album,
 			title: common.title,
 			duration: format.duration,
 			genre: common.genre?.[0],

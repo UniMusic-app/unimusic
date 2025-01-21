@@ -12,6 +12,8 @@ const { song } = defineProps<{ song: LocalMusicSong }>();
 
 const title = song.title;
 const artist = song.artist;
+const album = song.album;
+const duration = song.duration;
 const artworkUrl = song.artwork;
 
 const musicPlayer = useMusicPlayer();
@@ -23,15 +25,18 @@ function localSong(): LocalSong {
 		id: song.id,
 		title,
 		artist,
+		album,
 		artworkUrl,
+		duration,
 
 		data: song,
 	};
 }
 
-function play(): void {
+async function play(): Promise<void> {
 	musicPlayer.add(localSong(), musicPlayer.queueIndex);
-	musicPlayer.play();
+	await musicPlayer.initialize();
+	await musicPlayer.play();
 }
 
 function addToQueue(): void {

@@ -21,7 +21,8 @@ export class MusicPlayerService extends Service {
 		},
 	});
 
-	queuedSongs = useStorage<AnySong[]>("queuedSongs", []);
+	// TODO: Store this
+	queuedSongs = ref<AnySong[]>([]);
 	queueIndex = useStorage("queueIndex", 0);
 
 	hasPrevious = computed(() => this.queueIndex.value > 0);
@@ -33,7 +34,6 @@ export class MusicPlayerService extends Service {
 
 	constructor() {
 		super();
-		watch(this.currentSong, () => this.initialize(), { immediate: true });
 	}
 
 	async initialize(): Promise<void> {
@@ -107,12 +107,14 @@ export class MusicPlayerService extends Service {
 	async skipNext(): Promise<void> {
 		if (!this.hasNext.value) return;
 		this.queueIndex.value++;
+		await this.initialize();
 		await this.play();
 	}
 
 	async skipPrevious(): Promise<void> {
 		if (!this.hasPrevious.value) return;
 		this.queueIndex.value--;
+		await this.initialize();
 		await this.play();
 	}
 }
