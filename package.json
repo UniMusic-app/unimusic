@@ -47,7 +47,6 @@
 	"devDependencies": {
 		"@capacitor/cli": "6.2.0",
 		"@types/node": "^22.10.7",
-		"@vitejs/plugin-legacy": "^5.4.3",
 		"@vitejs/plugin-vue": "^4.6.2",
 		"@vue/eslint-config-typescript": "^12.0.0",
 		"@vue/test-utils": "^2.4.6",

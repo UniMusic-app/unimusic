@@ -1,6 +1,5 @@
 import type { ElectronViteConfig } from "electron-vite";
 import path from "path";
-import legacy from "@vitejs/plugin-legacy";
 import vue from "@vitejs/plugin-vue";
 
 export default {
@@ -28,7 +27,7 @@ export default {
 		},
 	},
 	renderer: {
-		plugins: [vue(), legacy()],
+		plugins: [vue()],
 		root: ".",
 		build: {
 			emptyOutDir: false,
