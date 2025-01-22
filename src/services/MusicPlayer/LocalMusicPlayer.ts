@@ -5,9 +5,6 @@ import LocalMusicPlugin from "@/plugins/LocalMusicPlugin";
 import { addMusicSessionActionHandlers } from "@/stores/music-player";
 import { watch } from "vue";
 
-// FIXME: On iOS after app has been relaunched files seem to change their paths or something else (?)
-//		  So that local songs that are cached in queue from previous session aren't able to be played
-//		  And have to be freshly re-added.
 export class LocalMusicPlayer {
 	static audio = new Audio();
 

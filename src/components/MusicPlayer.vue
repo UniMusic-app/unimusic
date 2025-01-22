@@ -6,6 +6,7 @@
 		:style="{ '--bg-color': bgColor }"
 	>
 		<div class="song" :class="{ compact: showQueue }">
+			<!-- FIXME: Make artwork optional -->
 			<img
 				class="artwork"
 				:src="currentSong.artworkUrl"
