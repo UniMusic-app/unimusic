@@ -32,8 +32,6 @@ import java.io.InputStream;
 public class LocalMusicPlugin extends Plugin {
     @PluginMethod()
     public void readSong(PluginCall call) {
-        long start = System.currentTimeMillis();
-
         String path = call.getString("path");
         if (path == null) {
             call.reject("readSong failed: missing path parameter");
@@ -43,7 +41,6 @@ public class LocalMusicPlugin extends Plugin {
         Uri uri = Uri.parse(path);
 
         try {
-            long start2 = System.currentTimeMillis();
             InputStream inputStream = getActivity().getContentResolver().openInputStream(uri);
             if (inputStream == null) {
                 call.reject("getSong failed: inputStream is null");
@@ -53,15 +50,12 @@ public class LocalMusicPlugin extends Plugin {
             byte[] bytes = new byte[inputStream.available()];
             DataInputStream dataInputStream = new DataInputStream(inputStream);
             dataInputStream.readFully(bytes);
-            System.out.printf("Reading file took: %d ms\n", System.currentTimeMillis() - start2);
 
             String base64Data = Base64.encodeToString(bytes, Base64.DEFAULT);
 
             JSObject result = new JSObject();
             result.put("data", base64Data);
 
-            System.out.printf("BASE64 took: %d ms\n", System.currentTimeMillis() - start);
-            
             call.resolve(result);
         } catch (Exception exception) {
             call.reject("readSong failed: " + exception.getMessage());
