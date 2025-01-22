@@ -37,7 +37,9 @@ function musicKitSong(): MusicKitSong {
 		artworkUrl: artworkUrl.value,
 		duration,
 
-		data: song,
+		data: {
+			bgColor: attributes?.artwork.bgColor,
+		},
 	};
 }
 

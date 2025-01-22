@@ -1,6 +1,4 @@
-import { LocalMusicSong } from "@/plugins/LocalMusicPlugin";
-
-export interface Song<Type extends string, Data> {
+export interface Song<Type extends string, Data = never> {
 	type: Type;
 
 	id: string;
@@ -13,7 +11,7 @@ export interface Song<Type extends string, Data> {
 	data: Data;
 }
 
-export type MusicKitSong = Song<"musickit", MusicKit.Songs>;
-export type LocalSong = Song<"local", LocalMusicSong>;
+export type MusicKitSong = Song<"musickit", { bgColor?: string }>;
+export type LocalSong = Song<"local", { path: string }>;
 
 export type AnySong = MusicKitSong | LocalSong;

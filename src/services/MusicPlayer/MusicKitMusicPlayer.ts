@@ -56,7 +56,6 @@ export class MusicKitMusicPlayer {
 		music.addEventListener(
 			"mediaCanPlay",
 			() => {
-				console.log("CAN PLAYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
 				addMusicSessionActionHandlers(service);
 				duration.value = music.currentPlaybackDuration;
 				time.value = music.currentPlaybackTime;

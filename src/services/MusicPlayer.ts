@@ -1,9 +1,11 @@
+import { computed, ref } from "vue";
+import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
+
 import { Service } from "./Service";
 import type { AnySong } from "@/types/music-player";
-import { computed, ref, watch } from "vue";
 import { MusicKitMusicPlayer } from "./MusicPlayer/MusicKitMusicPlayer";
-import { useStorage } from "@vueuse/core";
 import { LocalMusicPlayer } from "./MusicPlayer/LocalMusicPlayer";
+import { useStorage } from "@vueuse/core";
 
 export class MusicPlayerService extends Service {
 	logName = "MusicPlayerService";
@@ -21,13 +23,14 @@ export class MusicPlayerService extends Service {
 		},
 	});
 
-	// TODO: Store this
-	queuedSongs = ref<AnySong[]>([]);
+	queuedSongs = useIDBKeyval<AnySong[]>("queuedSongs", []);
 	queueIndex = useStorage("queueIndex", 0);
 
 	hasPrevious = computed(() => this.queueIndex.value > 0);
-	hasNext = computed(() => this.queuedSongs.value.length > this.queueIndex.value + 1);
-	currentSong = computed<AnySong | undefined>(() => this.queuedSongs.value[this.queueIndex.value]);
+	hasNext = computed(() => this.queuedSongs.data.value.length > this.queueIndex.value + 1);
+	currentSong = computed<AnySong | undefined>(
+		() => this.queuedSongs.data.value[this.queueIndex.value],
+	);
 
 	// NOTE: volume control does not work on iOS due to Apple putting arbitrary restrictions around setting app volume
 	volume = ref(1);
@@ -93,12 +96,12 @@ export class MusicPlayerService extends Service {
 		}
 	}
 
-	add(song: AnySong, index = this.queuedSongs.value.length): void {
-		this.queuedSongs.value.splice(index, 0, song);
+	add(song: AnySong, index = this.queuedSongs.data.value.length): void {
+		this.queuedSongs.data.value.splice(index, 0, song);
 	}
 
 	remove(index: number): void {
-		this.queuedSongs.value.splice(index, 1);
+		this.queuedSongs.data.value.splice(index, 1);
 		if (index < this.queueIndex.value) {
 			this.queueIndex.value = this.queueIndex.value - 1;
 		}

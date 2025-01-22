@@ -101,7 +101,6 @@ async function updateSearchHints(): Promise<void> {
 }
 
 async function searchFor(term: string): Promise<void> {
-	console.log("Searching for", term);
 	search.value = term;
 	isSearching.value = false;
 	await updateSearchResults();

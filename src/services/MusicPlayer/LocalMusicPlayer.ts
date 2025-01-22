@@ -1,9 +1,9 @@
-import { LocalSong } from "@/types/music-player";
+import { watch } from "vue";
 
-import { MusicPlayerService } from "../MusicPlayer";
+import { LocalSong } from "@/types/music-player";
+import { MusicPlayerService } from "@/services/MusicPlayer";
 import LocalMusicPlugin from "@/plugins/LocalMusicPlugin";
 import { addMusicSessionActionHandlers } from "@/stores/music-player";
-import { watch } from "vue";
 
 export class LocalMusicPlayer {
 	static audio = new Audio();
@@ -16,7 +16,7 @@ export class LocalMusicPlayer {
 		const { time, duration, volume } = service;
 
 		time.value = 0;
-		duration.value = song.data.duration ?? 1;
+		duration.value = song.duration ?? 1;
 
 		const timeUpdateCallback = () => this.updateCurrentTime(service);
 		this.audio.addEventListener("timeupdate", timeUpdateCallback);
@@ -54,7 +54,7 @@ export class LocalMusicPlayer {
 
 		loading.value = true;
 
-		const blob = await LocalMusicPlugin.getSongBlob(song.data);
+		const blob = await LocalMusicPlugin.getSongBlob(song.data.path);
 		const url = URL.createObjectURL(blob);
 		service.addEventListener("initialize", () => URL.revokeObjectURL(url), { once: true });
 

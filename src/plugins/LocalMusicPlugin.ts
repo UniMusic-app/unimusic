@@ -35,14 +35,13 @@ export interface LocalMusicSong {
 }
 
 export class LocalMusicPluginWrapper {
-	async getSongBlob(song: LocalMusicSong): Promise<Blob> {
+	async getSongBlob(path: string): Promise<Blob> {
 		let data: Blob | string;
 		if (Capacitor.getPlatform() === "android") {
-			({ data } = await LocalMusic.readSong({ path: song.path }));
+			({ data } = await LocalMusic.readSong({ path }));
 		} else {
-			console.log(song.path);
 			({ data } = await Filesystem.readFile({
-				path: song.path,
+				path,
 				directory: Directory.Documents,
 			}));
 		}
@@ -54,7 +53,7 @@ export class LocalMusicPluginWrapper {
 		// Data is in base64 string, so we convert it into a buffer
 		const buffer = base64StringToBuffer(data);
 
-		return new Blob([buffer], { type: audioMimeTypeFromPath(song.path) });
+		return new Blob([buffer], { type: audioMimeTypeFromPath(path) });
 	}
 
 	async parseLocalSong(data: Blob | string, path: string, size?: number): Promise<LocalMusicSong> {

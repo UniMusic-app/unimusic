@@ -372,7 +372,7 @@ const bgColor = computed(() => {
 
 	switch (song?.type) {
 		case "musickit": {
-			const color = song.data?.attributes?.artwork.bgColor;
+			const color = song.data.bgColor;
 			return color ? `#${color}` : "#000";
 		}
 		case "local": {

@@ -29,7 +29,9 @@ function localSong(): LocalSong {
 		artworkUrl,
 		duration,
 
-		data: song,
+		data: {
+			path: song.path,
+		},
 	};
 }
 

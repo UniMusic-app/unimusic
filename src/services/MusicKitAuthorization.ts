@@ -106,9 +106,7 @@ export class MusicKitAuthorizationService extends Service {
 
 	/** Remove saved MusicKit tokens */
 	async #forget(): Promise<void> {
-		await Preferences.remove({
-			key: "MusicKit",
-		});
+		await Preferences.remove({ key: "MusicKit" });
 	}
 
 	/** Save MusicKit tokens */

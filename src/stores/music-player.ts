@@ -82,11 +82,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 			});
 
 			document.addEventListener("controlsNotification", async (event: Event) => {
-				console.log(event);
-				if (!("message" in event)) {
-					console.error("NO MESSAGEEEEEE");
-					return;
-				}
+				if (!("message" in event)) return;
 
 				switch (event.message) {
 					case "music-controls-play":
@@ -143,7 +139,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		duration: musicPlayerService.duration,
 		timeRemaining,
 
-		queuedSongs: musicPlayerService.queuedSongs,
+		queuedSongs: computed(() => musicPlayerService.queuedSongs.data.value),
 		queueIndex: musicPlayerService.queueIndex,
 		add: musicPlayerService.add.bind(musicPlayerService),
 		remove: musicPlayerService.remove.bind(musicPlayerService),
