@@ -15,7 +15,7 @@ const { attributes } = song;
 const title = attributes?.name;
 const artist = attributes?.artistName;
 const album = attributes?.albumName;
-const duration = attributes?.durationInMillis ? attributes?.durationInMillis * 1000 : undefined;
+const duration = attributes?.durationInMillis ? attributes?.durationInMillis / 1000 : undefined;
 const artworkUrl = ref<string>();
 if (song.attributes) {
 	const musicKit = useMusicKit();
@@ -45,8 +45,6 @@ function musicKitSong(): MusicKitSong {
 
 async function play(): Promise<void> {
 	musicPlayer.add(musicKitSong(), musicPlayer.queueIndex);
-	await musicPlayer.initialize();
-	await musicPlayer.play();
 }
 
 function addToQueue(): void {

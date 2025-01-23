@@ -37,8 +37,6 @@ function localSong(): LocalSong {
 
 async function play(): Promise<void> {
 	musicPlayer.add(localSong(), musicPlayer.queueIndex);
-	await musicPlayer.initialize();
-	await musicPlayer.play();
 }
 
 function addToQueue(): void {

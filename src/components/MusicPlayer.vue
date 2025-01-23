@@ -33,7 +33,7 @@
 					v-for="(song, i) in queuedSongs"
 					:key="i"
 					:class="{ current: i === queueIndex }"
-					@click.self="((queueIndex = i), musicPlayer.play())"
+					@click.self="queueIndex = i"
 				>
 					<ion-thumbnail slot="start">
 						<img :src="song.artworkUrl" :alt="`Artwork for song '${song.title}'`" />
