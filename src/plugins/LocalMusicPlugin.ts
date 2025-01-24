@@ -6,6 +6,8 @@ import { Capacitor } from "@capacitor/core";
 import { registerPlugin } from "@capacitor/core";
 import { base64StringToBuffer } from "@/utils/buffer";
 import { audioMimeTypeFromPath } from "@/utils/path";
+import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
+import { watch } from "vue";
 
 interface LocalMusicPlugin {
 	readSong(data: { path: string }): Promise<{ data: string }>;
@@ -40,10 +42,7 @@ export class LocalMusicPluginWrapper {
 		if (Capacitor.getPlatform() === "android") {
 			({ data } = await LocalMusic.readSong({ path }));
 		} else {
-			({ data } = await Filesystem.readFile({
-				path,
-				directory: Directory.Documents,
-			}));
+			({ data } = await Filesystem.readFile({ path, directory: Directory.Documents }));
 		}
 
 		if (data instanceof Blob) {
@@ -91,8 +90,19 @@ export class LocalMusicPluginWrapper {
 		};
 	}
 
-	async getSongs(): Promise<LocalMusicSong[]> {
-		const songs: LocalMusicSong[] = [];
+	async getSongs(clearCache = false): Promise<LocalMusicSong[]> {
+		const songCache = useIDBKeyval<LocalMusicSong[]>("localMusicSongs", []);
+
+		// Wait for the songCache to load
+		await new Promise((resolve) => {
+			watch(songCache.isFinished, resolve, { once: true });
+		});
+
+		const songs = songCache.data;
+
+		if (clearCache) {
+			songs.value = [];
+		}
 
 		if (Capacitor.getPlatform() === "android") {
 			const { songs: localSongs } = await LocalMusic.getSongs();
@@ -100,10 +110,10 @@ export class LocalMusicPluginWrapper {
 			for (const localSong of localSongs) {
 				const { data } = await LocalMusic.readSong({ path: localSong.path });
 				const song = await this.parseLocalSong(data, localSong.path);
-				songs.push(song);
+				songs.value.push(song);
 			}
 
-			return songs;
+			return songs.value;
 		}
 
 		await Filesystem.requestPermissions();
@@ -147,19 +157,23 @@ export class LocalMusicPluginWrapper {
 			}
 		}
 
-		for await (const { file, filePath } of traverseDirectory("/")) {
-			// Skip non-audio file types
-			if (!audioMimeTypeFromPath(filePath)) continue;
+		try {
+			for await (const { file, filePath } of traverseDirectory("/")) {
+				// Skip non-audio file types
+				if (!audioMimeTypeFromPath(filePath)) continue;
 
-			const { data } = await Filesystem.readFile({
-				path: filePath,
-				directory: Directory.Documents,
-			});
-			const song = await this.parseLocalSong(data, filePath, file.size);
-			songs.push(song);
+				const { data } = await Filesystem.readFile({
+					path: filePath,
+					directory: Directory.Documents,
+				});
+				const song = await this.parseLocalSong(data, filePath, file.size);
+				songs.value.push(song);
+			}
+		} catch (error) {
+			console.log("Errored on getSongs", error instanceof Error ? error.message : error);
 		}
 
-		return songs;
+		return songs.value;
 	}
 }
 

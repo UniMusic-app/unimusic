@@ -1,4 +1,4 @@
-import { AnySong } from "@/types/music-player";
+import { AnySong } from "@/stores/music-player";
 import { Service } from "@/services/Service";
 import { useMusicPlayer } from "@/stores/music-player";
 
@@ -9,6 +9,20 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 	initialized = false;
 	initialPlayed = false;
 	song?: Song;
+
+	abstract handleSearchSongs(term: string, offset: number): Promise<Song[]>;
+	async searchSongs(term: string, offset = 0): Promise<Song[]> {
+		this.log("searchSongs");
+		await this.initialize();
+		return await this.handleSearchSongs(term, offset);
+	}
+
+	abstract handleSearchHints(term: string): Promise<string[]>;
+	async searchHints(term: string): Promise<string[]> {
+		this.log("searchHints");
+		await this.initialize();
+		return await this.handleSearchHints(term);
+	}
 
 	static initializedServices = new Set<MusicPlayerService>();
 	static async stopServices(): Promise<void> {

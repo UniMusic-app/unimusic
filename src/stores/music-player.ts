@@ -1,14 +1,34 @@
 import { defineStore } from "pinia";
-import { computed, ref, watch } from "vue";
+import { computed, Ref, ref, watch } from "vue";
 import { useStorage, watchDebounced } from "@vueuse/core";
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
 
 import { Capacitor } from "@capacitor/core";
-import { AnySong } from "@/types/music-player";
 
 import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayerService";
 import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import { useMusicKit } from "./musickit";
+import { localSong, musicKitSong } from "@/utils/songs";
+import LocalMusicPlugin from "@/plugins/LocalMusicPlugin";
+
+export interface Song<Type extends string, Data = never> {
+	type: Type;
+
+	id: string;
+	title?: string;
+	artist?: string;
+	album?: string;
+	artworkUrl?: string;
+	duration?: number;
+
+	data: Data;
+}
+
+export type MusicKitSong = Song<"musickit", { bgColor?: string }>;
+export type LocalSong = Song<"local", { path: string }>;
+
+export type AnySong = MusicKitSong | LocalSong;
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const services = {
@@ -48,6 +68,10 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const loading = ref(false);
 	const playing = ref(false);
 	const volume = ref(1);
+
+	watch(volume, (volume) => {
+		currentService.value?.setVolume(volume);
+	});
 
 	const time = ref(0);
 	const duration = ref(1);
@@ -96,6 +120,20 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		queueIndex.value++;
 	}
 
+	const withAllServices = <T>(callback: (service: MusicPlayerService) => T) =>
+		Promise.all(Object.values(services).map(callback));
+
+	async function searchHints(term: string): Promise<string[]> {
+		const allHints = await withAllServices((service) => service.searchHints(term));
+		return allHints.flat();
+	}
+
+	async function searchSongs(term: string, offset = 0): Promise<AnySong[]> {
+		const allResults = await withAllServices((service) => service.searchSongs(term, offset));
+		return allResults.flat();
+	}
+
+	//#region System Music Controls
 	// Android's WebView doesn't support MediaSession
 	if (Capacitor.getPlatform() === "android") {
 		import("capacitor-music-controls-plugin").then(({ CapacitorMusicControls }) => {
@@ -207,6 +245,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 			await skipNext();
 		});
 	}
+	//#endregion
 
 	return {
 		loading,
@@ -233,5 +272,8 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		currentSong,
 
 		addMusicSessionActionHandlers,
+
+		searchSongs,
+		searchHints,
 	};
 });

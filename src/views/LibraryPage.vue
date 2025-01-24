@@ -7,10 +7,6 @@
 		</app-header>
 
 		<ion-content :fullscreen="true" class="ion-padding">
-			<ion-list>
-				<local-song-item v-for="song in songs" :key="song.id" :song />
-			</ion-list>
-
 			{{ songs.length }}
 		</ion-content>
 
@@ -24,7 +20,7 @@ import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
 import { onMounted, ref } from "vue";
 import LocalMusicPlugin, { type LocalMusicSong } from "@/plugins/LocalMusicPlugin";
-import LocalSongItem from "@/components/SongItem/LocalSongItem.vue";
+import SongItem from "@/components/SongItem.vue";
 
 const songs = ref<LocalMusicSong[]>([]);
 

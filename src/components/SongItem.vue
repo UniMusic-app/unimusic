@@ -1,5 +1,5 @@
 <template>
-	<ion-item>
+	<ion-item button :detail="false" @click.self="play">
 		<ion-thumbnail v-if="artworkUrl" slot="start">
 			<img :src="artworkUrl" :alt="`Artwork for song '${title}' by ${artist}`" />
 		</ion-thumbnail>
@@ -7,24 +7,25 @@
 		<ion-label class="ion-text-nowrap">
 			<h2>{{ title ?? "Unknown title" }}</h2>
 			<ion-note>
-				Song
+				<ion-icon :icon="compassIcon" />
+				{{ songTypeDisplayName(song) }}
 				<ion-icon :icon="musicalNoteIcon" />
 				{{ artist }}
 			</ion-note>
 		</ion-label>
 
 		<ion-buttons slot="end">
-			<ion-button @click="emit('play')">
-				<ion-icon slot="icon-only" :icon="playIcon" />
-			</ion-button>
-			<ion-button @click="emit('addToQueue')">
-				<ion-icon slot="icon-only" :icon="addIcon" />
+			<ion-button>
+				<ion-icon slot="icon-only" :icon="ellipsisHorizontal" />
+				<!-- TODO: Popover with options -->
 			</ion-button>
 		</ion-buttons>
 	</ion-item>
 </template>
 
 <script setup lang="ts">
+import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { songTypeDisplayName } from "@/utils/songs";
 import {
 	IonItem,
 	IonThumbnail,
@@ -34,27 +35,43 @@ import {
 	IonIcon,
 	IonNote,
 } from "@ionic/vue";
-import { musicalNote as musicalNoteIcon, play as playIcon, add as addIcon } from "ionicons/icons";
+import {
+	musicalNote as musicalNoteIcon,
+	ellipsisHorizontal,
+	compass as compassIcon,
+} from "ionicons/icons";
 
-const emit = defineEmits<{ addToQueue: []; play: [] }>();
+const { song } = defineProps<{ song: AnySong }>();
+const { title, artist, artworkUrl } = song;
 
-const { title, artist, artworkUrl } = defineProps<{
-	artworkUrl?: string;
-	artist?: string;
-	title?: string;
-}>();
+const musicPlayer = useMusicPlayer();
+
+function play() {
+	musicPlayer.add(song, musicPlayer.queueIndex);
+}
 </script>
 
 <style scoped>
-ion-label {
-	& > h2 {
-		font-size: 1rem;
-		font-weight: bold;
-		display: block;
+ion-item {
+	& > ion-thumbnail {
+		pointer-events: none;
 	}
 
-	& > ion-note {
-		font-size: 0.8em;
+	& > ion-label {
+		pointer-events: none;
+
+		& > h2 {
+			font-size: 1rem;
+			font-weight: bold;
+			display: block;
+		}
+
+		& > ion-note {
+			display: flex;
+			align-items: center;
+			gap: 0.5ch;
+			font-size: 0.8em;
+		}
 	}
 }
 </style>

@@ -1,6 +1,8 @@
-import { LocalSong } from "@/types/music-player";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
-import LocalMusicPlugin from "@/plugins/LocalMusicPlugin";
+import LocalMusicPlugin, { LocalMusicSong } from "@/plugins/LocalMusicPlugin";
+import { LocalSong } from "@/stores/music-player";
+import Fuse from "fuse.js";
+import { localSong } from "@/utils/songs";
 
 export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	logName = "LocalMusicPlayerService";
@@ -9,6 +11,36 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 
 	constructor() {
 		super();
+	}
+
+	async handleSearchHints(term: string): Promise<string[]> {
+		return [];
+	}
+
+	#fuse?: Fuse<LocalMusicSong>;
+	async handleSearchSongs(term: string, offset: number): Promise<LocalSong[]> {
+		// TODO: Maybe split results in smaller chunks and actually paginate it?
+		if (offset > 0) {
+			return [];
+		}
+
+		if (!this.#fuse) {
+			const allSongs = await LocalMusicPlugin.getSongs();
+
+			// TODO: This might require some messing around with distance/threshold settings to not make it excessively loose
+			this.#fuse = new Fuse(allSongs, {
+				keys: ["title", "artist", "album", "genre"] satisfies (keyof LocalMusicSong)[],
+			});
+		}
+
+		const results = this.#fuse.search(term);
+		const songs: LocalSong[] = [];
+
+		for (const result of results) {
+			songs.push(localSong(result.item));
+		}
+
+		return songs;
 	}
 
 	async handleInitialization(): Promise<void> {

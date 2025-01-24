@@ -1,6 +1,7 @@
-import { MusicKitSong } from "@/types/music-player";
 import { useMusicKit } from "@/stores/musickit";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import { musicKitSong } from "@/utils/songs";
+import { MusicKitSong } from "@/stores/music-player";
 
 export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong> {
 	logName = "MusicKitMusicPlayerService";
@@ -9,6 +10,42 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 
 	constructor() {
 		super();
+	}
+
+	async handleSearchHints(term: string): Promise<string[]> {
+		if (!term) return [];
+
+		const response = await this.music.api.music<{ results: { terms: string[] } }>(
+			"/v1/catalog/{{storefrontId}}/search/hints",
+			{ term },
+		);
+
+		const { terms } = response.data.results;
+		return terms;
+	}
+
+	async handleSearchSongs(term: string, offset: number): Promise<MusicKitSong[]> {
+		const response = await this.music.api.music<MusicKit.SearchResponse, MusicKit.CatalogSearchQuery>(
+			"/v1/catalog/{{storefrontId}}/search",
+			{
+				term,
+				types: ["songs"],
+				limit: 25,
+				offset,
+			},
+		);
+
+		const results: MusicKitSong[] = [];
+
+		const songs = response?.data?.results?.songs?.data;
+		if (songs) {
+			for (const song of songs) {
+				const normalizedSong = musicKitSong(song);
+				results.push(normalizedSong);
+			}
+		}
+
+		return results;
 	}
 
 	#timeUpdateCallback = () => {

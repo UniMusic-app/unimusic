@@ -66,7 +66,7 @@
 			<div class="labels">
 				<ion-label>{{ secondsToMMSS(time) }}</ion-label>
 				<ion-label class="platform">
-					<template v-if="currentSong.type === 'musickit'">Apple Music</template>
+					{{ songTypeDisplayName(currentSong) }}
 				</ion-label>
 				<ion-label>{{ secondsToMMSS(timeRemaining) }}</ion-label>
 			</div>
@@ -349,6 +349,7 @@ import {
 import { secondsToMMSS } from "@/utils/time";
 
 import { useMusicPlayer } from "@/stores/music-player";
+import { songTypeDisplayName } from "@/utils/songs";
 
 const musicPlayer = useMusicPlayer();
 const {

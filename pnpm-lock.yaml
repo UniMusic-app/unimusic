@@ -46,13 +46,16 @@ importers:
         version: 12.4.0(typescript@5.6.3)
       '@vueuse/integrations':
         specifier: ^12.5.0
-        version: 12.5.0(idb-keyval@6.2.1)(typescript@5.6.3)
+        version: 12.5.0(fuse.js@7.0.0)(idb-keyval@6.2.1)(typescript@5.6.3)
       capacitor-music-controls-plugin:
         specifier: ^6.1.0
         version: 6.1.0
       electron-serve:
         specifier: ^2.1.1
         version: 2.1.1
+      fuse.js:
+        specifier: ^7.0.0
+        version: 7.0.0
       handlebars:
         specifier: ^4.7.8
         version: 4.7.8
@@ -1792,6 +1795,10 @@ packages:
 
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
+
+  fuse.js@7.0.0:
+    resolution: {integrity: sha512-14F4hBIxqKvD4Zz/XjDc3y94mNZN6pRv3U13Udo0lNLCWRBUsrMv2xwcF/y/Z5sV6+FQW+/ow68cHpm4sunt8Q==}
+    engines: {node: '>=10'}
 
   galactus@1.0.0:
     resolution: {integrity: sha512-R1fam6D4CyKQGNlvJne4dkNF+PvUUl7TAJInvTGa9fti9qAv95quQz29GXapA4d8Ec266mJJxFVh82M4GIIGDQ==}
@@ -4194,12 +4201,13 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@vueuse/integrations@12.5.0(idb-keyval@6.2.1)(typescript@5.6.3)':
+  '@vueuse/integrations@12.5.0(fuse.js@7.0.0)(idb-keyval@6.2.1)(typescript@5.6.3)':
     dependencies:
       '@vueuse/core': 12.5.0(typescript@5.6.3)
       '@vueuse/shared': 12.5.0(typescript@5.6.3)
       vue: 3.5.13(typescript@5.6.3)
     optionalDependencies:
+      fuse.js: 7.0.0
       idb-keyval: 6.2.1
     transitivePeerDependencies:
       - typescript
@@ -5028,6 +5036,8 @@ snapshots:
     optional: true
 
   function-bind@1.1.2: {}
+
+  fuse.js@7.0.0: {}
 
   galactus@1.0.0:
     dependencies:
