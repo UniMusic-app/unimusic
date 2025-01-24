@@ -38,9 +38,8 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 
 	abstract handleInitialization(): Promise<void>;
 	async initialize(): Promise<void> {
-		this.log("initialize");
 		if (this.initialized) return;
-		if (!this.song) throw new Error(`Cannot initialize ${this.logName}, song is not set`);
+		this.log("initialize");
 
 		await MusicPlayerService.stopServices();
 
