@@ -65,7 +65,21 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		{ debounce: 500 },
 	);
 
-	const loading = ref(false);
+	const loadingStack = ref<boolean[]>([]);
+	const loading = computed({
+		get() {
+			return loadingStack.value.length > 0;
+		},
+
+		set(value) {
+			if (value) {
+				loadingStack.value.push(true);
+			} else {
+				loadingStack.value.pop();
+			}
+		},
+	});
+
 	const playing = ref(false);
 	const volume = ref(1);
 
