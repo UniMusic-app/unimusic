@@ -102,6 +102,8 @@ export class LocalMusicPluginWrapper {
 
 		if (clearCache) {
 			songs.value = [];
+		} else {
+			return songs.value;
 		}
 
 		if (Capacitor.getPlatform() === "android") {
