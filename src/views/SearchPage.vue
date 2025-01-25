@@ -71,7 +71,7 @@ import { search as searchIcon } from "ionicons/icons";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
 import { useMusicKit } from "@/stores/musickit";
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import { useMusicPlayer, type AnySong } from "@/stores/music-player";
 import SongItem from "@/components/SongItem.vue";
 

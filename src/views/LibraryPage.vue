@@ -6,12 +6,12 @@
 			</template>
 		</app-header>
 
-		<ion-content class="ion-padding">
+		<ion-content :fullscreen="true">
 			<ion-refresher slot="fixed" @ionRefresh="refreshLocalLibrary($event)">
 				<ion-refresher-content></ion-refresher-content>
 			</ion-refresher>
 
-			{{ songs.length }}
+			<song-item v-for="(song, i) in songs" :key="song.id + i" :song />
 		</ion-content>
 
 		<app-footer />
@@ -31,6 +31,7 @@ import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
 import { onMounted, ref } from "vue";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import SongItem from "@/components/SongItem.vue";
 
 const musicPlayer = useMusicPlayer();
 
