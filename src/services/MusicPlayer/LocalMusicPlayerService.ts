@@ -150,7 +150,9 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 	try {
 		for await (const { filePath, id } of getSongPaths()) {
 			// Skip non-audio file types
-			if (!audioMimeTypeFromPath(filePath)) continue;
+			// We ignore this check for android, since it uses MediaStore API
+			// and content paths don't have an extension
+			if (getPlatform() !== "android" && !audioMimeTypeFromPath(filePath)) continue;
 
 			const data = await readSongFile(filePath);
 			const song = await parseLocalSong(data, filePath, id);
