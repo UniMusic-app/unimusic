@@ -25,7 +25,7 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 	}
 
 	static initializedServices = new Set<MusicPlayerService>();
-	static async stopServices(): Promise<void> {
+	static async stopServices(except?: MusicPlayerService): Promise<void> {
 		console.log(
 			`%cMusicPlayerService:`,
 			`color: #91dd80; font-weight: bold;`,
@@ -33,6 +33,7 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 		);
 
 		for (const service of MusicPlayerService.initializedServices) {
+			if (service === except) continue;
 			await service.stop();
 		}
 	}
@@ -54,8 +55,6 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 	async initialize(): Promise<void> {
 		if (this.initialized) return;
 		this.log("initialize");
-
-		await MusicPlayerService.stopServices();
 
 		await this.handleInitialization();
 
@@ -85,6 +84,7 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 		} else {
 			this.log("play");
 			await this.initialize();
+			await MusicPlayerService.stopServices(this);
 			await this.handlePlay();
 			this.initialPlayed = true;
 		}
