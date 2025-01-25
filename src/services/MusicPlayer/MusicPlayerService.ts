@@ -10,6 +10,20 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 	initialPlayed = false;
 	song?: Song;
 
+	static initializedServices = new Set<MusicPlayerService>();
+	static async stopServices(except?: MusicPlayerService): Promise<void> {
+		console.log(
+			`%cMusicPlayerService:`,
+			`color: #91dd80; font-weight: bold;`,
+			"Deinitializing MusicPlayer services",
+		);
+
+		for (const service of MusicPlayerService.initializedServices) {
+			if (service === except) continue;
+			await service.stop();
+		}
+	}
+
 	abstract handleSearchSongs(term: string, offset: number): Promise<Song[]>;
 	async searchSongs(term: string, offset = 0): Promise<Song[]> {
 		this.log("searchSongs");
@@ -24,18 +38,18 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 		return await this.handleSearchHints(term);
 	}
 
-	static initializedServices = new Set<MusicPlayerService>();
-	static async stopServices(except?: MusicPlayerService): Promise<void> {
-		console.log(
-			`%cMusicPlayerService:`,
-			`color: #91dd80; font-weight: bold;`,
-			"Deinitializing MusicPlayer services",
-		);
+	abstract handleLibrarySongs(offset: number): Promise<Song[]>;
+	async librarySongs(offset = 0): Promise<Song[]> {
+		this.log("librarySongs");
+		await this.initialize();
+		return await this.handleLibrarySongs(offset);
+	}
 
-		for (const service of MusicPlayerService.initializedServices) {
-			if (service === except) continue;
-			await service.stop();
-		}
+	// TODO: Maybe there should be specific refresh methods for specific things
+	abstract handleRefresh(): Promise<void>;
+	async refresh(): Promise<void> {
+		this.log("refresh");
+		await this.handleRefresh();
 	}
 
 	async changeSong(song: Song): Promise<void> {

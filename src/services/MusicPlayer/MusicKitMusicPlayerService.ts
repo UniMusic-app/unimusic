@@ -48,6 +48,15 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		return results;
 	}
 
+	async handleRefresh(): Promise<void> {
+		// TODO: Unimplemented
+	}
+
+	async handleLibrarySongs(_offset?: number): Promise<MusicKitSong[]> {
+		// TODO: Unimplemented
+		return [];
+	}
+
 	#timeUpdateCallback = () => {
 		this.store.time = this.music!.currentPlaybackTime;
 	};

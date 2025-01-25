@@ -101,7 +101,7 @@
 		</ion-buttons>
 
 		<!-- NOTE: volume control does not work on iOS due to Apple putting arbitrary restrictions around setting app volume -->
-		<div class="volume-controls" v-if="Capacitor.getPlatform() !== 'ios'">
+		<div class="volume-controls" v-if="getPlatform() !== 'ios'">
 			<ion-range
 				aria-label="Volume"
 				:min="0"
@@ -320,7 +320,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { Capacitor } from "@capacitor/core";
 
 import {
 	play as playIcon,
@@ -346,9 +345,11 @@ import {
 	IonItem,
 	IonThumbnail,
 } from "@ionic/vue";
-import { secondsToMMSS } from "@/utils/time";
 
 import { useMusicPlayer } from "@/stores/music-player";
+
+import { getPlatform } from "@/utils/os";
+import { secondsToMMSS } from "@/utils/time";
 import { songTypeDisplayName } from "@/utils/songs";
 
 const musicPlayer = useMusicPlayer();

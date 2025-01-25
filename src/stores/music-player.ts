@@ -3,14 +3,22 @@ import { computed, Ref, ref, watch } from "vue";
 import { useStorage, watchDebounced } from "@vueuse/core";
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
 
-import { Capacitor } from "@capacitor/core";
-
 import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayerService";
 import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
-import { useMusicKit } from "./musickit";
-import { localSong, musicKitSong } from "@/utils/songs";
-import LocalMusicPlugin from "@/plugins/LocalMusicPlugin";
+import { getPlatform } from "@/utils/os";
+
+declare global {
+	namespace ElectronMusicPlayer {
+		// musickit:
+		const authorizeMusicKit: undefined | (() => Promise<string>);
+
+		// musicplayer:
+		const getMusicPath: () => Promise<string>;
+		const readFile: (path: string) => Promise<Uint8Array>;
+		const traverseDirectory: (path: string) => Promise<string[]>;
+	}
+}
 
 export interface Song<Type extends string, Data = never> {
 	type: Type;
@@ -21,6 +29,7 @@ export interface Song<Type extends string, Data = never> {
 	album?: string;
 	artworkUrl?: string;
 	duration?: number;
+	genre?: string;
 
 	data: Data;
 }
@@ -147,9 +156,18 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		return allResults.flat();
 	}
 
+	async function librarySongs(offset = 0): Promise<AnySong[]> {
+		const allSongs = await withAllServices((service) => service.librarySongs(offset));
+		return allSongs.flat();
+	}
+
+	async function refreshServices(): Promise<void> {
+		await withAllServices((service) => service.refresh());
+	}
+
 	//#region System Music Controls
 	// Android's WebView doesn't support MediaSession
-	if (Capacitor.getPlatform() === "android") {
+	if (getPlatform() === "android") {
 		import("capacitor-music-controls-plugin").then(({ CapacitorMusicControls }) => {
 			let musicControlsExist = false;
 			watch(
@@ -219,8 +237,8 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		});
 	}
 
-	// Web and IOS
-	if (Capacitor.getPlatform() !== "android" && "mediaSession" in navigator) {
+	// iOS, Web and Electron
+	if (getPlatform() !== "android" && "mediaSession" in navigator) {
 		// These action handlers MUST also be added after audio elements emitted "playing" event
 		// Otherwise WKWebView on iOS does not respect the action handlers and shows the seek buttons
 		addMusicSessionActionHandlers();
@@ -289,5 +307,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 		searchSongs,
 		searchHints,
+		librarySongs,
+		refreshServices,
 	};
 });

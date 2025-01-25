@@ -30,17 +30,19 @@ import {
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
 import { onMounted, ref } from "vue";
-import LocalMusicPlugin, { type LocalMusicSong } from "@/plugins/LocalMusicPlugin";
-import SongItem from "@/components/SongItem.vue";
+import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
-const songs = ref<LocalMusicSong[]>([]);
+const musicPlayer = useMusicPlayer();
+
+const songs = ref<AnySong[]>([]);
 
 onMounted(async () => {
-	songs.value = await LocalMusicPlugin.getSongs();
+	songs.value = await musicPlayer.librarySongs();
 });
 
 async function refreshLocalLibrary(event: RefresherCustomEvent) {
-	songs.value = await LocalMusicPlugin.getSongs(true);
+	await musicPlayer.refreshServices();
+	songs.value = await musicPlayer.librarySongs();
 	await event.target.complete();
 }
 </script>

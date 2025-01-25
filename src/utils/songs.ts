@@ -1,4 +1,3 @@
-import { LocalMusicSong } from "@/plugins/LocalMusicPlugin";
 import { AnySong, LocalSong, MusicKitSong } from "@/stores/music-player";
 
 export function musicKitSong(song: MusicKit.Songs): MusicKitSong {
@@ -15,23 +14,6 @@ export function musicKitSong(song: MusicKit.Songs): MusicKitSong {
 
 		data: {
 			bgColor: song.attributes?.artwork.bgColor,
-		},
-	};
-}
-
-export function localSong(song: LocalMusicSong): LocalSong {
-	return {
-		type: "local",
-
-		id: song.id,
-		title: song.title,
-		artist: song.artist,
-		album: song.album,
-		artworkUrl: song.artwork,
-		duration: song.duration,
-
-		data: {
-			path: song.path,
 		},
 	};
 }

@@ -17,7 +17,7 @@ export default {
 			emptyOutDir: false,
 			outDir: "./dist/electron/preload",
 			lib: {
-				entry: "./electron/preload.cts",
+				entry: "./electron/preload.cjs",
 			},
 			rollupOptions: {
 				output: {
