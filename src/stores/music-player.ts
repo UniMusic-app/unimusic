@@ -27,9 +27,15 @@ export interface Song<Type extends string, Data = never> {
 	title?: string;
 	artist?: string;
 	album?: string;
-	artworkUrl?: string;
 	duration?: number;
 	genre?: string;
+
+	artworkUrl?: string;
+	style: {
+		fgColor: string;
+		bgColor: string;
+		bgGradient: string;
+	};
 
 	data: Data;
 }

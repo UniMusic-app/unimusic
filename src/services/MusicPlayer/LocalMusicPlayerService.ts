@@ -11,6 +11,7 @@ import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 import { base64StringToBuffer } from "@/utils/buffer";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { getPlatform } from "@/utils/os";
+import { generateSongStyle } from "@/utils/songs";
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
 	switch (getPlatform()) {
@@ -113,6 +114,8 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id?: string): Pr
 		duration: format.duration,
 		artworkUrl: base64Artwork,
 		genre: common.genre?.[0],
+
+		style: await generateSongStyle(base64Artwork),
 
 		data: { path },
 	};

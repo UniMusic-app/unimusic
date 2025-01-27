@@ -1,6 +1,9 @@
 import { AnySong, LocalSong, MusicKitSong } from "@/stores/music-player";
+import { intensity } from "./color";
 
-export function musicKitSong(song: MusicKit.Songs): MusicKitSong {
+export async function musicKitSong(song: MusicKit.Songs): Promise<MusicKitSong> {
+	const artworkUrl =
+		song.attributes?.artwork && MusicKit.formatArtworkURL(song.attributes?.artwork, 256, 256);
 	return {
 		type: "musickit",
 
@@ -8,9 +11,10 @@ export function musicKitSong(song: MusicKit.Songs): MusicKitSong {
 		title: song.attributes?.name,
 		artist: song.attributes?.artistName,
 		album: song.attributes?.albumName,
-		artworkUrl:
-			song.attributes?.artwork && MusicKit.formatArtworkURL(song.attributes?.artwork, 256, 256),
 		duration: song.attributes?.durationInMillis && song.attributes?.durationInMillis / 1000,
+
+		artworkUrl,
+		style: await generateSongStyle(artworkUrl),
 
 		data: {
 			bgColor: song.attributes?.artwork.bgColor,
@@ -36,4 +40,85 @@ export function getUniqueSongId(song: AnySong): number {
 		uniqueIds.set(song, id);
 	}
 	return id;
+}
+
+/**
+ *
+ * @param artworkUrl
+ * @returns
+ */
+export async function generateSongStyle(artworkUrl?: string): Promise<AnySong["style"]> {
+	if (!artworkUrl) {
+		return {
+			fgColor: "#ffffff",
+			bgColor: "#000000",
+			bgGradient: "#000000",
+		};
+	}
+
+	const RESOLUTION = 256;
+	const image = new Image(RESOLUTION, RESOLUTION);
+	image.crossOrigin = "anonymous";
+	image.src = artworkUrl;
+	await new Promise<void>((r) => {
+		image.onload = () => r();
+	});
+
+	const canvas = document.createElement("canvas");
+	canvas.width = RESOLUTION;
+	canvas.height = RESOLUTION;
+
+	const context = canvas.getContext("2d", {
+		willReadFrequently: true,
+	});
+
+	if (!context) {
+		return {
+			fgColor: "#ffffff",
+			bgColor: "#000000",
+			bgGradient: "#000000",
+		};
+	}
+
+	context.drawImage(image, 0, 0, RESOLUTION, RESOLUTION);
+
+	// We get multiple samples from the image:
+	// - All the corners
+	// - 3 samples in the close area to the center of the image (due to it being the most common place to situate interesting things)
+	const colors = [
+		context.getImageData(0, 0, 1, 1).data,
+		context.getImageData(RESOLUTION - 1, 0, 1, 1).data,
+		context.getImageData(RESOLUTION * 0.4, RESOLUTION * 0.4, 1, 1).data,
+		context.getImageData(RESOLUTION / 2, RESOLUTION / 2, 1, 1).data,
+		context.getImageData(RESOLUTION * 0.6, RESOLUTION * 0.6, 1, 1).data,
+		context.getImageData(1, RESOLUTION - 1, 1, 1).data,
+		context.getImageData(RESOLUTION - 1, RESOLUTION - 1, 1, 1).data,
+	]
+		// Sort colors by intensity to get a smoother and more pleasing gradient
+		.sort((a, b) => intensity(b) - intensity(a));
+
+	const cssColors = colors.map(([r, g, b]) => `rgb(${r}, ${g}, ${b})`);
+
+	const bgGradient = `linear-gradient(65deg, ${cssColors.join(",")})`;
+
+	const bgColor = cssColors[2];
+	const bgColorIntensity = intensity(colors[2]);
+
+	// Generate foreground color based on how intense the background is to ensure proper contrast
+	let fgColor: string;
+	if (bgColorIntensity > 220) {
+		fgColor = "#000000";
+	} else if (bgColorIntensity > 170) {
+		fgColor = "#3a3a3a";
+	} else {
+		fgColor = "#ffffff";
+	}
+
+	canvas.remove();
+
+	return {
+		fgColor,
+		bgColor,
+		bgGradient,
+	};
 }

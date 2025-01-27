@@ -40,7 +40,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		const songs = response?.data?.results?.songs?.data;
 		if (songs) {
 			for (const song of songs) {
-				const normalizedSong = musicKitSong(song);
+				const normalizedSong = await musicKitSong(song);
 				results.push(normalizedSong);
 			}
 		}
