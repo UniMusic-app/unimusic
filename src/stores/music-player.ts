@@ -110,14 +110,29 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	const timeRemaining = computed(() => duration.value * (1 - progress.value));
 
-	function add(song: AnySong, index = queuedSongs.data.value.length): void {
+	function addToQueue(song: AnySong, index = queuedSongs.data.value.length): void {
 		queuedSongs.data.value.splice(index, 0, song);
 	}
 
-	function remove(index: number): void {
+	function removeFromQueue(index: number): void {
 		queuedSongs.data.value.splice(index, 1);
 		if (index < queueIndex.value) {
-			queueIndex.value = queueIndex.value - 1;
+			queueIndex.value -= 1;
+		}
+	}
+
+	function moveQueueItem(from: number, to: number): void {
+		// Move item in the array
+		const [item] = queuedSongs.data.value.splice(from, 1);
+		queuedSongs.data.value.splice(to, 0, item);
+
+		// Then make sure that currently playing song is still the one playing
+		if (from > queueIndex.value && to <= queueIndex.value) {
+			queueIndex.value += 1;
+		} else if (from < queueIndex.value && to >= queueIndex.value) {
+			queueIndex.value -= 1;
+		} else {
+			queueIndex.value = to;
 		}
 	}
 
@@ -295,8 +310,10 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 		queuedSongs: computed(() => queuedSongs.data.value),
 		queueIndex,
-		add,
-		remove,
+		addToQueue,
+		removeFromQueue,
+		moveQueueItem,
+
 		hasPrevious,
 		hasNext,
 		skipPrevious,

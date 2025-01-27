@@ -24,32 +24,34 @@
 		</div>
 
 		<ion-content class="queue" v-if="showQueue">
-			<!-- TODO: Add reorder -->
 			<h1>Queue</h1>
 			<ion-list lines="none">
-				<ion-item
-					button
-					:detail="false"
-					v-for="(song, i) in queuedSongs"
-					:key="i"
-					:class="{ current: i === queueIndex }"
-					@click.self="queueIndex = i"
-				>
-					<ion-thumbnail slot="start">
-						<img :src="song.artworkUrl" :alt="`Artwork for song '${song.title}'`" />
-					</ion-thumbnail>
+				<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
+					<ion-item
+						v-for="(song, i) in queuedSongs"
+						:key="getUniqueSongId(song)"
+						button
+						:class="{ current: i === queueIndex }"
+						@click.self="queueIndex = i"
+					>
+						<ion-thumbnail slot="start">
+							<img :src="song.artworkUrl" :alt="`Artwork for song '${song.title}'`" />
+						</ion-thumbnail>
 
-					<ion-label class="ion-text-nowrap">
-						<h2>{{ song.title }}</h2>
-						<ion-note>
-							{{ song.artist }}
-						</ion-note>
-					</ion-label>
+						<ion-label class="ion-text-nowrap">
+							<h2>{{ song.title }}</h2>
+							<ion-note>
+								{{ song.artist }}
+							</ion-note>
+						</ion-label>
 
-					<ion-button @click="musicPlayer.remove(i)" fill="clear" slot="end">
-						<ion-icon slot="icon-only" :icon="removeIcon" />
-					</ion-button>
-				</ion-item>
+						<ion-button @click="musicPlayer.removeFromQueue(i)" fill="clear" slot="end">
+							<ion-icon slot="icon-only" :icon="removeIcon" />
+						</ion-button>
+
+						<ion-reorder slot="end" />
+					</ion-item>
+				</ion-reorder-group>
 			</ion-list>
 		</ion-content>
 
@@ -218,9 +220,9 @@
 			font-weight: bolder;
 		}
 
-		& > ion-list {
+		& ion-list {
 			background: transparent;
-			& > ion-item {
+			& ion-item {
 				&.current {
 					background-color: #fff2;
 					border-radius: 12px;
@@ -255,6 +257,14 @@
 					height: 48px;
 					width: 48px;
 					font-size: 1rem;
+				}
+
+				& > ion-reorder {
+					color: white;
+
+					&::part(icon) {
+						opacity: 1;
+					}
 				}
 			}
 		}
@@ -344,13 +354,16 @@ import {
 	IonLabel,
 	IonItem,
 	IonThumbnail,
+	IonReorderGroup,
+	IonReorder,
+	ItemReorderCustomEvent,
 } from "@ionic/vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
 import { getPlatform } from "@/utils/os";
 import { secondsToMMSS } from "@/utils/time";
-import { songTypeDisplayName } from "@/utils/songs";
+import { getUniqueSongId, songTypeDisplayName } from "@/utils/songs";
 
 const musicPlayer = useMusicPlayer();
 const {
@@ -368,6 +381,12 @@ const {
 } = storeToRefs(musicPlayer);
 
 const showQueue = ref(false);
+
+function reorderQueue(event: ItemReorderCustomEvent): void {
+	const { from, to } = event.detail;
+	musicPlayer.moveQueueItem(from, to);
+	event.detail.complete();
+}
 
 const bgColor = computed(() => {
 	const song = currentSong.value;

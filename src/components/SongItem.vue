@@ -47,7 +47,7 @@ const { title, artist, artworkUrl } = song;
 const musicPlayer = useMusicPlayer();
 
 function play() {
-	musicPlayer.add(song, musicPlayer.queueIndex);
+	musicPlayer.addToQueue(song, musicPlayer.queueIndex);
 }
 </script>
 

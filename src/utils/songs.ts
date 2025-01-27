@@ -28,7 +28,7 @@ export function songTypeDisplayName(song: AnySong): string {
 }
 
 let uniqueId = 0;
-const uniqueIds = new WeakMap();
+const uniqueIds = new WeakMap<AnySong, number>();
 export function getUniqueSongId(song: AnySong): number {
 	let id = uniqueIds.get(song);
 	if (!id) {
