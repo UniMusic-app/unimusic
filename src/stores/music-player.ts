@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, Ref, ref, watch } from "vue";
-import { useStorage, watchDebounced } from "@vueuse/core";
+import { useLocalStorage, useStorage, watchDebounced } from "@vueuse/core";
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
 
 import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayerService";
@@ -44,6 +44,8 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		local: new LocalMusicPlayerService(),
 		musickit: new MusicKitMusicPlayerService(),
 	};
+	const withAllServices = <T>(callback: (service: MusicPlayerService) => T) =>
+		Promise.all(Object.values(services).map(callback));
 
 	const queuedSongs = useIDBKeyval<AnySong[]>("queuedSongs", []);
 	const queueIndex = useStorage("queueIndex", 0);
@@ -90,11 +92,15 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	});
 
 	const playing = ref(false);
-	const volume = ref(1);
+	const volume = useLocalStorage("volume", 1);
 
-	watch(volume, (volume) => {
-		currentService.value?.setVolume(volume);
-	});
+	watch(
+		volume,
+		async (volume) => {
+			await withAllServices((service) => service.setVolume(volume));
+		},
+		{ immediate: true },
+	);
 
 	const time = ref(0);
 	const duration = ref(1);
@@ -157,9 +163,6 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		if (!hasNext.value) return;
 		queueIndex.value++;
 	}
-
-	const withAllServices = <T>(callback: (service: MusicPlayerService) => T) =>
-		Promise.all(Object.values(services).map(callback));
 
 	async function searchHints(term: string): Promise<string[]> {
 		const allHints = await withAllServices((service) => service.searchHints(term));
