@@ -45,7 +45,7 @@
 			<template v-if="!isSearching && search">
 				<ion-list id="search-results">
 					<ion-list>
-						<song-item v-for="song in songs" :key="song.id" :song />
+						<song-item v-for="song in songs" :key="getUniqueSongId(song)" :song />
 					</ion-list>
 				</ion-list>
 			</template>
@@ -74,6 +74,7 @@ import { useMusicKit } from "@/stores/musickit";
 import { ref } from "vue";
 import { useMusicPlayer, type AnySong } from "@/stores/music-player";
 import SongItem from "@/components/SongItem.vue";
+import { getUniqueSongId } from "@/utils/songs";
 
 const musicPlayer = useMusicPlayer();
 const musicKit = useMusicKit();

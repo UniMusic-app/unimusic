@@ -26,3 +26,14 @@ export function songTypeDisplayName(song: AnySong): string {
 			return "Apple Music";
 	}
 }
+
+let uniqueId = 0;
+const uniqueIds = new WeakMap();
+export function getUniqueSongId(song: AnySong): number {
+	let id = uniqueIds.get(song);
+	if (!id) {
+		id = uniqueId++;
+		uniqueIds.set(song, id);
+	}
+	return id;
+}
