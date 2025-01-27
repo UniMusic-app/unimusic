@@ -152,6 +152,6 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 		this.log("setVolume");
 		await this.initialize();
 		await this.handleSetVolume(volume);
-		this.store.time = volume;
+		this.store.volume = volume;
 	}
 }
