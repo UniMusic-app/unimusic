@@ -128,7 +128,9 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 
 	const songs = songCache.data;
 
-	if (!clearCache && songs.value.length) {
+	if (clearCache) {
+		songs.value = [];
+	} else if (songs.value.length) {
 		return songs.value;
 	}
 
