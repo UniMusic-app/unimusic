@@ -1,7 +1,7 @@
 import Fuse from "fuse.js";
 import { watch } from "vue";
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
-import { parseBlob } from "music-metadata";
+import { parseBuffer } from "music-metadata";
 
 import { LocalSong } from "@/stores/music-player";
 
@@ -58,16 +58,16 @@ async function* traverseDirectory(path: string): AsyncGenerator<{ filePath: stri
 	}
 }
 
-async function readSongFile(path: string): Promise<Blob> {
+async function readSongFile(path: string): Promise<Uint8Array> {
 	switch (getPlatform()) {
 		case "android": {
 			const { data } = await LocalMusic.readSong({ path });
 			const buffer = base64StringToBuffer(data);
-			return new Blob([buffer], { type: audioMimeTypeFromPath(path) });
+			return buffer;
 		}
 		case "electron": {
 			const buffer = await ElectronMusicPlayer.readFile(path);
-			return new Blob([buffer], { type: audioMimeTypeFromPath(path) });
+			return buffer;
 		}
 		default: {
 			const { Filesystem, Directory } = await import("@capacitor/filesystem");
@@ -77,15 +77,18 @@ async function readSongFile(path: string): Promise<Blob> {
 				directory: Directory.Documents,
 			});
 
-			if (data instanceof Blob) return data;
+			if (data instanceof Blob) return await data.bytes();
 			const buffer = base64StringToBuffer(data);
-			return new Blob([buffer], { type: audioMimeTypeFromPath(path) });
+			return buffer;
 		}
 	}
 }
 
-async function parseLocalSong(data: Blob, path: string, id?: string): Promise<LocalSong> {
-	const metadata = await parseBlob(data);
+async function parseLocalSong(buffer: Uint8Array, path: string, id?: string): Promise<LocalSong> {
+	const metadata = await parseBuffer(buffer, {
+		path,
+		mimeType: audioMimeTypeFromPath(path),
+	});
 
 	const { common, format } = metadata;
 
@@ -226,7 +229,9 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	}
 
 	async handlePlay(): Promise<void> {
-		const blob = await readSongFile(this.song!.data.path);
+		const { path } = this.song!.data;
+		const buffer = await readSongFile(path);
+		const blob = new Blob([buffer], { type: audioMimeTypeFromPath(path) });
 		const url = URL.createObjectURL(blob);
 		this.audio!.src = url;
 		this.audio!.play();
