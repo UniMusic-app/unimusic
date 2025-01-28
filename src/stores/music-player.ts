@@ -100,13 +100,9 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const playing = ref(false);
 	const volume = useLocalStorage("volume", 1);
 
-	watch(
-		volume,
-		async (volume) => {
-			await withAllServices((service) => service.setVolume(volume));
-		},
-		{ immediate: true },
-	);
+	watch(volume, async (volume) => await withAllServices((service) => service.setVolume(volume)), {
+		immediate: true,
+	});
 
 	const time = ref(0);
 	const duration = ref(1);
@@ -115,6 +111,10 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		set: (progress) => {
 			currentService.value?.seekToTime(progress * duration.value);
 		},
+	});
+
+	watch([time, duration], async ([time, duration]) => {
+		if (Math.floor(duration - time) === 0) await skipNext();
 	});
 
 	const hasPrevious = computed(() => queueIndex.value > 0);
