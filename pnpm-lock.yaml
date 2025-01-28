@@ -41,6 +41,9 @@ importers:
       '@ionic/vue-router':
         specifier: ^8.4.1
         version: 8.4.1
+      '@vueuse/components':
+        specifier: ^12.5.0
+        version: 12.5.0(typescript@5.6.3)
       '@vueuse/core':
         specifier: ^12.4.0
         version: 12.4.0(typescript@5.6.3)
@@ -1026,6 +1029,9 @@ packages:
 
   '@vue/test-utils@2.4.6':
     resolution: {integrity: sha512-FMxEjOpYNYiFe0GkaHsnJPXFHxQ6m4t8vI/ElPGpMWxZKpmRvQ33OIrvRXemy6yha03RxhOlQuy+gZMC3CQSow==}
+
+  '@vueuse/components@12.5.0':
+    resolution: {integrity: sha512-aLgEW8bidRZ4qkVOIl958NAev+XKYTtbfsIj5ObjiDwvBDqxmGVCwMQvWHUQN37tb8JSkRF22gTUbXNt0iSwLQ==}
 
   '@vueuse/core@12.4.0':
     resolution: {integrity: sha512-XnjQYcJwCsyXyIafyA6SvyN/OBtfPnjvJmbxNxQjCcyWD198urwm5TYvIUUyAxEAN0K7HJggOgT15cOlWFyLeA==}
@@ -4182,6 +4188,14 @@ snapshots:
     dependencies:
       js-beautify: 1.15.1
       vue-component-type-helpers: 2.2.0
+
+  '@vueuse/components@12.5.0(typescript@5.6.3)':
+    dependencies:
+      '@vueuse/core': 12.5.0(typescript@5.6.3)
+      '@vueuse/shared': 12.5.0(typescript@5.6.3)
+      vue: 3.5.13(typescript@5.6.3)
+    transitivePeerDependencies:
+      - typescript
 
   '@vueuse/core@12.4.0(typescript@5.6.3)':
     dependencies:

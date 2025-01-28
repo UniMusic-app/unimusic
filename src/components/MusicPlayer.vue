@@ -40,6 +40,8 @@
 							button
 							:detail="false"
 							:class="{ current: i === queueIndex }"
+							v-on-long-press.prevent="[(event) => handleHoldPopover(i, song, event), { delay: 300 }]"
+							@contextmenu.prevent="createPopover(i, song, $event)"
 							@click.self="queueIndex = i"
 						>
 							<ion-thumbnail slot="start">
@@ -52,10 +54,6 @@
 									{{ song.artist }}
 								</ion-note>
 							</ion-label>
-
-							<ion-button @click="musicPlayer.removeFromQueue(i)" fill="clear" slot="end">
-								<ion-icon slot="icon-only" :icon="removeIcon" />
-							</ion-button>
 
 							<ion-reorder slot="end" />
 						</ion-item>
@@ -138,6 +136,105 @@
 		</div>
 	</div>
 </template>
+
+<script setup lang="ts">
+import { ref } from "vue";
+import { storeToRefs } from "pinia";
+
+import {
+	play as playIcon,
+	pause as pauseIcon,
+	playSkipBack as skipPreviousIcon,
+	playSkipForward as skipNextIcon,
+	volumeLow as volumeLowIcon,
+	volumeHigh as volumeHighIcon,
+	list as listIcon,
+	musicalNotes as musicalNotesIcon,
+	trash as removeIcon,
+} from "ionicons/icons";
+import {
+	IonList,
+	IonButton,
+	IonButtons,
+	IonIcon,
+	IonNote,
+	IonContent,
+	IonSpinner,
+	IonRange,
+	IonLabel,
+	IonItem,
+	IonItemDivider,
+	IonThumbnail,
+	IonReorderGroup,
+	IonReorder,
+	ItemReorderCustomEvent,
+	popoverController,
+} from "@ionic/vue";
+
+import { AnySong, useMusicPlayer } from "@/stores/music-player";
+
+import { getPlatform } from "@/utils/os";
+import { secondsToMMSS } from "@/utils/time";
+import { getUniqueSongId, songTypeDisplayName } from "@/utils/songs";
+import { useIntersectionObserver } from "@vueuse/core";
+import { vOnLongPress } from "@vueuse/components";
+import MusicPlayerSongMenu from "./MusicPlayerSongMenu.vue";
+import { Haptics } from "@capacitor/haptics";
+
+const musicPlayer = useMusicPlayer();
+const {
+	queueIndex,
+	queuedSongs,
+	playing,
+	currentSong,
+	volume,
+	hasPrevious,
+	hasNext,
+	loading,
+	time,
+	progress,
+	timeRemaining,
+} = storeToRefs(musicPlayer);
+
+const showQueue = ref(false);
+
+function reorderQueue(event: ItemReorderCustomEvent): void {
+	const { from, to } = event.detail;
+	musicPlayer.moveQueueItem(from, to);
+	event.detail.complete();
+}
+
+async function handleHoldPopover(index: number, song: AnySong, event: Event) {
+	event.preventDefault();
+	await Haptics.impact().catch(() => {});
+	await createPopover(index, song, event);
+}
+
+async function createPopover(index: number, song: AnySong, event: Event) {
+	const popover = await popoverController.create({
+		component: MusicPlayerSongMenu,
+		event,
+		componentProps: { song, index },
+		arrow: false,
+		reference: "event",
+		alignment: "center",
+		side: "right",
+		dismissOnSelect: true,
+		cssClass: "song-item-popover",
+		size: "auto",
+	});
+
+	await popover.present();
+}
+
+const queueHeader = ref<HTMLElement | null>(null);
+useIntersectionObserver(
+	queueHeader,
+	([entry]) =>
+		queueHeader.value?.parentElement?.classList?.toggle?.("is-sticky", !entry.isIntersecting),
+	{ rootMargin: "-24px 0px 0px 0px", threshold: [1] },
+);
+</script>
 
 <style scoped>
 @keyframes moving-background {
@@ -451,75 +548,3 @@
 	}
 }
 </style>
-
-<script setup lang="ts">
-import { ref, computed, watch } from "vue";
-import { storeToRefs } from "pinia";
-
-import {
-	play as playIcon,
-	pause as pauseIcon,
-	playSkipBack as skipPreviousIcon,
-	playSkipForward as skipNextIcon,
-	volumeLow as volumeLowIcon,
-	volumeHigh as volumeHighIcon,
-	list as listIcon,
-	musicalNotes as musicalNotesIcon,
-	trash as removeIcon,
-} from "ionicons/icons";
-import {
-	IonList,
-	IonButton,
-	IonButtons,
-	IonIcon,
-	IonNote,
-	IonContent,
-	IonSpinner,
-	IonRange,
-	IonLabel,
-	IonItem,
-	IonItemDivider,
-	IonThumbnail,
-	IonReorderGroup,
-	IonReorder,
-	ItemReorderCustomEvent,
-} from "@ionic/vue";
-
-import { useMusicPlayer } from "@/stores/music-player";
-
-import { getPlatform } from "@/utils/os";
-import { secondsToMMSS } from "@/utils/time";
-import { getUniqueSongId, songTypeDisplayName } from "@/utils/songs";
-import { useIntersectionObserver } from "@vueuse/core";
-
-const musicPlayer = useMusicPlayer();
-const {
-	queueIndex,
-	queuedSongs,
-	playing,
-	currentSong,
-	volume,
-	hasPrevious,
-	hasNext,
-	loading,
-	time,
-	progress,
-	timeRemaining,
-} = storeToRefs(musicPlayer);
-
-const showQueue = ref(false);
-
-function reorderQueue(event: ItemReorderCustomEvent): void {
-	const { from, to } = event.detail;
-	musicPlayer.moveQueueItem(from, to);
-	event.detail.complete();
-}
-
-const queueHeader = ref<HTMLElement | null>(null);
-useIntersectionObserver(
-	queueHeader,
-	([entry]) =>
-		queueHeader.value?.parentElement?.classList?.toggle?.("is-sticky", !entry.isIntersecting),
-	{ rootMargin: "-24px 0px 0px 0px", threshold: [1] },
-);
-</script>

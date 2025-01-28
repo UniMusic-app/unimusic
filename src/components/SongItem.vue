@@ -1,5 +1,11 @@
 <template>
-	<ion-item button :detail="false" @click.self="play">
+	<ion-item
+		button
+		:detail="false"
+		@click.self="play"
+		v-on-long-press.prevent="[handleHoldPopover, { delay: 300 }]"
+		@contextmenu.prevent="createPopover"
+	>
 		<ion-thumbnail v-if="artworkUrl" slot="start">
 			<img :src="artworkUrl" :alt="`Artwork for song '${title}' by ${artist}`" />
 		</ion-thumbnail>
@@ -13,33 +19,17 @@
 				{{ artist }}
 			</ion-note>
 		</ion-label>
-
-		<ion-buttons slot="end">
-			<ion-button>
-				<ion-icon slot="icon-only" :icon="ellipsisHorizontal" />
-				<!-- TODO: Popover with options -->
-			</ion-button>
-		</ion-buttons>
 	</ion-item>
 </template>
 
 <script setup lang="ts">
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import { songTypeDisplayName } from "@/utils/songs";
-import {
-	IonItem,
-	IonThumbnail,
-	IonLabel,
-	IonButtons,
-	IonButton,
-	IonIcon,
-	IonNote,
-} from "@ionic/vue";
-import {
-	musicalNote as musicalNoteIcon,
-	ellipsisHorizontal,
-	compass as compassIcon,
-} from "ionicons/icons";
+import { IonItem, IonThumbnail, IonLabel, IonIcon, IonNote, popoverController } from "@ionic/vue";
+import { musicalNote as musicalNoteIcon, compass as compassIcon } from "ionicons/icons";
+import { Haptics } from "@capacitor/haptics";
+import SongItemMenu from "@/components/SongItemMenu.vue";
+import { vOnLongPress } from "@vueuse/components";
 
 const { song } = defineProps<{ song: AnySong }>();
 const { title, artist, artworkUrl } = song;
@@ -48,6 +38,29 @@ const musicPlayer = useMusicPlayer();
 
 function play() {
 	musicPlayer.addToQueue(song, musicPlayer.queueIndex);
+}
+
+async function handleHoldPopover(event: Event) {
+	event.preventDefault();
+	await Haptics.impact().catch(() => {});
+	await createPopover(event);
+}
+
+async function createPopover(event: Event) {
+	const popover = await popoverController.create({
+		component: SongItemMenu,
+		event,
+		componentProps: { song },
+		arrow: false,
+		reference: "event",
+		alignment: "center",
+		side: "right",
+		dismissOnSelect: true,
+		cssClass: "song-item-popover",
+		size: "auto",
+	});
+
+	await popover.present();
 }
 </script>
 

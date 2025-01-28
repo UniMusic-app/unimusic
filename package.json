@@ -34,6 +34,7 @@
 		"@capacitor/status-bar": "6.0.2",
 		"@ionic/vue": "^8.4.1",
 		"@ionic/vue-router": "^8.4.1",
+		"@vueuse/components": "^12.5.0",
 		"@vueuse/core": "^12.4.0",
 		"@vueuse/integrations": "^12.5.0",
 		"capacitor-music-controls-plugin": "^6.1.0",
