@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.MediaStore;
 import android.util.Base64;
 
@@ -26,10 +27,22 @@ import java.io.InputStream;
                 @Permission(
                         alias = "mediaAudio",
                         strings = {Manifest.permission.READ_MEDIA_AUDIO}
+                ),
+                @Permission(
+                        alias = "externalStorage",
+                        strings = {Manifest.permission.READ_EXTERNAL_STORAGE}
                 )
         }
 )
 public class LocalMusicPlugin extends Plugin {
+    private String permissionName() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return "mediaAudio";
+        } else {
+            return "externalStorage";
+        }
+    }
+
     @PluginMethod()
     public void readSong(PluginCall call) {
         String path = call.getString("path");
@@ -62,18 +75,19 @@ public class LocalMusicPlugin extends Plugin {
         }
     }
 
+
     @PluginMethod()
     public void getSongs(PluginCall call) {
         if (getPermissionState("mediaAudio") == PermissionState.GRANTED) {
             finishGettingSongs(call);
         } else {
-            requestPermissionForAlias("mediaAudio", call, "finishGettingSongs");
+            requestPermissionForAlias(permissionName(), call, "finishGettingSongs");
         }
     }
 
     @PermissionCallback()
     private void finishGettingSongs(PluginCall call) {
-        if (getPermissionState("mediaAudio") != PermissionState.GRANTED) {
+        if (getPermissionState(permissionName()) != PermissionState.GRANTED) {
             call.reject("Missing permissions");
             return;
         }
