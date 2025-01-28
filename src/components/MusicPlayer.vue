@@ -11,79 +11,57 @@
 		<ion-content id="song" :scroll-y="showQueue">
 			<!-- FIXME: Make artwork optional -->
 			<!-- TODO: Marquee on overflow -->
-			<transition name="collapse-details">
-				<div v-if="showQueue" id="song-details" class="compact">
-					<img
-						id="artwork"
-						:src="currentSong.artworkUrl"
-						:alt="`Artwork for song '${currentSong.title}'`"
-					/>
+			<div id="song-details" :class="{ compact: showQueue }">
+				<img
+					id="artwork"
+					:src="currentSong.artworkUrl"
+					:alt="`Artwork for song '${currentSong.title}'`"
+				/>
 
-					<div id="song-info">
-						<h1 id="title" class="ion-text-nowrap">
-							{{ currentSong.title }}
-						</h1>
-						<h2 id="artist" class="ion-text-nowrap">
-							{{ currentSong.artist }}
-						</h2>
-					</div>
+				<div id="song-info">
+					<h1 id="title" class="ion-text-nowrap">
+						{{ currentSong.title }}
+					</h1>
+					<h2 id="artist" class="ion-text-nowrap">
+						{{ currentSong.artist }}
+					</h2>
 				</div>
-			</transition>
-			<transition name="show-details">
-				<div v-if="!showQueue" id="song-details">
-					<img
-						id="artwork"
-						:src="currentSong.artworkUrl"
-						:alt="`Artwork for song '${currentSong.title}'`"
-					/>
+			</div>
 
-					<div id="song-info">
-						<h1 id="title" class="ion-text-nowrap">
-							{{ currentSong.title }}
-						</h1>
-						<h2 id="artist" class="ion-text-nowrap">
-							{{ currentSong.artist }}
-						</h2>
-					</div>
-				</div>
-			</transition>
+			<div v-if="showQueue" id="queue">
+				<ion-list lines="none">
+					<ion-item-divider sticky>
+						<span ref="queueHeader">Queue</span>
+					</ion-item-divider>
+					<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
+						<ion-item
+							v-for="(song, i) in queuedSongs"
+							:key="getUniqueSongId(song)"
+							button
+							:detail="false"
+							:class="{ current: i === queueIndex }"
+							@click.self="queueIndex = i"
+						>
+							<ion-thumbnail slot="start">
+								<img :src="song.artworkUrl" :alt="`Artwork for song '${song.title}'`" />
+							</ion-thumbnail>
 
-			<transition name="show-queue">
-				<div v-if="showQueue" id="queue">
-					<ion-list lines="none">
-						<ion-item-divider sticky>
-							<span ref="queueHeader">Queue</span>
-						</ion-item-divider>
-						<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
-							<ion-item
-								v-for="(song, i) in queuedSongs"
-								:key="getUniqueSongId(song)"
-								button
-								:detail="false"
-								:class="{ current: i === queueIndex }"
-								@click.self="queueIndex = i"
-							>
-								<ion-thumbnail slot="start">
-									<img :src="song.artworkUrl" :alt="`Artwork for song '${song.title}'`" />
-								</ion-thumbnail>
+							<ion-label class="ion-text-nowrap">
+								<h2>{{ song.title }}</h2>
+								<ion-note>
+									{{ song.artist }}
+								</ion-note>
+							</ion-label>
 
-								<ion-label class="ion-text-nowrap">
-									<h2>{{ song.title }}</h2>
-									<ion-note>
-										{{ song.artist }}
-									</ion-note>
-								</ion-label>
+							<ion-button @click="musicPlayer.removeFromQueue(i)" fill="clear" slot="end">
+								<ion-icon slot="icon-only" :icon="removeIcon" />
+							</ion-button>
 
-								<ion-button @click="musicPlayer.removeFromQueue(i)" fill="clear" slot="end">
-									<ion-icon slot="icon-only" :icon="removeIcon" />
-								</ion-button>
-
-								<ion-reorder slot="end" />
-							</ion-item>
-						</ion-reorder-group>
-					</ion-list>
-				</div>
-			</transition>
+							<ion-reorder slot="end" />
+						</ion-item>
+					</ion-reorder-group>
+				</ion-list>
+			</div>
 		</ion-content>
 
 		<div class="time-controls">
@@ -162,55 +140,6 @@
 </template>
 
 <style scoped>
-/** #region Details animations */
-.collapse-details-enter-active {
-	transition: all 0.25s ease-out;
-}
-
-.collapse-details-leave-active {
-	position: absolute;
-	transition: all 0.25s cubic-bezier(1, 0.5, 0.8, 1);
-}
-
-.collapse-details-enter-from,
-.collapse-details-leave-to {
-	transform: scale(50%);
-	opacity: 0;
-}
-
-.show-details-enter-active {
-	transition: all 0.35s ease-out;
-}
-
-.show-details-leave-active {
-	transition: all 0.35s ease-out;
-}
-
-.show-details-leave-to,
-.show-details-enter-from {
-	transform: translate(-120px, -50vh) scale(25%);
-	position: fixed;
-	opacity: 0;
-}
-
-/** #endregion */
-
-/** #region Queue animation */
-.show-queue-enter-active {
-	transition: all 0.25s ease-out;
-}
-
-.show-queue-leave-active {
-	transition: all 0.25s cubic-bezier(1, 0.5, 0.8, 1);
-}
-
-.show-queue-enter-from,
-.show-queue-leave-to {
-	transform: translateY(50vh);
-	opacity: 0;
-}
-/** #endregion */
-
 @keyframes moving-background {
 	0% {
 		background-position: 0% 66%;
@@ -226,6 +155,64 @@
 
 	100% {
 		background-position: 66% 100%;
+	}
+}
+
+@keyframes details-from-corner {
+	from {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 128px;
+	}
+
+	to {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, calc(-50% - 12px));
+	}
+}
+
+@keyframes details-to-corner {
+	from {
+		flex-direction: column;
+		position: absolute;
+		width: 512px;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		opacity: 1;
+	}
+
+	15% {
+		opacity: 0;
+	}
+
+	50% {
+		flex-direction: row;
+	}
+
+	65% {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 1;
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+}
+
+@keyframes queue-slide-out {
+	from {
+		margin-top: 256px;
+		opacity: 0;
+	}
+	to {
+		margin-top: calc(128px + 24px);
+		opacity: 1;
 	}
 }
 
@@ -262,7 +249,10 @@
 			align-items: center;
 			justify-content: space-around;
 
+			animation: details-from-corner 0.5s;
 			&.compact {
+				animation: details-to-corner 0.5s;
+
 				height: max-content;
 				flex-direction: row;
 				justify-content: space-between;
@@ -315,6 +305,8 @@
 			display: flex;
 			flex-direction: column;
 			width: 100%;
+
+			animation: queue-slide-out 0.5s;
 
 			& ion-list {
 				background: transparent;
