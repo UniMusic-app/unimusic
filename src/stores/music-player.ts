@@ -143,7 +143,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 			queueIndex.value += 1;
 		} else if (from < queueIndex.value && to >= queueIndex.value) {
 			queueIndex.value -= 1;
-		} else {
+		} else if (from === queueIndex.value) {
 			queueIndex.value = to;
 		}
 	}
