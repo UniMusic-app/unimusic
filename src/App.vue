@@ -34,4 +34,8 @@ import {
 	IonLabel,
 } from "@ionic/vue";
 import { search as searchIcon, home as homeIcon, library as libraryIcon } from "ionicons/icons";
+import { useMusicKit } from "./stores/musickit";
+
+// Initialize MusicKit store to initialize authorization service
+useMusicKit();
 </script>
