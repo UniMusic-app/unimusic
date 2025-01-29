@@ -19,14 +19,30 @@ export class LocalImageManagementService extends Service {
 		super();
 	}
 
+	#revoked = false;
+	async initialize() {
+		this.log("initialize");
+		if (!this.#revoked) {
+			// We have to clear urls that have been set in the previous session
+			// since blob: urls get invalidated when the session ends
+			await this.revokeAllUrls();
+			this.#revoked = true;
+		}
+	}
+
 	async associateImage(
 		id: string,
 		image: Blob,
 		resize?: { width: number; height: number },
 	): Promise<void> {
+		await this.initialize();
+		this.log("associateImage");
+
 		const localImageInfo = await this.#localImageInfo;
 
 		resize: if (resize) {
+			this.log("resize");
+
 			const { width, height } = resize;
 
 			const canvas = document.createElement("canvas");
@@ -60,45 +76,48 @@ export class LocalImageManagementService extends Service {
 	}
 
 	async getBlobUrl(id: string): Promise<string | undefined> {
-		const localImageInfo = await this.#localImageInfo;
-		const imageInfo = localImageInfo.value[id];
-		if (!imageInfo?.url && imageInfo?.image) {
-			return await this.createBlobUrl(id);
-		}
-		return imageInfo?.url;
-	}
+		await this.initialize();
+		this.log("getBlobUrl", id);
 
-	async createBlobUrl(id: string): Promise<string | undefined> {
 		const localImageInfo = await this.#localImageInfo;
-
 		const imageInfo = localImageInfo.value[id];
 		if (imageInfo?.url) {
 			if (!imageInfo.image) {
+				this.log("Revoke no longer existing image");
 				await this.revokeBlobUrl(id);
 				return;
 			}
 
+			this.log("Return cached blob url");
 			return imageInfo.url;
 		}
 
 		if (imageInfo?.image) {
-			return URL.createObjectURL(imageInfo.image);
+			this.log("createObjectURL");
+			imageInfo.url = URL.createObjectURL(imageInfo.image);
+			return imageInfo.url;
 		}
 	}
 
-	async revokeBlobUrl(id: string): Promise<void> {
-		const localImageInfo = await this.#localImageInfo;
+	async revokeBlobUrl(id: string): Promise<boolean> {
+		this.log("revokeBlobUrl", id);
 
+		const localImageInfo = await this.#localImageInfo;
 		const imageInfo = localImageInfo.value[id];
 		if (imageInfo?.url) {
 			URL.revokeObjectURL(imageInfo.url);
-			delete imageInfo.url;
+			imageInfo.url = undefined;
+			console.log(localImageInfo.value[id]?.url);
+			return true;
 		}
+
+		return false;
 	}
 
 	async revokeAllUrls(): Promise<void> {
-		const localImageInfo = await this.#localImageInfo;
+		this.log("revokeAllUrls");
 
+		const localImageInfo = await this.#localImageInfo;
 		for (const key of Object.keys(localImageInfo.value)) {
 			this.revokeBlobUrl(key);
 		}

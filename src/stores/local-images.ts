@@ -7,9 +7,7 @@ export const useLocalImages = defineStore("LocalImages", () => {
 
 	async function getSongImageUrl(image?: SongImage): Promise<string | undefined> {
 		if (!image) return;
-		if ("id" in image) {
-			return await localImageManagementService.getBlobUrl(image.id!);
-		}
+		if ("id" in image) return await localImageManagementService.getBlobUrl(image.id!);
 		return image.url;
 	}
 

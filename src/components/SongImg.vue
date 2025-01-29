@@ -17,7 +17,7 @@ const {
 } = defineProps<{ lazy?: boolean; src: SongImage | undefined; alt?: string }>();
 
 const url = ref<string>();
-localImages.getSongImageUrl(src).then((songUrl) => {
-	url.value = songUrl;
+localImages.getSongImageUrl(src).then((imgUrl) => {
+	url.value = imgUrl;
 });
 </script>
