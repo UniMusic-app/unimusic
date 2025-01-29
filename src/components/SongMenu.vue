@@ -1,11 +1,11 @@
 <template>
 	<ion-content :scroll-y="false" class="ion-padding">
 		<div class="preview">
-			<img
-				v-if="song.artworkUrl"
+			<song-img
+				v-if="song.artwork"
 				class="artwork"
 				:alt="`Artwork for ${song.title}`"
-				:src="song.artworkUrl"
+				:src="song.artwork"
 			/>
 
 			<div class="details">
@@ -23,6 +23,7 @@
 <script setup lang="ts">
 import { IonContent, IonList } from "@ionic/vue";
 import { AnySong } from "@/stores/music-player";
+import SongImg from "@/components/SongImg.vue";
 
 const { song } = defineProps<{ song: AnySong }>();
 </script>

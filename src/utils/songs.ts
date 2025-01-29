@@ -1,11 +1,14 @@
-import { AnySong, LocalSong, MusicKitSong } from "@/stores/music-player";
+import { AnySong, LocalSong, MusicKitSong, SongImage } from "@/stores/music-player";
 import { intensity } from "./color";
+import { useLocalImages } from "@/stores/local-images";
 
 export async function musicKitSong(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
 ): Promise<MusicKitSong> {
 	const attributes = song.attributes;
-	const artworkUrl = attributes?.artwork && MusicKit.formatArtworkURL(attributes?.artwork, 256, 256);
+	const artwork = attributes?.artwork && {
+		url: MusicKit.formatArtworkURL(attributes?.artwork, 256, 256),
+	};
 	return {
 		type: "musickit",
 
@@ -15,8 +18,8 @@ export async function musicKitSong(
 		album: attributes?.albumName,
 		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
 
-		artworkUrl,
-		style: await generateSongStyle(artworkUrl),
+		artwork,
+		style: await generateSongStyle(artwork),
 
 		data: {},
 	};
@@ -47,8 +50,8 @@ export function getUniqueSongId(song: AnySong): number {
  * @param artworkUrl
  * @returns
  */
-export async function generateSongStyle(artworkUrl?: string): Promise<AnySong["style"]> {
-	if (!artworkUrl) {
+export async function generateSongStyle(artwork?: SongImage): Promise<AnySong["style"]> {
+	if (!artwork) {
 		return {
 			fgColor: "#ffffff",
 			bgColor: "#000000",
@@ -56,10 +59,12 @@ export async function generateSongStyle(artworkUrl?: string): Promise<AnySong["s
 		};
 	}
 
+	const localImages = useLocalImages();
+
 	const RESOLUTION = 256;
 	const image = new Image(RESOLUTION, RESOLUTION);
 	image.crossOrigin = "anonymous";
-	image.src = artworkUrl;
+	image.src = (await localImages.getSongImageUrl(artwork))!;
 	await new Promise<void>((r) => {
 		image.onload = () => r();
 	});

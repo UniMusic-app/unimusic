@@ -12,9 +12,9 @@
 			<!-- FIXME: Make artwork optional -->
 			<!-- TODO: Marquee on overflow -->
 			<div id="song-details" :class="{ compact: showQueue }">
-				<img
+				<song-img
 					id="artwork"
-					:src="currentSong.artworkUrl"
+					:src="currentSong.artwork"
 					:alt="`Artwork for song '${currentSong.title}'`"
 				/>
 
@@ -45,7 +45,7 @@
 							@click.self="queueIndex = i"
 						>
 							<ion-thumbnail slot="start">
-								<img :src="song.artworkUrl" :alt="`Artwork for song '${song.title}'`" />
+								<song-img :src="song.artwork" :alt="`Artwork for song '${song.title}'`" />
 							</ion-thumbnail>
 
 							<ion-label class="ion-text-nowrap">
@@ -150,7 +150,6 @@ import {
 	volumeHigh as volumeHighIcon,
 	list as listIcon,
 	musicalNotes as musicalNotesIcon,
-	trash as removeIcon,
 } from "ionicons/icons";
 import {
 	IonList,
@@ -171,6 +170,9 @@ import {
 	popoverController,
 } from "@ionic/vue";
 
+import MusicPlayerSongMenu from "@/components/MusicPlayerSongMenu.vue";
+import SongImg from "@/components/SongImg.vue";
+
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
 import { getPlatform } from "@/utils/os";
@@ -178,7 +180,6 @@ import { secondsToMMSS } from "@/utils/time";
 import { getUniqueSongId, songTypeDisplayName } from "@/utils/songs";
 import { useIntersectionObserver } from "@vueuse/core";
 import { vOnLongPress } from "@vueuse/components";
-import MusicPlayerSongMenu from "./MusicPlayerSongMenu.vue";
 import { Haptics } from "@capacitor/haptics";
 
 const musicPlayer = useMusicPlayer();

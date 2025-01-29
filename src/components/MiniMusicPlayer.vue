@@ -1,7 +1,7 @@
 <template>
 	<ion-item button :detail="false" @click.self="modalOpen = true" v-if="currentSong?.id">
 		<ion-thumbnail slot="start">
-			<img :src="currentSong.artworkUrl" :alt="`Artwork for song '${currentSong.title}'`" />
+			<song-img :src="currentSong.artwork" :alt="`Artwork for song '${currentSong.title}'`" />
 		</ion-thumbnail>
 
 		<ion-label class="ion-text-nowrap">
@@ -55,6 +55,7 @@ import {
 
 import { useMusicPlayer } from "@/stores/music-player";
 import MusicPlayer from "@/components/MusicPlayer.vue";
+import SongImg from "@/components/SongImg.vue";
 
 const musicPlayer = useMusicPlayer();
 const { loading, playing, currentSong, hasPrevious, hasNext } = storeToRefs(musicPlayer);

@@ -1,9 +1,7 @@
 import Fuse from "fuse.js";
-import { watch } from "vue";
-import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
-import { parseBuffer } from "music-metadata";
+import { parseBuffer, selectCover } from "music-metadata";
 
-import { LocalSong } from "@/stores/music-player";
+import { LocalSong, SongImage } from "@/stores/music-player";
 
 import LocalMusic from "@/plugins/LocalMusicPlugin";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
@@ -12,6 +10,11 @@ import { base64StringToBuffer } from "@/utils/buffer";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { getPlatform } from "@/utils/os";
 import { generateSongStyle } from "@/utils/songs";
+import { useIDBKeyvalAsync } from "@/utils/vue";
+import { useLocalImages } from "@/stores/local-images";
+
+const localSongs = await useIDBKeyvalAsync<LocalSong[]>("localMusicSongs", []);
+const localImages = useLocalImages();
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
 	switch (getPlatform()) {
@@ -85,7 +88,23 @@ async function readSongFile(path: string): Promise<Uint8Array> {
 	}
 }
 
-async function parseLocalSong(buffer: Uint8Array, path: string, id?: string): Promise<LocalSong> {
+interface MetadataOverride {
+	artist?: string;
+	album?: string;
+	title?: string;
+	duration?: number;
+	artwork?: SongImage;
+	genre?: string;
+}
+
+interface MetadataOverrides {
+	[id: string]: MetadataOverride | undefined;
+}
+
+async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Promise<LocalSong> {
+	const metadataOverrides = await useIDBKeyvalAsync<MetadataOverrides>("metadataOverrides", {});
+	const metadataOverride = metadataOverrides.value[id];
+
 	const metadata = await parseBuffer(buffer, {
 		path,
 		mimeType: audioMimeTypeFromPath(path),
@@ -93,48 +112,45 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id?: string): Pr
 
 	const { common, format } = metadata;
 
-	let base64Artwork: string | undefined;
-	// TODO: Use canvas to resize the image to not store overly sized images
-	// 		 Then store blobs in IndexedDB and lazily create a list of blob urls
-	if (common.picture?.[0]?.data) {
-		const buffer = common.picture[0].data;
-		const base64Data = btoa(
-			buffer.reduce<string>((data, byte) => data + String.fromCharCode(byte), ""),
-		);
-		base64Artwork = `data:text/plain;base64,${base64Data}`;
+	const artist = metadataOverride?.artist ?? common.artist;
+	const album = metadataOverride?.album ?? common.album;
+	const title = metadataOverride?.title ?? common.title ?? path.split("\\").pop()!.split("/").pop();
+	const duration = metadataOverride?.duration ?? format.duration;
+	const genre = metadataOverride?.genre ?? common.genre?.[0];
+	let artwork = metadataOverride?.artwork;
+
+	const coverImage = selectCover(common.picture);
+	if (!artwork && coverImage) {
+		const { data, type } = coverImage;
+		await localImages.localImageManagementService.associateImage(id, new Blob([data], { type }), {
+			width: 256,
+			height: 256,
+		});
+		artwork = { id };
 	}
 
 	return {
 		type: "local",
 
-		id: id ?? path,
-		artist: common.artist,
-		album: common.album,
-		title: common.title,
-		duration: format.duration,
-		artworkUrl: base64Artwork,
-		genre: common.genre?.[0],
+		id,
+		artist,
+		album,
+		title,
+		duration,
+		genre,
 
-		style: await generateSongStyle(base64Artwork),
+		artwork,
+		style: await generateSongStyle(artwork),
 
 		data: { path },
 	};
 }
 
 async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
-	const songCache = useIDBKeyval<LocalSong[]>("localMusicSongs", []);
-
-	// Wait for the songCache to load
-	await new Promise((resolve) => {
-		watch(songCache.isFinished, resolve, { once: true });
-	});
-
-	const songs = songCache.data;
-
 	if (clearCache) {
-		songs.value = [];
-	} else if (songs.value.length) {
-		return songs.value;
+		localSongs.value = [];
+	} else if (localSongs.value.length) {
+		return localSongs.value;
 	}
 
 	// Required for Documents folder to show up in Files
@@ -163,14 +179,14 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 			if (getPlatform() !== "android" && !audioMimeTypeFromPath(filePath)) continue;
 
 			const data = await readSongFile(filePath);
-			const song = await parseLocalSong(data, filePath, id);
-			songs.value.push(song);
+			const song = await parseLocalSong(data, filePath, id ?? filePath);
+			localSongs.value.push(song);
 		}
 	} catch (error) {
 		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
 	}
 
-	return songs.value;
+	return localSongs.value;
 }
 
 export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
@@ -213,7 +229,7 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	}
 
 	async handleRefresh(): Promise<void> {
-		getLocalSongs(true);
+		await getLocalSongs(true);
 	}
 
 	async handleInitialization(): Promise<void> {

@@ -7,6 +7,8 @@ import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayer
 import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 import { getPlatform } from "@/utils/os";
+import { LocalImageManagementService } from "@/services/LocalImageManagement";
+import { useLocalImages } from "./local-images";
 
 declare global {
 	namespace ElectronMusicPlayer {
@@ -20,6 +22,7 @@ declare global {
 	}
 }
 
+export type SongImage = { id: string; url?: never } | { id?: never; url: string };
 export interface Song<Type extends string, Data = never> {
 	type: Type;
 
@@ -30,7 +33,7 @@ export interface Song<Type extends string, Data = never> {
 	duration?: number;
 	genre?: string;
 
-	artworkUrl?: string;
+	artwork?: SongImage;
 	style: {
 		fgColor: string;
 		bgColor: string;
@@ -46,12 +49,15 @@ export type LocalSong = Song<"local", { path: string }>;
 export type AnySong = MusicKitSong | LocalSong;
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
-	const services = {
+	const localImages = useLocalImages();
+
+	const musicPlayerServices = {
 		local: new LocalMusicPlayerService(),
 		musickit: new MusicKitMusicPlayerService(),
 	};
+
 	const withAllServices = <T>(callback: (service: MusicPlayerService) => T) =>
-		Promise.all(Object.values(services).map(callback));
+		Promise.all(Object.values(musicPlayerServices).map(callback));
 
 	const queuedSongs = useIDBKeyval<AnySong[]>("queuedSongs", []);
 	const queueIndex = useStorage("queueIndex", 0);
@@ -59,7 +65,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	const currentService = computed<MusicPlayerService | undefined>(() => {
 		const song = currentSong.value;
-		return song && services[song.type];
+		return song && musicPlayerServices[song.type];
 	});
 
 	let autoPlay = false;
@@ -214,7 +220,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 						album: currentSong?.album ?? "",
 
 						// FIXME: Local artworks
-						cover: currentSong?.artworkUrl ?? "",
+						cover: (await localImages.getSongImageUrl(currentSong?.artwork)) ?? "",
 
 						hasClose: false,
 						dismissable: false,
@@ -267,7 +273,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		// Otherwise WKWebView on iOS does not respect the action handlers and shows the seek buttons
 		addMusicSessionActionHandlers();
 
-		watch([currentSong], ([song]) => {
+		watch([currentSong], async ([song]) => {
 			if (!song) {
 				navigator.mediaSession.metadata = null;
 				navigator.mediaSession.playbackState = "none";
@@ -278,7 +284,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 				title: song.title,
 				artist: song.artist,
 				album: song.album,
-				artwork: song.artworkUrl ? [{ src: song.artworkUrl }] : undefined,
+				artwork: song.artwork && [{ src: (await localImages.getSongImageUrl(song.artwork))! }],
 			});
 		});
 	}

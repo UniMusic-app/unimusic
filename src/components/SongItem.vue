@@ -6,8 +6,8 @@
 		v-on-long-press.prevent="[handleHoldPopover, { delay: 300 }]"
 		@contextmenu.prevent="createPopover"
 	>
-		<ion-thumbnail v-if="artworkUrl" slot="start">
-			<img :src="artworkUrl" :alt="`Artwork for song '${title}' by ${artist}`" />
+		<ion-thumbnail v-if="artwork" slot="start">
+			<song-img :src="artwork" :alt="`Artwork for song '${title}' by ${artist}`" />
 		</ion-thumbnail>
 
 		<ion-label class="ion-text-nowrap">
@@ -30,9 +30,10 @@ import { musicalNote as musicalNoteIcon, compass as compassIcon } from "ionicons
 import { Haptics } from "@capacitor/haptics";
 import SongItemMenu from "@/components/SongItemMenu.vue";
 import { vOnLongPress } from "@vueuse/components";
+import SongImg from "@/components/SongImg.vue";
 
 const { song } = defineProps<{ song: AnySong }>();
-const { title, artist, artworkUrl } = song;
+const { title, artist, artwork } = song;
 
 const musicPlayer = useMusicPlayer();
 
