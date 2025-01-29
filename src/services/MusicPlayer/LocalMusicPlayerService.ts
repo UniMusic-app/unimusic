@@ -13,8 +13,7 @@ import { generateSongStyle } from "@/utils/songs";
 import { useIDBKeyvalAsync } from "@/utils/vue";
 import { useLocalImages } from "@/stores/local-images";
 
-const localSongs = await useIDBKeyvalAsync<LocalSong[]>("localMusicSongs", []);
-const localImages = useLocalImages();
+const localSongs = useIDBKeyvalAsync<LocalSong[]>("localMusicSongs", []);
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
 	switch (getPlatform()) {
@@ -122,6 +121,7 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 	const coverImage = selectCover(common.picture);
 	if (!artwork && coverImage) {
 		const { data, type } = coverImage;
+		const localImages = useLocalImages();
 		await localImages.localImageManagementService.associateImage(id, new Blob([data], { type }), {
 			width: 256,
 			height: 256,
@@ -147,10 +147,12 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 }
 
 async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
+	const songs = await localSongs;
+
 	if (clearCache) {
-		localSongs.value = [];
-	} else if (localSongs.value.length) {
-		return localSongs.value;
+		songs.value = [];
+	} else if (songs.value.length) {
+		return songs.value;
 	}
 
 	// Required for Documents folder to show up in Files
@@ -180,13 +182,13 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 
 			const data = await readSongFile(filePath);
 			const song = await parseLocalSong(data, filePath, id ?? filePath);
-			localSongs.value.push(song);
+			songs.value.push(song);
 		}
 	} catch (error) {
 		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
 	}
 
-	return localSongs.value;
+	return songs.value;
 }
 
 export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
