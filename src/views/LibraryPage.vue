@@ -3,6 +3,7 @@
 		<app-header>
 			<template #toolbar>
 				<ion-title>Library</ion-title>
+				<ion-progress-bar v-if="isLoading" type="indeterminate" />
 			</template>
 		</app-header>
 
@@ -26,6 +27,7 @@ import {
 	IonRefresher,
 	IonRefresherContent,
 	RefresherCustomEvent,
+	IonProgressBar,
 } from "@ionic/vue";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
@@ -37,9 +39,12 @@ import { getUniqueSongId } from "@/utils/songs";
 const musicPlayer = useMusicPlayer();
 
 const songs = ref<AnySong[]>([]);
+const isLoading = ref(false);
 
 onMounted(async () => {
+	isLoading.value = true;
 	songs.value = await musicPlayer.librarySongs();
+	isLoading.value = false;
 });
 
 async function refreshLocalLibrary(event: RefresherCustomEvent) {

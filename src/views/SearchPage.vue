@@ -22,6 +22,8 @@
 						@ion-input="updateSearchHints"
 						@keyup.enter="searchFor($event.target.value)"
 					/>
+
+					<ion-progress-bar v-if="isLoading" type="indeterminate" />
 				</ion-toolbar>
 			</template>
 		</app-header>
@@ -66,32 +68,34 @@ import {
 	IonSearchbar,
 	IonLabel,
 	IonIcon,
+	IonProgressBar,
 } from "@ionic/vue";
 import { search as searchIcon } from "ionicons/icons";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
-import { useMusicKit } from "@/stores/musickit";
 import { ref } from "vue";
 import { useMusicPlayer, type AnySong } from "@/stores/music-player";
 import SongItem from "@/components/SongItem.vue";
 import { getUniqueSongId } from "@/utils/songs";
 
 const musicPlayer = useMusicPlayer();
-const musicKit = useMusicKit();
 const search = ref("");
 const isSearching = ref(false);
 const searchSuggestions = ref<string[]>([]);
 
 const songs = ref<AnySong[]>([]);
+const isLoading = ref(false);
 
 async function updateSearchHints(): Promise<void> {
 	searchSuggestions.value = await musicPlayer.searchHints(search.value);
 }
 
 async function searchFor(term: string): Promise<void> {
+	isLoading.value = true;
 	search.value = term;
 	isSearching.value = false;
 	await updateSearchResults();
+	isLoading.value = false;
 }
 
 async function updateSearchResults(): Promise<void> {
