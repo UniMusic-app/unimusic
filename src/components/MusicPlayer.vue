@@ -205,6 +205,11 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 }
 
 async function handleHoldPopover(index: number, song: AnySong, event: Event) {
+	// Disable on non-touch devices
+	if (!navigator.maxTouchPoints) {
+		return;
+	}
+
 	event.preventDefault();
 	await Haptics.impact().catch(() => {});
 	await createPopover(index, song, event);

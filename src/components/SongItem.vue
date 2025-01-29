@@ -41,6 +41,11 @@ function play() {
 }
 
 async function handleHoldPopover(event: Event) {
+	// Disable on non-touch devices
+	if (!navigator.maxTouchPoints) {
+		return;
+	}
+
 	event.preventDefault();
 	await Haptics.impact().catch(() => {});
 	await createPopover(event);
