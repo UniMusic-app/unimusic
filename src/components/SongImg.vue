@@ -1,6 +1,6 @@
 <template>
-	<ion-img v-if="lazy" :src="url" :alt />
-	<img v-else :src="url" :alt />
+	<ion-img v-if="lazy" :src="url" :alt :class="$props.class" />
+	<img v-else="!lazy" :src="url" :alt :class="$props.class" />
 </template>
 
 <script setup lang="ts">
