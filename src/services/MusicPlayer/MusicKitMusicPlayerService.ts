@@ -35,26 +35,30 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 			},
 		);
 
-		const results: MusicKitSong[] = [];
-
 		const songs = response?.data?.results?.songs?.data;
 		if (songs) {
-			for (const song of songs) {
-				const normalizedSong = await musicKitSong(song);
-				results.push(normalizedSong);
-			}
+			const promises = songs.map((song) => musicKitSong(song));
+			return await Promise.all(promises);
 		}
-
-		return results;
+		return [];
 	}
 
 	async handleRefresh(): Promise<void> {
 		// TODO: Unimplemented
 	}
 
-	async handleLibrarySongs(_offset?: number): Promise<MusicKitSong[]> {
-		// TODO: Unimplemented
-		return [];
+	async handleLibrarySongs(offset: number): Promise<MusicKitSong[]> {
+		const response = await this.music.api.music<
+			MusicKit.LibrarySongsResponse,
+			MusicKit.LibrarySongsQuery
+		>("/v1/me/library/songs", { limit: 25, offset });
+
+		const songs = response.data.data.filter((song) => {
+			// Filter out songs that cannot be played
+			return !!song.attributes?.playParams;
+		});
+		const promises = songs.map((song) => musicKitSong(song));
+		return await Promise.all(promises);
 	}
 
 	#timeUpdateCallback = () => {

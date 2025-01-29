@@ -1,24 +1,24 @@
 import { AnySong, LocalSong, MusicKitSong } from "@/stores/music-player";
 import { intensity } from "./color";
 
-export async function musicKitSong(song: MusicKit.Songs): Promise<MusicKitSong> {
-	const artworkUrl =
-		song.attributes?.artwork && MusicKit.formatArtworkURL(song.attributes?.artwork, 256, 256);
+export async function musicKitSong(
+	song: MusicKit.Songs | MusicKit.LibrarySongs,
+): Promise<MusicKitSong> {
+	const attributes = song.attributes;
+	const artworkUrl = attributes?.artwork && MusicKit.formatArtworkURL(attributes?.artwork, 256, 256);
 	return {
 		type: "musickit",
 
 		id: song.id,
-		title: song.attributes?.name,
-		artist: song.attributes?.artistName,
-		album: song.attributes?.albumName,
-		duration: song.attributes?.durationInMillis && song.attributes?.durationInMillis / 1000,
+		title: attributes?.name,
+		artist: attributes?.artistName,
+		album: attributes?.albumName,
+		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
 
 		artworkUrl,
 		style: await generateSongStyle(artworkUrl),
 
-		data: {
-			bgColor: song.attributes?.artwork.bgColor,
-		},
+		data: {},
 	};
 }
 

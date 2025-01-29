@@ -40,7 +40,7 @@ export interface Song<Type extends string, Data = never> {
 	data: Data;
 }
 
-export type MusicKitSong = Song<"musickit", { bgColor?: string }>;
+export type MusicKitSong = Song<"musickit", {}>;
 export type LocalSong = Song<"local", { path: string }>;
 
 export type AnySong = MusicKitSong | LocalSong;
