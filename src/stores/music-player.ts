@@ -7,7 +7,6 @@ import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayer
 import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 import { getPlatform } from "@/utils/os";
-import { LocalImageManagementService } from "@/services/LocalImageManagement";
 import { useLocalImages } from "./local-images";
 
 declare global {
@@ -23,7 +22,7 @@ declare global {
 }
 
 export type SongImage = { id: string; url?: never } | { id?: never; url: string };
-export interface Song<Type extends string, Data = never> {
+export interface Song<Type extends string, Data = {}> {
 	type: Type;
 
 	id: string;
@@ -43,7 +42,7 @@ export interface Song<Type extends string, Data = never> {
 	data: Data;
 }
 
-export type MusicKitSong = Song<"musickit", {}>;
+export type MusicKitSong = Song<"musickit">;
 export type LocalSong = Song<"local", { path: string }>;
 
 export type AnySong = MusicKitSong | LocalSong;
@@ -51,10 +50,17 @@ export type AnySong = MusicKitSong | LocalSong;
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
-	const musicPlayerServices = {
+	const musicPlayerServices: Record<string, MusicPlayerService> = {
 		local: new LocalMusicPlayerService(),
-		musickit: new MusicKitMusicPlayerService(),
 	};
+
+	function addMusicPlayerService(type: string, service: MusicPlayerService) {
+		musicPlayerServices[type] = service;
+	}
+
+	function removeMusicPlayerService(type: string) {
+		delete musicPlayerServices[type];
+	}
 
 	const withAllServices = <T>(callback: (service: MusicPlayerService) => T) =>
 		Promise.all(Object.values(musicPlayerServices).map(callback));
@@ -341,5 +347,8 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		searchHints,
 		librarySongs,
 		refreshServices,
+
+		addMusicPlayerService,
+		removeMusicPlayerService,
 	};
 });

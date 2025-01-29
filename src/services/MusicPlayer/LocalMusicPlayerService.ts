@@ -161,6 +161,7 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 		const { Filesystem, Directory, Encoding } = await import("@capacitor/filesystem");
 
 		try {
+			await Filesystem.requestPermissions();
 			await Filesystem.writeFile({
 				path: "/readme.txt",
 				data:

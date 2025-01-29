@@ -1,18 +1,26 @@
 import { MusicKitAuthorizationService } from "@/services/MusicKitAuthorization";
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import { useMusicPlayer } from "./music-player";
+import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 
 export const useMusicKit = defineStore("MusicKit", () => {
+	const musicPlayer = useMusicPlayer();
+
 	const { promise: musicPromise, resolve: resolveMusicPromise } =
 		Promise.withResolvers<MusicKit.MusicKitInstance>();
 	const authorized = ref(false);
 
 	const authService = new MusicKitAuthorizationService();
 	authService.addEventListener("authorized", () => {
+		musicPlayer.addMusicPlayerService("musickit", new MusicKitMusicPlayerService());
 		resolveMusicPromise(MusicKit.getInstance()!);
 		authorized.value = true;
 	});
-	authService.addEventListener("unauthorized", () => (authorized.value = false));
+	authService.addEventListener("unauthorized", () => {
+		musicPlayer.removeMusicPlayerService("musickit");
+		authorized.value = false;
+	});
 	authService.passivelyAuthorize();
 
 	async function withMusic<T>(callback: (music: MusicKit.MusicKitInstance) => T): Promise<T> {
