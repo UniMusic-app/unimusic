@@ -7,7 +7,7 @@
 import { useLocalImages } from "@/stores/local-images";
 import { SongImage } from "@/stores/music-player";
 import { IonImg } from "@ionic/vue";
-import { ref } from "vue";
+import { ref, watchEffect } from "vue";
 
 const localImages = useLocalImages();
 const {
@@ -17,7 +17,7 @@ const {
 } = defineProps<{ lazy?: boolean; src: SongImage | undefined; alt?: string }>();
 
 const url = ref<string>();
-localImages.getSongImageUrl(src).then((imgUrl) => {
-	url.value = imgUrl;
+watchEffect(async () => {
+	url.value = await localImages.getSongImageUrl(src);
 });
 </script>
