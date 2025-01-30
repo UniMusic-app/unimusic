@@ -1,11 +1,14 @@
-import { AnySong } from "@/stores/music-player";
 import { Service } from "@/services/Service";
+import { useSongMetadata } from "@/stores/metadata";
 import { useMusicPlayer } from "@/stores/music-player";
+import type { AnySong, SongImage } from "@/stores/music-player";
+import { useIDBKeyvalAsync } from "@/utils/vue";
 
 export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends Service {
 	abstract logName: string;
 
 	store = useMusicPlayer();
+	metadataStore = useSongMetadata();
 	initialized = false;
 	initialPlayed = false;
 	song?: Song;
@@ -42,7 +45,23 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 	async librarySongs(offset = 0): Promise<Song[]> {
 		this.log("librarySongs");
 		await this.initialize();
-		return await this.handleLibrarySongs(offset);
+		const songs = await this.handleLibrarySongs(offset);
+		for (const song of songs) {
+			this.applyMetadata(song);
+		}
+		return songs;
+	}
+
+	async handleApplyMetadata(song: Song): Promise<void> {
+		const metadata = await this.metadataStore.getMetadata(song);
+		if (metadata) {
+			this.log("Applied metadata override for", song.id);
+			Object.assign(song, metadata satisfies Partial<AnySong>);
+		}
+	}
+	async applyMetadata(song: Song): Promise<void> {
+		this.log("applyMetadata");
+		this.handleApplyMetadata(song);
 	}
 
 	// TODO: Maybe there should be specific refresh methods for specific things

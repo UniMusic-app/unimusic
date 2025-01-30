@@ -87,23 +87,7 @@ async function readSongFile(path: string): Promise<Uint8Array> {
 	}
 }
 
-interface MetadataOverride {
-	artist?: string;
-	album?: string;
-	title?: string;
-	duration?: number;
-	artwork?: SongImage;
-	genre?: string;
-}
-
-interface MetadataOverrides {
-	[id: string]: MetadataOverride | undefined;
-}
-
 async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Promise<LocalSong> {
-	const metadataOverrides = await useIDBKeyvalAsync<MetadataOverrides>("metadataOverrides", {});
-	const metadataOverride = metadataOverrides.value[id];
-
 	const metadata = await parseBuffer(buffer, {
 		path,
 		mimeType: audioMimeTypeFromPath(path),
@@ -111,15 +95,14 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 
 	const { common, format } = metadata;
 
-	const artist = metadataOverride?.artist ?? common.artist;
-	const album = metadataOverride?.album ?? common.album;
-	const title = metadataOverride?.title ?? common.title ?? path.split("\\").pop()!.split("/").pop();
-	const duration = metadataOverride?.duration ?? format.duration;
-	const genre = metadataOverride?.genre ?? common.genre?.[0];
-	let artwork = metadataOverride?.artwork;
-
+	const artist = common.artist;
+	const album = common.album;
+	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
+	const duration = format.duration;
+	const genre = common.genre?.[0];
+	let artwork: SongImage | undefined;
 	const coverImage = selectCover(common.picture);
-	if (!artwork && coverImage) {
+	if (coverImage) {
 		const { data, type } = coverImage;
 		const localImages = useLocalImages();
 		await localImages.localImageManagementService.associateImage(id, new Blob([data], { type }), {

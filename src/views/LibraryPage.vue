@@ -31,7 +31,7 @@ import {
 } from "@ionic/vue";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
-import { onMounted, ref } from "vue";
+import { onUpdated, ref } from "vue";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import SongItem from "@/components/SongItem.vue";
 import { getUniqueSongId } from "@/utils/songs";
@@ -41,7 +41,7 @@ const musicPlayer = useMusicPlayer();
 const songs = ref<AnySong[]>([]);
 const isLoading = ref(false);
 
-onMounted(async () => {
+onUpdated(async () => {
 	isLoading.value = true;
 	songs.value = await musicPlayer.librarySongs();
 	isLoading.value = false;

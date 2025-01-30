@@ -61,7 +61,6 @@ async function createPopover(event: Event) {
 		reference: "event",
 		alignment: "center",
 		side: "right",
-		dismissOnSelect: true,
 		cssClass: "song-item-popover",
 		size: "auto",
 	});
