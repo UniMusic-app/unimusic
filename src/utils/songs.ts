@@ -17,6 +17,7 @@ export async function musicKitSong(
 		artist: attributes?.artistName,
 		album: attributes?.albumName,
 		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
+		genre: attributes?.genreNames?.[0],
 
 		artwork,
 		style: await generateSongStyle(artwork),
