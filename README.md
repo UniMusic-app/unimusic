@@ -102,17 +102,17 @@ These steps are needed for every platform to work properly
 3. Setup ionic and install dependencies
 
 ```sh
-pnpm install -g @ionic/cli # Install ionic cli globally
-ionic config set -g npmClient pnpm # Make ionic use pnpm
-pnpm install # Install all project dependencies
+pnpm install -g @ionic/cli          # Install ionic cli globally
+ionic config set -g npmClient pnpm  # Make ionic use pnpm
+pnpm install                        # Install all project dependencies
 ```
 
 ### Web
 
 ```sh
-ionic serve			   # Run the development server
-ionic serve --external # add --external if you want to host it to other devices on your network
-ionic build			   # Build the web app into dist/web
+ionic serve             # Run the development server
+ionic serve --external  # add --external if you want to host it to other devices on your network
+ionic build             # Build the web app into dist/web
 ```
 
 ### Electron
@@ -123,9 +123,9 @@ ionic build			   # Build the web app into dist/web
    - [My commit message explaining it a bit](https://github.com/Im-Beast/music-player/commit/cb5ba29462bd881608e62efef0417530b1cb6c8b)
 
 ```sh
-pnpm electron-dev			   # Run the app with development server
-pnpm electron-build			   # Build the electron app into dist/electron
-pnpm electron-preview		   # Preview how the app will look like in production mode
+pnpm electron-dev     # Run the app with development server
+pnpm electron-build   # Build the electron app into dist/electron
+pnpm electron-preview # Preview how the app will look like in production mode
 ```
 
 ### Mobile
