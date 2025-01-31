@@ -64,7 +64,8 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 		this.handleApplyMetadata(song);
 	}
 
-	// TODO: Maybe there should be specific refresh methods for specific things
+	// TODO: There should be specific refresh methods for specific things
+	//		 e.g. handleSongRefresh(song.id) which would sre-fetch song's data
 	abstract handleRefresh(): Promise<void>;
 	async refresh(): Promise<void> {
 		this.log("refresh");

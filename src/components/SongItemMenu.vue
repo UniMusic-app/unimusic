@@ -41,36 +41,35 @@ import SongMenu from "@/components/SongMenu.vue";
 
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import SongMetadataModal from "@/components/SongMetadataModal.vue";
-import { useSongMetadata } from "@/stores/metadata";
+import { MetadataOverride, useSongMetadata } from "@/stores/metadata";
 
 const { song } = defineProps<{ song: AnySong }>();
 
 const musicPlayer = useMusicPlayer();
 
-async function playNow() {
+async function playNow(): Promise<void> {
 	musicPlayer.addToQueue(song, musicPlayer.queueIndex);
 	await popoverController.dismiss();
 }
 
-async function playNext() {
+async function playNext(): Promise<void> {
 	musicPlayer.addToQueue(song, musicPlayer.queueIndex + 1);
 	await popoverController.dismiss();
 }
 
-async function addToQueue() {
+async function addToQueue(): Promise<void> {
 	musicPlayer.addToQueue(song);
 	await popoverController.dismiss();
 }
 
 const songMetadata = useSongMetadata();
-const metadata = songMetadata.getReactiveMetadata(song);
-async function modifyMetadata() {
+async function modifyMetadata(): Promise<void> {
 	const modal = await modalController.create({
 		component: SongMetadataModal,
-		componentProps: { metadata, song },
+		componentProps: { song },
 
-		async canDismiss({ modified }) {
-			if (!modified) {
+		async canDismiss(data?: { metadata?: MetadataOverride; modified?: boolean }) {
+			if (data && "modified" in data && !data.modified) {
 				return true;
 			}
 
@@ -88,7 +87,7 @@ async function modifyMetadata() {
 
 			switch (info?.data?.action) {
 				case "save":
-					await songMetadata.setMetadata(song, metadata);
+					await songMetadata.setMetadata(song, data!.metadata!);
 					return true;
 				case "discard":
 					return true;

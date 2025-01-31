@@ -54,11 +54,15 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		local: new LocalMusicPlayerService(),
 	};
 
-	function addMusicPlayerService(type: string, service: MusicPlayerService) {
+	function addMusicPlayerService(type: string, service: MusicPlayerService): void {
 		musicPlayerServices[type] = service;
 	}
 
-	function removeMusicPlayerService(type: string) {
+	function getMusicPlayerService(type: string): MusicPlayerService | void {
+		return musicPlayerServices[type];
+	}
+
+	function removeMusicPlayerService(type: string): void {
 		delete musicPlayerServices[type];
 	}
 
@@ -350,6 +354,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		refreshServices,
 
 		addMusicPlayerService,
+		getMusicPlayerService,
 		removeMusicPlayerService,
 	};
 });

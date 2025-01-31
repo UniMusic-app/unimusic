@@ -107,7 +107,6 @@ export class LocalImageManagementService extends Service {
 		if (imageInfo?.url) {
 			URL.revokeObjectURL(imageInfo.url);
 			imageInfo.url = undefined;
-			console.log(localImageInfo.value[id]?.url);
 			return true;
 		}
 

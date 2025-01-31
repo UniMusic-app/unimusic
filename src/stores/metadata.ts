@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
-import { AnySong, SongImage } from "./music-player";
+import { AnySong, SongImage, useMusicPlayer } from "./music-player";
 import { useIDBKeyvalAsync } from "@/utils/vue";
-import { reactive, Reactive } from "vue";
+import { reactive, Reactive, toRaw } from "vue";
 
 export interface MetadataOverride {
 	artist?: string;
@@ -21,11 +21,9 @@ export const useSongMetadata = defineStore("SongMetadata", () => {
 
 	function getReactiveMetadata(song: AnySong): Reactive<MetadataOverride> {
 		const metadata = reactive<MetadataOverride>({});
-
 		metadataOverridesPromise.then((metadataOverrides) => {
 			Object.assign(metadata, metadataOverrides.value[song.id]);
 		});
-
 		return metadata;
 	}
 
@@ -36,13 +34,13 @@ export const useSongMetadata = defineStore("SongMetadata", () => {
 
 	async function setMetadata(song: AnySong, metadata: MetadataOverride): Promise<void> {
 		const metadataOverrides = await metadataOverridesPromise;
-		metadataOverrides.value[song.id] = metadata;
+		metadataOverrides.value[song.id] = toRaw(metadata);
 	}
 
 	async function assignMetadata(song: AnySong, metadata: MetadataOverride): Promise<void> {
 		const metadataOverrides = await metadataOverridesPromise;
 		const metadataOverride = (metadataOverrides.value[song.id] ??= {});
-		Object.assign(metadataOverride, metadata);
+		Object.assign(metadataOverride, toRaw(metadata));
 	}
 
 	async function resetMetadata(song: AnySong): Promise<void> {
