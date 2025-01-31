@@ -76,10 +76,11 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	let autoPlay = false;
 	watchDebounced(
-		currentSong,
-		async (song) => {
+		[currentSong, currentService],
+		async ([song, service]) => {
+			if (!service) return;
+
 			if (song) {
-				const service = currentService.value!;
 				await service.changeSong(song!);
 				if (autoPlay) {
 					await service.play();
