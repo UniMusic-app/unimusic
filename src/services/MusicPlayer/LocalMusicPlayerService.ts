@@ -49,6 +49,11 @@ async function* traverseDirectory(path: string): AsyncGenerator<{ filePath: stri
 		});
 
 		for (const file of files) {
+			// Ignore deleted files
+			if (file.name === ".Trash") {
+				continue;
+			}
+
 			const filePath = `${path}/${file.name}`;
 
 			if (file.type === "directory") {
