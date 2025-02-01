@@ -1,5 +1,5 @@
 <template>
-	<song-menu :song>
+	<song-menu :song :popover>
 		<ion-item :button="true" :detail="false" @click="playNow">
 			<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
 			Play now
@@ -28,7 +28,11 @@ import SongMenu from "@/components/SongMenu.vue";
 
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
-const { song, index } = defineProps<{ song: AnySong; index: number }>();
+const { song, index, popover } = defineProps<{
+	song: AnySong;
+	index: number;
+	popover: HTMLIonPopoverElement;
+}>();
 
 const musicPlayer = useMusicPlayer();
 

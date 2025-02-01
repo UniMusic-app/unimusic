@@ -40,7 +40,7 @@
 							button
 							:detail="false"
 							:class="{ current: i === queueIndex }"
-							v-on-long-press.prevent="[(event) => handleHoldPopover(i, song, event), { delay: 300 }]"
+							v-on-long-press.prevent="[(event) => handleHoldPopover(i, song, event), { delay: 200 }]"
 							@contextmenu.prevent="createPopover(i, song, $event)"
 							@click.self="queueIndex = i"
 						>
@@ -180,7 +180,7 @@ import { secondsToMMSS } from "@/utils/time";
 import { getUniqueSongId, songTypeDisplayName } from "@/utils/songs";
 import { useIntersectionObserver } from "@vueuse/core";
 import { vOnLongPress } from "@vueuse/components";
-import { Haptics } from "@capacitor/haptics";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 const musicPlayer = useMusicPlayer();
 const {
@@ -212,7 +212,7 @@ async function handleHoldPopover(index: number, song: AnySong, event: Event) {
 	}
 
 	event.preventDefault();
-	await Haptics.impact().catch(() => {});
+	await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
 	await createPopover(index, song, event);
 }
 
@@ -221,15 +221,20 @@ async function createPopover(index: number, song: AnySong, event: Event) {
 		component: MusicPlayerSongMenu,
 		event,
 		componentProps: { song, index },
+
 		arrow: false,
 		reference: "event",
-		alignment: "center",
+		alignment: "start",
 		side: "right",
-		dismissOnSelect: true,
-		cssClass: "song-item-popover",
-		size: "auto",
-	});
 
+		// Built-in popover animations feel weird, so we have our own
+		cssClass: "song-item-popover",
+		backdropDismiss: false,
+		dismissOnSelect: false,
+		animated: false,
+		mode: "ios",
+	});
+	popover.componentProps!.popover = popover;
 	await popover.present();
 }
 

@@ -3,7 +3,7 @@
 		button
 		:detail="false"
 		@click.self="play"
-		v-on-long-press.prevent="[handleHoldPopover, { delay: 300 }]"
+		v-on-long-press.prevent="[handleHoldPopover, { delay: 200 }]"
 		@contextmenu.prevent="createPopover"
 	>
 		<ion-thumbnail v-if="artwork" slot="start">
@@ -27,10 +27,11 @@ import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import { songTypeDisplayName } from "@/utils/songs";
 import { IonItem, IonThumbnail, IonLabel, IonIcon, IonNote, popoverController } from "@ionic/vue";
 import { musicalNote as musicalNoteIcon, compass as compassIcon } from "ionicons/icons";
-import { Haptics } from "@capacitor/haptics";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import SongItemMenu from "@/components/SongItemMenu.vue";
 import { vOnLongPress } from "@vueuse/components";
 import SongImg from "@/components/SongImg.vue";
+import { ref } from "vue";
 
 const { song } = defineProps<{ song: AnySong }>();
 const { title, artist, artwork } = song;
@@ -46,9 +47,9 @@ async function handleHoldPopover(event: Event) {
 	if (!navigator.maxTouchPoints) {
 		return;
 	}
-
 	event.preventDefault();
-	await Haptics.impact().catch(() => {});
+
+	await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
 	await createPopover(event);
 }
 
@@ -57,14 +58,19 @@ async function createPopover(event: Event) {
 		component: SongItemMenu,
 		event,
 		componentProps: { song },
+
 		arrow: false,
 		reference: "event",
-		alignment: "center",
+		alignment: "start",
 		side: "right",
-		cssClass: "song-item-popover",
-		size: "auto",
-	});
 
+		// Built-in popover animations feel weird, so we have our own
+		cssClass: "song-item-popover",
+		backdropDismiss: false,
+		dismissOnSelect: false,
+		animated: false,
+	});
+	popover.componentProps!.popover = popover;
 	await popover.present();
 }
 </script>

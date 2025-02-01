@@ -1,5 +1,5 @@
 <template>
-	<ion-content :scroll-y="false" class="ion-padding">
+	<ion-content :scroll-y="false" v-on-click-outside="dismiss">
 		<div class="preview">
 			<song-img
 				v-if="song.artwork"
@@ -14,36 +14,112 @@
 			</div>
 		</div>
 
-		<ion-list :inset="true" class="actions">
+		<ion-list :inset="true" class="actions" @click="dismiss">
 			<slot />
 		</ion-list>
 	</ion-content>
 </template>
 
 <script setup lang="ts">
-import { IonContent, IonList } from "@ionic/vue";
+import { IonContent, IonList, popoverController } from "@ionic/vue";
 import { AnySong } from "@/stores/music-player";
 import SongImg from "@/components/SongImg.vue";
+import { vOnClickOutside } from "@vueuse/components";
+import { onMounted } from "vue";
 
-const { song } = defineProps<{ song: AnySong }>();
+const { song, popover } = defineProps<{ song: AnySong; popover: HTMLIonPopoverElement }>();
+
+// Clamp popover position to the boundaries of the screen
+onMounted(async () => {
+	const content = popover.shadowRoot!.querySelector("[part=content]") as HTMLDivElement;
+
+	// Wait for the animations to finish to get final sizes and positions
+	await new Promise((r) => (content.onanimationend = r));
+
+	const { top, left, width, height } = content.getBoundingClientRect();
+	const { clientWidth, clientHeight } = document.body;
+
+	if (top < 0) {
+		content.style.top = "0px";
+	} else if (top + height > clientHeight) {
+		content.style.top = `${clientHeight - height}px`;
+	}
+
+	if (left < 0) {
+		content.style.left = "0px";
+	} else if (left + width > clientWidth) {
+		content.style.left = `${clientWidth - width}px`;
+	}
+});
+
+async function dismiss() {
+	popover.classList.add("dismissed");
+	setTimeout(async () => {
+		await popover.dismiss();
+	}, 350);
+}
 </script>
 
 <style global>
+@keyframes song-menu-blur-in {
+	from {
+		backdrop-filter: blur(0px);
+	}
+
+	to {
+		backdrop-filter: blur(24px);
+	}
+}
+
+@keyframes song-menu-fly-in {
+	from {
+		transform: scale(0%);
+	}
+
+	to {
+		transform: scale(100%);
+	}
+}
+
 .song-item-popover {
 	--width: min(270px, 65vw);
 	--background: transparent;
-	--backdrop-opacity: 0.4;
-	/** TODO: clamp popover to the boundaries of the screen in case it gets offset too much */
-	--offset-x: -75px;
-	--offset-y: -25px;
 	--box-shadow: none;
 
-	&::part(content) {
-		border: none;
+	/** On mobile devices offset it, so that finger sits closer to the buttons */
+	--offset-x: -75px;
+	--offset-y: -50px;
+	--transform-origin: top center;
+
+	/** On computers people expect context menus to open on the corner */
+	@media (pointer: fine) {
+		--offset-x: 0px;
+		--offset-y: 0px;
+		--transform-origin: top left;
 	}
 
+	animation: song-menu-blur-in 350ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+	&::part(content) {
+		transition: all 250ms;
+		border: none;
+		transform-origin: var(--transform-origin);
+		animation: song-menu-fly-in 250ms ease-out;
+	}
 	&::part(backdrop) {
-		backdrop-filter: blur(12px) !important;
+		transition: opacity 300ms ease-out;
+		opacity: 30% !important;
+	}
+
+	&.dismissed {
+		animation: song-menu-blur-in 350ms ease-out reverse forwards;
+		&::part(content) {
+			opacity: 0;
+			transform: scale(0);
+		}
+
+		&::part(backdrop) {
+			opacity: 0 !important;
+		}
 	}
 }
 </style>
@@ -51,6 +127,7 @@ const { song } = defineProps<{ song: AnySong }>();
 <style scoped>
 ion-content {
 	--background: transparent;
+	--item-color: color-mix(in srgb, var(--ion-item-background, #fff) 50%, transparent);
 
 	& > .preview {
 		display: flex;
@@ -58,9 +135,9 @@ ion-content {
 		justify-content: space-between;
 		border-radius: 12px;
 		padding: 12px;
-		background-color: var(--ion-item-background, #fff);
-		box-shadow: 0 0 3px var(--ion-color-dark, #fff);
 		margin-bottom: 12px;
+		user-select: none;
+		background-color: var(--item-color);
 
 		& > .artwork {
 			width: 35%;
@@ -95,11 +172,14 @@ ion-content {
 	}
 
 	& > .actions {
-		box-shadow: 0 0 3px var(--ion-color-dark, #fff);
 		border-radius: 12px;
 		background: transparent;
 		padding-block: 0;
 		margin: 0;
+
+		:global(& > ion-item) {
+			--background: var(--item-color);
+		}
 	}
 }
 </style>
