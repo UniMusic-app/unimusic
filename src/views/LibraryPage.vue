@@ -48,7 +48,7 @@ onUpdated(async () => {
 });
 
 async function refreshLocalLibrary(event: RefresherCustomEvent) {
-	await musicPlayer.refreshServices();
+	await musicPlayer.refreshLibrarySongs();
 	songs.value = await musicPlayer.librarySongs();
 	await event.target.complete();
 }

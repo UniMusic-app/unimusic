@@ -101,7 +101,7 @@ function modify<K extends keyof MetadataOverride>(key: K, value: MetadataOverrid
 }
 
 const imagePicker = ref<HTMLInputElement>();
-async function changeArtwork(event: Event) {
+async function changeArtwork() {
 	const { files } = imagePicker.value!;
 
 	if (!files?.length) {

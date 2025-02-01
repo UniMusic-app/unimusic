@@ -61,15 +61,28 @@ export abstract class MusicPlayerService<Song extends AnySong = AnySong> extends
 	}
 	async applyMetadata(song: Song): Promise<void> {
 		this.log("applyMetadata");
-		this.handleApplyMetadata(song);
+		await this.handleApplyMetadata(song);
 	}
 
-	// TODO: There should be specific refresh methods for specific things
-	//		 e.g. handleSongRefresh(song.id) which would sre-fetch song's data
-	abstract handleRefresh(): Promise<void>;
-	async refresh(): Promise<void> {
+	abstract handleRefreshLibrarySongs(): Promise<void>;
+	async refreshLibrarySongs(): Promise<void> {
 		this.log("refresh");
-		await this.handleRefresh();
+		await this.handleRefreshLibrarySongs();
+	}
+
+	abstract handleRefreshSong(song: Song): Promise<Song>;
+	async refreshSong(song: Song): Promise<void> {
+		const refreshed = await this.handleRefreshSong(song);
+		if (song.id !== refreshed.id) {
+			throw new Error("Refreshing song unexpectedly changed its id");
+		}
+		await this.applyMetadata(refreshed);
+
+		for (const [i, song] of this.store.queuedSongs.entries()) {
+			if (song.id === refreshed.id) {
+				this.store.queuedSongs[i] = refreshed;
+			}
+		}
 	}
 
 	async changeSong(song: Song): Promise<void> {

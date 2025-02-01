@@ -218,8 +218,16 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		return getLocalSongs();
 	}
 
-	async handleRefresh(): Promise<void> {
+	async handleRefreshLibrarySongs(): Promise<void> {
+		this.#fuse = undefined;
 		await getLocalSongs(true);
+	}
+
+	async handleRefreshSong(song: LocalSong): Promise<LocalSong> {
+		const filePath = song.data.path;
+		const data = await readSongFile(filePath);
+		const refreshed = await parseLocalSong(data, filePath, song.id ?? filePath);
+		return refreshed;
 	}
 
 	async handleInitialization(): Promise<void> {

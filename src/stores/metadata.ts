@@ -29,7 +29,8 @@ export const useSongMetadata = defineStore("SongMetadata", () => {
 
 	async function getMetadata(song: AnySong): Promise<MetadataOverride> {
 		const metadataOverrides = await metadataOverridesPromise;
-		return (metadataOverrides.value[song.id] ??= {});
+		const metadata = (metadataOverrides.value[song.id] ??= {});
+		return toRaw(metadata);
 	}
 
 	async function setMetadata(song: AnySong, metadata: MetadataOverride): Promise<void> {

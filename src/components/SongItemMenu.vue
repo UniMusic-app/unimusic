@@ -88,6 +88,7 @@ async function modifyMetadata(): Promise<void> {
 			switch (info?.data?.action) {
 				case "save":
 					await songMetadata.setMetadata(song, data!.metadata!);
+					await musicPlayer.refreshSong(song);
 					return true;
 				case "discard":
 					return true;

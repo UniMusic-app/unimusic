@@ -1,6 +1,6 @@
 import { useMusicKit } from "@/stores/musickit";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
-import { musicKitSong } from "@/utils/songs";
+import { musicKitSong, musicKitSongIdType } from "@/utils/songs";
 import { MusicKitSong } from "@/stores/music-player";
 
 export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong> {
@@ -43,8 +43,27 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		return [];
 	}
 
-	async handleRefresh(): Promise<void> {
+	async handleRefreshLibrarySongs(): Promise<void> {
 		// TODO: Unimplemented
+	}
+
+	async handleRefreshSong(song: MusicKitSong): Promise<MusicKitSong> {
+		const idType = musicKitSongIdType(song);
+
+		const response = await this.music.api.music<
+			MusicKit.SongsResponse | MusicKit.LibrarySongsResponse
+		>(
+			idType === "catalog"
+				? `/v1/catalog/{{storefrontId}}/songs/${song.id}`
+				: `/v1/me/library/songs/${song.id}`,
+		);
+
+		const [refreshed] = response.data.data;
+		if (!refreshed) {
+			throw new Error(`Failed to find a song with id: ${song.id}`);
+		}
+
+		return musicKitSong(refreshed);
 	}
 
 	async handleLibrarySongs(offset: number): Promise<MusicKitSong[]> {

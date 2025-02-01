@@ -202,8 +202,12 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		return allSongs.flat();
 	}
 
-	async function refreshServices(): Promise<void> {
-		await withAllServices((service) => service.refresh());
+	async function refreshLibrarySongs(): Promise<void> {
+		await withAllServices((service) => service.refreshLibrarySongs());
+	}
+
+	async function refreshSong(song: AnySong): Promise<void> {
+		await musicPlayerServices[song.type].refreshSong(song);
 	}
 
 	//#region System Music Controls
@@ -351,7 +355,8 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		searchSongs,
 		searchHints,
 		librarySongs,
-		refreshServices,
+		refreshSong,
+		refreshLibrarySongs,
 
 		addMusicPlayerService,
 		getMusicPlayerService,

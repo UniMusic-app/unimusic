@@ -26,6 +26,13 @@ export async function musicKitSong(
 	};
 }
 
+export function musicKitSongIdType(song: MusicKitSong): "library" | "catalog" {
+	if (!isNaN(Number(song.id))) {
+		return "catalog";
+	}
+	return "library";
+}
+
 export function songTypeDisplayName(song: AnySong): string {
 	switch (song.type) {
 		case "local":
