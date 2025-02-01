@@ -150,6 +150,14 @@ async function close(): Promise<void> {
 </script>
 
 <style scoped>
+ion-list {
+	background: transparent;
+
+	& > ion-item {
+		--background: transparent;
+	}
+}
+
 .artwork-picker {
 	& > img {
 		margin-inline: auto;
