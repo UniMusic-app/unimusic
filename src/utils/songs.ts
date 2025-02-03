@@ -1,14 +1,16 @@
-import { AnySong, LocalSong, MusicKitSong, SongImage } from "@/stores/music-player";
+import { AnySong, LocalSong, MusicKitSong, SongImage, YouTubeSong } from "@/stores/music-player";
 import { intensity } from "./color";
 import { useLocalImages } from "@/stores/local-images";
+import { YTNodes } from "youtubei.js/agnostic";
+
+// TODO: Move all the specific methods into their services to keep things in one place
 
 export async function musicKitSong(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
 ): Promise<MusicKitSong> {
 	const attributes = song.attributes;
-	const artwork = attributes?.artwork && {
-		url: MusicKit.formatArtworkURL(attributes?.artwork, 256, 256),
-	};
+	const artworkUrl = attributes?.artwork;
+	const artwork = artworkUrl && { url: MusicKit.formatArtworkURL(artworkUrl, 256, 256) };
 	return {
 		type: "musickit",
 
@@ -39,6 +41,8 @@ export function songTypeDisplayName(song: AnySong): string {
 			return "Local";
 		case "musickit":
 			return "Apple Music";
+		case "youtube":
+			return "YouTube";
 	}
 }
 
