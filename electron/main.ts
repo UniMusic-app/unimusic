@@ -33,7 +33,7 @@ async function createWindow() {
 
 	session.webRequest.onHeadersReceived((details, callback) => {
 		const CSP = `
-		default-src 'self' blob: 'unsafe-inline' https://*.apple.com https://*.youtube.com;
+		default-src 'self' blob: data: 'unsafe-inline' 'unsafe-eval' https://*.apple.com https://*.youtube.com https://*.googlevideo.com https://*.googleapis.com;
 		img-src 'self' blob: data: *;
 		`;
 
