@@ -122,17 +122,17 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 		const results = await innertube.music.search(term, { type: "song" });
 		if (!results.contents) return [];
 
-		const promisedSongs: Promise<YouTubeSong>[] = [];
+		const songs: Promise<YouTubeSong>[] = [];
 		for (const result of results.contents) {
 			if (!result.is(YTNodes.MusicShelf)) continue;
 
 			for (const item of result.contents) {
 				if (!item.id) continue;
-
-				promisedSongs.push(innertube.music.getInfo(item.id).then(youtubeSong));
+				const song = innertube.music.getInfo(item.id).then(youtubeSong);
+				songs.push(song);
 			}
 		}
-		return await Promise.all(promisedSongs);
+		return await Promise.all(songs);
 	}
 
 	async handleSearchHints(term: string): Promise<string[]> {
@@ -149,8 +149,24 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 	}
 
 	async handleLibrarySongs(offset: number): Promise<YouTubeSong[]> {
-		// TODO: Unimplemented
-		return [];
+		// TODO: Handle continuation
+		// TODO: Requires authorization
+		const innertube = this.innertube!;
+
+		const library = await innertube.music.getLibrary();
+		if (!library.contents) return [];
+
+		const songs: Promise<YouTubeSong>[] = [];
+		for (const result of library.contents) {
+			if (!result.is(YTNodes.MusicShelf)) continue;
+
+			for (const item of result.contents) {
+				if (!item.id) continue;
+				const song = innertube.music.getInfo(item.id).then(youtubeSong);
+				songs.push(song);
+			}
+		}
+		return await Promise.all(songs);
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {
