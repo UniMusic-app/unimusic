@@ -6,28 +6,26 @@ import type { SongImage, YouTubeSong } from "@/stores/music-player";
 import { generateSongStyle } from "@/utils/songs";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 
-export async function youtubeSong(item: YTNodes.MusicResponsiveListItem): Promise<YouTubeSong> {
-	if (!item.id) {
+export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong> {
+	const { id, title, author, duration, thumbnail, tags } = item.basic_info;
+
+	if (!id) {
 		throw new Error("Cannot generate YouTubeSong from item that doesn't have id");
 	}
 
-	let artwork: SongImage | undefined;
-	let thumbnail = item.thumbnails?.at(-1);
-	if (thumbnail) {
-		// Get higher-res image
-		const url = thumbnail.url.replace(`w${thumbnail.width}-h${thumbnail.height}`, "w256-h256");
-		artwork = { url };
-	}
+	const artwork = thumbnail?.[0] && { url: thumbnail[0].url };
+	// TODO: This is most likely not accurate for all songs
+	const album = tags?.at(-2);
 
 	return {
 		type: "youtube",
 
-		id: item.id,
-		title: item.title,
-		album: item.album?.name,
-		artist: item.artists?.[0]?.name,
-		duration: item.duration?.seconds,
-		// TODO: genre
+		id,
+		title,
+		artist: author,
+		duration,
+		album,
+		// TODO: genre, album
 
 		artwork,
 		style: await generateSongStyle(artwork),
@@ -118,18 +116,23 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 	}
 
 	async handleSearchSongs(term: string, offset: number): Promise<YouTubeSong[]> {
-		const results = await this.innertube!.music.search(term, { type: "song" });
+		// TODO: Handle continuation
+		const innertube = this.innertube!;
+
+		const results = await innertube.music.search(term, { type: "song" });
 		if (!results.contents) return [];
 
-		const songs: YouTubeSong[] = [];
+		const promisedSongs: Promise<YouTubeSong>[] = [];
 		for (const result of results.contents) {
-			if (result.is(YTNodes.MusicShelf)) {
-				for (const item of result.contents) {
-					songs.push(await youtubeSong(item));
-				}
+			if (!result.is(YTNodes.MusicShelf)) continue;
+
+			for (const item of result.contents) {
+				if (!item.id) continue;
+
+				promisedSongs.push(innertube.music.getInfo(item.id).then(youtubeSong));
 			}
 		}
-		return songs;
+		return await Promise.all(promisedSongs);
 	}
 
 	async handleSearchHints(term: string): Promise<string[]> {
@@ -155,9 +158,8 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 	}
 
 	async handleRefreshSong(song: YouTubeSong): Promise<YouTubeSong> {
-		const refreshed = await this.innertube!.music.getInfo(song.id);
-		console.log(refreshed);
-		return song;
+		const trackInfo = await this.innertube!.music.getInfo(song.id);
+		return youtubeSong(trackInfo);
 	}
 
 	async handlePlay(): Promise<void> {
@@ -180,9 +182,7 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 		this.mediaPlayer!.pause();
 	}
 
-	async handleStop(): Promise<void> {
-		this.mediaPlayer!.pause();
-	}
+	async handleStop(): Promise<void> {}
 
 	handleSeekToTime(timeInSeconds: number): void | Promise<void> {
 		this.mediaPlayer!.seek(timeInSeconds);
