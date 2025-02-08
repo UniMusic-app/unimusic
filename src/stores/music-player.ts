@@ -7,7 +7,7 @@ import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayer
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 import { getPlatform } from "@/utils/os";
 import { useLocalImages } from "./local-images";
-import { YouTubeMusicService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
+import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
 
 declare global {
 	namespace ElectronMusicPlayer {
@@ -53,7 +53,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	const musicPlayerServices: Record<string, MusicPlayerService> = {
 		local: new LocalMusicPlayerService(),
-		youtube: new YouTubeMusicService(),
+		youtube: new YouTubeMusicPlayerService(),
 	};
 
 	function addMusicPlayerService(type: string, service: MusicPlayerService): void {

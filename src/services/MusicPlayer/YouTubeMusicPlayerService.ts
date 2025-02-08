@@ -1,10 +1,11 @@
-import Innertube, { UniversalCache, YTMusic, YTNodes } from "youtubei.js/web";
-import BG, { BgConfig } from "bgutils-js";
-import dashjs, { MediaPlayerClass } from "dashjs";
+import Innertube, { UniversalCache, YT, YTMusic, YTNodes } from "youtubei.js/web";
+import BG, { BgConfig, buildURL, WebPoSignalOutput } from "bgutils-js";
 
 import type { SongImage, YouTubeSong } from "@/stores/music-player";
 import { generateSongStyle } from "@/utils/songs";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import { isMobilePlatform } from "@/utils/os";
+import { FormatOptions } from "youtubei.js/dist/src/types";
 
 export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong> {
 	const { id, title, author, duration, thumbnail, tags } = item.basic_info;
@@ -13,7 +14,7 @@ export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong>
 		throw new Error("Cannot generate YouTubeSong from item that doesn't have id");
 	}
 
-	const artwork = thumbnail?.[0] && { url: thumbnail[0].url };
+	const artwork = thumbnail?.[0] && { url: createCapacitorProxyUrl(thumbnail[0].url) };
 	// TODO: This is most likely not accurate for all songs
 	const album = tags?.at(-2);
 
@@ -25,7 +26,7 @@ export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong>
 		artist: author,
 		duration,
 		album,
-		// TODO: genre, album
+		// TODO: genre
 
 		artwork,
 		style: await generateSongStyle(artwork),
@@ -34,63 +35,118 @@ export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong>
 	};
 }
 
-export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
-	logName = "YouTubeMusicService";
+const USER_AGENT =
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.1";
+const GOOG_API_KEY = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw";
+const REQUEST_KEY = "O43z0dpjhgX20SCx4KAo";
+
+const SERVER_URL = "WEBVIEW_SERVER_URL" in window ? (window.WEBVIEW_SERVER_URL as string) : "";
+
+/**
+ * Create a proxied url which uses native layer to bypass CORS
+ * @see https://github.com/ionic-team/capacitor/blob/90f95d1a829f3d87cb46af827b5bfaac319a9694/core/native-bridge.ts#L134
+ */
+function createCapacitorProxyUrl(url: string): string {
+	if (!SERVER_URL) return url;
+	const bridgeUrl = new URL(SERVER_URL);
+	bridgeUrl.pathname = "/_capacitor_http_interceptor_";
+	bridgeUrl.searchParams.append("u", url);
+	return bridgeUrl.toString();
+}
+
+async function createWebPoMinter() {
+	const headers = {
+		"content-type": "application/json+protobuf",
+		"user-agent": USER_AGENT,
+		"x-goog-api-key": GOOG_API_KEY,
+		"x-user-agent": "grpc-web-javascript/0.1",
+	};
+
+	const challengeResponse = await fetch(buildURL("Create", true), {
+		method: "POST",
+		headers,
+		body: JSON.stringify([REQUEST_KEY]),
+	});
+
+	const challengeResponseData = await challengeResponse.json();
+
+	const bgChallenge = BG.Challenge.parseChallengeData(challengeResponseData);
+
+	if (!bgChallenge) {
+		throw new Error("Could not get challenge");
+	}
+
+	const interpreterJavascript =
+		bgChallenge.interpreterJavascript.privateDoNotAccessOrElseSafeScriptWrappedValue;
+
+	// TODO: It would be a good idea to sandbox this, however I am unsure if that is possible
+	new Function(interpreterJavascript!)();
+
+	const botguardClient = await BG.BotGuardClient.create({
+		globalObj: globalThis,
+		globalName: bgChallenge.globalName,
+		program: bgChallenge.program,
+	});
+
+	const webPoSignalOutput: WebPoSignalOutput = [];
+	const botguardResponse = await botguardClient.snapshot({ webPoSignalOutput });
+
+	const integrityTokenResponse = await fetch(buildURL("GenerateIT", true), {
+		method: "POST",
+		headers,
+		body: JSON.stringify([REQUEST_KEY, botguardResponse]),
+	});
+
+	const [integrityToken]: [string?] = await integrityTokenResponse.json();
+	if (!integrityToken) {
+		throw new Error(
+			`Could not get integrity token. Interpreter Hash: ${bgChallenge.interpreterHash}`,
+		);
+	}
+
+	const integrityTokenBasedMinter = await BG.WebPoMinter.create(
+		{ integrityToken },
+		webPoSignalOutput,
+	);
+
+	return integrityTokenBasedMinter;
+}
+
+export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
+	logName = "YouTubeMusicPlayerService";
 	logColor = "#ff0000";
 
 	innertube?: Innertube;
-	mediaPlayer?: MediaPlayerClass;
+	audio?: HTMLAudioElement;
 
 	async handleInitialization(): Promise<void> {
 		// youtube.js seems to be destructurizing fetch somewhere, which causes
 		// "Illegal Invocation error", so we just provide our own
 		// TODO: Proxy for web support
-		// TODO: Native "fetch" functions on iOS and Android
+		// TODO: Expose a native fetch from electron rather than disable whole webSecurity
 		const fetch = window.fetch.bind(window);
 
-		// #region Generate PoToken to allow playback of whole tracks
-		// TODO: This probably should get sandboxed in an iframe, since
-		let innertube = await Innertube.create({ retrieve_player: false });
-		const requestKey = "O43z0dpjhgX20SCx4KAo";
-
-		const visitorData = innertube.session.context.client.visitorData;
+		const tmp = await Innertube.create({
+			generate_session_locally: false,
+			retrieve_player: false,
+			user_agent: USER_AGENT,
+			fetch,
+		});
+		const { visitorData } = tmp.session.context.client;
 		if (!visitorData) {
 			throw new Error("Could not get visitor data");
 		}
 
-		const bgConfig: BgConfig = {
-			fetch: (input: string | URL | globalThis.Request, init?: RequestInit) => fetch(input, init),
-			globalObj: globalThis,
-			identifier: visitorData,
-			requestKey,
-		};
+		const minter = await createWebPoMinter();
+		const poToken = await minter.mintAsWebsafeString(visitorData!);
 
-		const bgChallenge = await BG.Challenge.create(bgConfig);
-		if (!bgChallenge) {
-			throw new Error("Could not get challenge");
-		}
-
-		const interpreterJavascript =
-			bgChallenge.interpreterJavascript.privateDoNotAccessOrElseSafeScriptWrappedValue;
-
-		if (interpreterJavascript) {
-			new Function(interpreterJavascript)();
-		} else {
-			throw new Error("Could not load VM");
-		}
-
-		const poTokenResult = await BG.PoToken.generate({
-			program: bgChallenge.program,
-			globalName: bgChallenge.globalName,
-			bgConfig,
-		});
-		// #endregion
-
-		innertube = await Innertube.create({
-			po_token: poTokenResult.poToken,
+		console.log("pot:", poToken);
+		const innertube = await Innertube.create({
+			po_token: poToken,
 			visitor_data: visitorData,
-			cache: new UniversalCache(true),
 			generate_session_locally: true,
+			cache: new UniversalCache(true),
+			user_agent: USER_AGENT,
 			fetch,
 		});
 
@@ -103,16 +159,13 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 		audio.addEventListener("playing", () => {
 			this.store.addMusicSessionActionHandlers();
 		});
-
-		const mediaPlayer = dashjs.MediaPlayer().create();
-		mediaPlayer.setAutoPlay(false);
-		mediaPlayer.initialize(audio);
-		this.mediaPlayer = mediaPlayer;
+		this.audio = audio;
 	}
 
 	async handleDeinitialization(): Promise<void> {
-		this.mediaPlayer?.getVideoElement()?.remove();
-		this.mediaPlayer!.destroy();
+		await this.revokeObjectUrls();
+		this.audio!.remove();
+		this.audio = undefined;
 	}
 
 	async handleSearchSongs(term: string, offset: number): Promise<YouTubeSong[]> {
@@ -128,6 +181,8 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 
 			for (const item of result.contents) {
 				if (!item.id) continue;
+				// TODO: It would be a good idea for search to return partial information of songs
+				//		 instead of parsing them fully here, which makes unnecessary requests
 				const song = innertube.music.getInfo(item.id).then(youtubeSong);
 				songs.push(song);
 			}
@@ -182,29 +237,55 @@ export class YouTubeMusicService extends MusicPlayerService<YouTubeSong> {
 		const innertube = this.innertube!;
 
 		const trackInfo = await innertube.getInfo(this.song!.id);
-		const manifest = await trackInfo!.toDash();
-		const uri = "data:application/dash+xml;charset=utf-8;base64," + btoa(manifest);
+		const audioFormat: FormatOptions = { type: "audio", quality: "best" };
+		const format = trackInfo.chooseFormat(audioFormat);
 
-		const mediaPlayer = this.mediaPlayer!;
-		mediaPlayer.attachSource(uri);
-		mediaPlayer.play();
+		let url = format.decipher(innertube.session.player);
+		if (isMobilePlatform()) {
+			// TODO: Is there a way to stream not yet fully downloaded file?
+			// On mobile download the whole file and then create a blob url
+			// Otherwise some weird issues occur such as YouTube ratelimits and/or weird buffering
+			const stream = await trackInfo.download(audioFormat);
+			const blob = new Blob([await new Response(stream).arrayBuffer()], {
+				type: format.mime_type,
+			});
+			url = URL.createObjectURL(blob);
+			this.queueRevokeObjectUrl(url);
+		}
+
+		this.audio!.src = url;
+		await this.audio!.play();
+	}
+
+	#objectUrls: string[] = [];
+	queueRevokeObjectUrl(url: string): void {
+		this.#objectUrls.push(url);
+	}
+	revokeObjectUrls(): void {
+		let url: string | undefined;
+		while ((url = this.#objectUrls.pop())) {
+			URL.revokeObjectURL(url);
+		}
 	}
 
 	async handleResume(): Promise<void> {
-		this.mediaPlayer!.play();
+		await this.audio!.play();
 	}
 
 	async handlePause(): Promise<void> {
-		this.mediaPlayer!.pause();
+		await this.audio!.pause();
 	}
 
-	async handleStop(): Promise<void> {}
-
-	handleSeekToTime(timeInSeconds: number): void | Promise<void> {
-		this.mediaPlayer!.seek(timeInSeconds);
+	async handleStop(): Promise<void> {
+		await this.audio!.pause();
+		await this.revokeObjectUrls();
 	}
 
-	handleSetVolume(volume: number): void | Promise<void> {
-		this.mediaPlayer!.setVolume(volume);
+	handleSeekToTime(timeInSeconds: number): void {
+		this.audio!.currentTime = timeInSeconds;
+	}
+
+	handleSetVolume(volume: number): void {
+		this.audio!.volume = volume;
 	}
 }
