@@ -1,10 +1,10 @@
-import Innertube, { UniversalCache, YT, YTMusic, YTNodes } from "youtubei.js/web";
-import BG, { BgConfig, buildURL, WebPoSignalOutput } from "bgutils-js";
+import Innertube, { UniversalCache, FormatUtils, YTMusic, YTNodes } from "youtubei.js/web";
+import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 
-import type { SongImage, YouTubeSong } from "@/stores/music-player";
+import type { YouTubeSong } from "@/stores/music-player";
 import { generateSongStyle } from "@/utils/songs";
 import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
-import { isMobilePlatform } from "@/utils/os";
+import { getPlatform } from "@/utils/os";
 import { FormatOptions } from "youtubei.js/dist/src/types";
 
 export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong> {
@@ -163,7 +163,6 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	}
 
 	async handleDeinitialization(): Promise<void> {
-		await this.revokeObjectUrls();
 		this.audio!.remove();
 		this.audio = undefined;
 	}
@@ -235,37 +234,34 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 
 	async handlePlay(): Promise<void> {
 		const innertube = this.innertube!;
+		const song = this.song!;
 
-		const trackInfo = await innertube.getInfo(this.song!.id);
+		const trackInfo = await innertube.getInfo(song.id);
 		const audioFormat: FormatOptions = { type: "audio", quality: "best" };
-		const format = trackInfo.chooseFormat(audioFormat);
 
-		let url = format.decipher(innertube.session.player);
-		if (isMobilePlatform()) {
-			// TODO: Is there a way to stream not yet fully downloaded file?
-			// On mobile download the whole file and then create a blob url
-			// Otherwise some weird issues occur such as YouTube ratelimits and/or weird buffering
-			const stream = await trackInfo.download(audioFormat);
-			const blob = new Blob([await new Response(stream).arrayBuffer()], {
-				type: format.mime_type,
-			});
-			url = URL.createObjectURL(blob);
-			this.queueRevokeObjectUrl(url);
+		let format: ReturnType<typeof trackInfo.chooseFormat> | undefined;
+		// iOS cannot properly read duration data from adaptive formats (its often 2x the proper value)
+		if (getPlatform() === "ios") {
+			for (const potentialFormat of trackInfo.streaming_data!.formats) {
+				if (!potentialFormat.has_audio) continue;
+
+				if (!format) {
+					format = potentialFormat;
+					continue;
+				}
+
+				if (format.bitrate < potentialFormat.bitrate) {
+					format = format;
+				}
+			}
 		}
+		format ??= trackInfo.chooseFormat(audioFormat);
 
-		this.audio!.src = url;
-		await this.audio!.play();
-	}
+		const url = format.decipher(innertube.session.player);
 
-	#objectUrls: string[] = [];
-	queueRevokeObjectUrl(url: string): void {
-		this.#objectUrls.push(url);
-	}
-	revokeObjectUrls(): void {
-		let url: string | undefined;
-		while ((url = this.#objectUrls.pop())) {
-			URL.revokeObjectURL(url);
-		}
+		const audio = this.audio!;
+		audio!.src = url;
+		await audio!.play();
 	}
 
 	async handleResume(): Promise<void> {
@@ -278,7 +274,6 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 
 	async handleStop(): Promise<void> {
 		await this.audio!.pause();
-		await this.revokeObjectUrls();
 	}
 
 	handleSeekToTime(timeInSeconds: number): void {
