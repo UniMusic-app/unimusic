@@ -1,13 +1,31 @@
-import Innertube, { UniversalCache, FormatUtils, YTMusic, YTNodes } from "youtubei.js/web";
 import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
+import Innertube, { UniversalCache, YTMusic, YTNodes, Types as YTTypes } from "youtubei.js/web";
 
+import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 import type { YouTubeSong } from "@/stores/music-player";
-import { generateSongStyle } from "@/utils/songs";
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
-import { getPlatform } from "@/utils/os";
-import { FormatOptions } from "youtubei.js/dist/src/types";
 
-export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong> {
+import { getPlatform } from "@/utils/os";
+import { generateSongStyle } from "@/utils/songs";
+
+export function youtubeSongSearchResult(
+	node: YTNodes.MusicResponsiveListItem,
+): SongSearchResult<YouTubeSong> {
+	const artwork = node.thumbnails?.[0] && { url: createCapacitorProxyUrl(node.thumbnails[0].url) };
+
+	return {
+		type: "youtube",
+		id: node.id!,
+		title: node.title,
+		album: node.album?.name,
+		artist: node.artists?.[0]?.name,
+		artwork,
+	};
+}
+
+export async function youtubeSong(
+	item: YTMusic.TrackInfo,
+	searchResult?: SongSearchResult<YouTubeSong>,
+): Promise<YouTubeSong> {
 	const { id, title, author, duration, thumbnail, tags } = item.basic_info;
 
 	if (!id) {
@@ -15,8 +33,7 @@ export async function youtubeSong(item: YTMusic.TrackInfo): Promise<YouTubeSong>
 	}
 
 	const artwork = thumbnail?.[0] && { url: createCapacitorProxyUrl(thumbnail[0].url) };
-	// TODO: This is most likely not accurate for all songs
-	const album = tags?.at(-2);
+	const album = searchResult?.album ?? tags?.at(-2);
 
 	return {
 		type: "youtube",
@@ -54,7 +71,7 @@ function createCapacitorProxyUrl(url: string): string {
 	return bridgeUrl.toString();
 }
 
-async function createWebPoMinter() {
+async function createWebPoMinter(): Promise<BG.WebPoMinter> {
 	const headers = {
 		"content-type": "application/json+protobuf",
 		"user-agent": USER_AGENT,
@@ -80,6 +97,7 @@ async function createWebPoMinter() {
 		bgChallenge.interpreterJavascript.privateDoNotAccessOrElseSafeScriptWrappedValue;
 
 	// TODO: It would be a good idea to sandbox this, however I am unsure if that is possible
+	// eslint-disable-next-line @typescript-eslint/no-implied-eval
 	new Function(interpreterJavascript!)();
 
 	const botguardClient = await BG.BotGuardClient.create({
@@ -117,7 +135,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	logColor = "#ff0000";
 
 	innertube?: Innertube;
-	audio?: HTMLAudioElement;
+	audio!: HTMLAudioElement;
 
 	async handleInitialization(): Promise<void> {
 		// youtube.js seems to be destructurizing fetch somewhere, which causes
@@ -138,7 +156,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		}
 
 		const minter = await createWebPoMinter();
-		const poToken = await minter.mintAsWebsafeString(visitorData!);
+		const poToken = await minter.mintAsWebsafeString(visitorData);
 
 		console.log("pot:", poToken);
 		const innertube = await Innertube.create({
@@ -162,31 +180,42 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		this.audio = audio;
 	}
 
-	async handleDeinitialization(): Promise<void> {
-		this.audio!.remove();
-		this.audio = undefined;
+	handleDeinitialization(): void {
+		this.audio.remove();
+		this.audio = undefined!;
 	}
 
-	async handleSearchSongs(term: string, offset: number): Promise<YouTubeSong[]> {
+	async handleSearchSongs(term: string, _offset: number): Promise<SongSearchResult<YouTubeSong>[]> {
 		// TODO: Handle continuation
 		const innertube = this.innertube!;
 
 		const results = await innertube.music.search(term, { type: "song" });
 		if (!results.contents) return [];
 
-		const songs: Promise<YouTubeSong>[] = [];
+		const songs: SongSearchResult<YouTubeSong>[] = [];
 		for (const result of results.contents) {
 			if (!result.is(YTNodes.MusicShelf)) continue;
 
 			for (const item of result.contents) {
 				if (!item.id) continue;
-				// TODO: It would be a good idea for search to return partial information of songs
-				//		 instead of parsing them fully here, which makes unnecessary requests
-				const song = innertube.music.getInfo(item.id).then(youtubeSong);
-				songs.push(song);
+				songs.push(youtubeSongSearchResult(item));
 			}
 		}
-		return await Promise.all(songs);
+		return songs;
+	}
+
+	async handleGetSongFromSearchResult(
+		searchResult: SongSearchResult<YouTubeSong>,
+	): Promise<YouTubeSong> {
+		if (!this.innertube) {
+			throw new Error(
+				"Tried to call handleGetSongFromSearchResult() while YouTubeMusicPlayerService is not initialized",
+			);
+		}
+
+		const info = await this.innertube.music.getInfo(searchResult.id);
+		const song = await youtubeSong(info, searchResult);
+		return song;
 	}
 
 	async handleSearchHints(term: string): Promise<string[]> {
@@ -202,7 +231,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		return hints;
 	}
 
-	async handleLibrarySongs(offset: number): Promise<YouTubeSong[]> {
+	async handleLibrarySongs(_offset: number): Promise<YouTubeSong[]> {
 		// TODO: Handle continuation
 		// TODO: Requires authorization
 		const innertube = this.innertube!;
@@ -237,7 +266,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const song = this.song!;
 
 		const trackInfo = await innertube.getInfo(song.id);
-		const audioFormat: FormatOptions = { type: "audio", quality: "best" };
+		const audioFormat: YTTypes.FormatOptions = { type: "audio", quality: "best" };
 
 		let format: ReturnType<typeof trackInfo.chooseFormat> | undefined;
 		// iOS cannot properly read duration data from adaptive formats (its often 2x the proper value)
@@ -259,28 +288,28 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 
 		const url = format.decipher(innertube.session.player);
 
-		const audio = this.audio!;
-		audio!.src = url;
-		await audio!.play();
+		const { audio } = this;
+		audio.src = url;
+		await audio.play();
 	}
 
 	async handleResume(): Promise<void> {
-		await this.audio!.play();
+		await this.audio.play();
 	}
 
-	async handlePause(): Promise<void> {
-		await this.audio!.pause();
+	handlePause(): void {
+		this.audio.pause();
 	}
 
-	async handleStop(): Promise<void> {
-		await this.audio!.pause();
+	handleStop(): void {
+		this.audio.pause();
 	}
 
 	handleSeekToTime(timeInSeconds: number): void {
-		this.audio!.currentTime = timeInSeconds;
+		this.audio.currentTime = timeInSeconds;
 	}
 
 	handleSetVolume(volume: number): void {
-		this.audio!.volume = volume;
+		this.audio.volume = volume;
 	}
 }

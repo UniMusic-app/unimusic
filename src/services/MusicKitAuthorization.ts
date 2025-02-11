@@ -1,7 +1,7 @@
 import { Preferences } from "@capacitor/preferences";
 
-import { Service } from "./Service";
 import MusicKitAuthorizationPlugin from "@/plugins/MusicKitAuthorization";
+import { Service } from "./Service";
 
 interface MusicKitPreferences {
 	developerToken: string;
@@ -67,7 +67,7 @@ export class MusicKitAuthorizationService extends Service {
 			this.log("Saving session");
 			await this.#remember(music);
 		}
-		await this.#dispatchAuthorizationEvent(music);
+		this.#dispatchAuthorizationEvent(music);
 
 		return music;
 	}
@@ -76,16 +76,16 @@ export class MusicKitAuthorizationService extends Service {
 	async unauthorize(): Promise<void> {
 		this.log("Unauthorizing session");
 
-		const music = await MusicKit.getInstance();
+		const music = MusicKit.getInstance();
 		if (music) await music.unauthorize();
 		await this.#forget();
 
-		await this.#dispatchAuthorizationEvent(music);
+		this.#dispatchAuthorizationEvent(music);
 	}
 
 	/** Dispatches "authorized" or "unauthorized" event depending on the music.isAuthorized */
-	#dispatchAuthorizationEvent(music?: MusicKit.MusicKitInstance): void {
-		this.dispatchEvent(new Event(music?.isAuthorized ? "authorized" : "unauthorized"));
+	#dispatchAuthorizationEvent(music?: MusicKit.MusicKitInstance): boolean {
+		return this.dispatchEvent(new Event(music?.isAuthorized ? "authorized" : "unauthorized"));
 	}
 
 	/** Configure MusicKit given the tokens */

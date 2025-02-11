@@ -1,9 +1,9 @@
-import { intensity } from "./color";
 import { useLocalImages } from "@/stores/local-images";
 import { AnySong, SongImage } from "@/stores/music-player";
+import { intensity } from "./color";
 
-export function songTypeDisplayName(song: AnySong): string {
-	switch (song.type) {
+export function songTypeToDisplayName(type: AnySong["type"]): string {
+	switch (type) {
 		case "local":
 			return "Local";
 		case "musickit":
@@ -11,17 +11,6 @@ export function songTypeDisplayName(song: AnySong): string {
 		case "youtube":
 			return "YouTube";
 	}
-}
-
-let uniqueId = 0;
-const uniqueIds = new WeakMap<AnySong, number>();
-export function getUniqueSongId(song: AnySong): number {
-	let id = uniqueIds.get(song);
-	if (!id) {
-		id = uniqueId++;
-		uniqueIds.set(song, id);
-	}
-	return id;
 }
 
 /**
@@ -45,7 +34,7 @@ export async function generateSongStyle(artwork?: SongImage): Promise<AnySong["s
 	image.crossOrigin = "anonymous";
 	image.src = (await localImages.getSongImageUrl(artwork))!;
 	await new Promise<void>((r) => {
-		image.onload = () => r();
+		image.onload = (): void => r();
 	});
 
 	const canvas = document.createElement("canvas");

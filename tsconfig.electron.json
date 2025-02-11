@@ -15,5 +15,10 @@
 		"noEmit": false,
 		"types": ["vite/client"]
 	},
-	"include": ["electron/**/*.ts", "electron/**/*.cjs", "electron/**/*.d.ts"]
+	"include": [
+		"electron.vite.config.ts",
+		"electron/**/*.ts",
+		"electron/**/*.cjs",
+		"electron/**/*.d.ts"
+	]
 }

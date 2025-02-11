@@ -1,9 +1,9 @@
-import { app, components, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, components, ipcMain } from "electron";
 import electronServe from "electron-serve";
 
-import { fileURLToPath } from "node:url";
-import { join } from "node:path";
 import fs from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { authorizeMusicKit } from "./musickit/auth";
 
@@ -14,7 +14,7 @@ const loadUrl = electronServe({
 });
 
 let mainWindow;
-async function createWindow() {
+async function createWindow(): Promise<void> {
 	mainWindow = new BrowserWindow({
 		width: 800,
 		height: 650,
@@ -48,7 +48,17 @@ async function createWindow() {
 	await loadUrl(mainWindow);
 }
 
-app.whenReady().then(async () => {
+app.on("activate", async () => {
+	if (BrowserWindow.getAllWindows().length === 0) {
+		await createWindow();
+	}
+});
+
+app.on("window-all-closed", () => {
+	if (process.platform !== "darwin") app.quit();
+});
+
+void app.whenReady().then(async () => {
 	await components.whenReady();
 	await createWindow();
 
@@ -65,12 +75,4 @@ app.whenReady().then(async () => {
 		}
 		return paths;
 	});
-
-	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) createWindow();
-	});
-});
-
-app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") app.quit();
 });

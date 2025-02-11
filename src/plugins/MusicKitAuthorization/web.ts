@@ -1,10 +1,10 @@
 import { WebPlugin } from "@capacitor/core";
-import type { MusicKitAuthorizationPlugin } from "../MusicKitAuthorization";
+import type { MusicKitAuthorizationPlugin, MusicKitTokens } from "../MusicKitAuthorization";
 
 // Web implementation of WebKitAuthorization
 export class MusicKitAuthorization extends WebPlugin implements MusicKitAuthorizationPlugin {
 	async authorize(): Promise<{ developerToken: string; musicUserToken: string }> {
-		const authorizeMusicKit = async () => {
+		const authorizeMusicKit = async (): Promise<MusicKitTokens> => {
 			const music = await MusicKit.configure({
 				developerToken: import.meta.env.VITE_DEVELOPER_TOKEN,
 				app: {
@@ -13,8 +13,8 @@ export class MusicKitAuthorization extends WebPlugin implements MusicKitAuthoriz
 				},
 			});
 
-			if (globalThis?.ElectronMusicPlayer?.authorizeMusicKit) {
-				music.musicUserToken = await ElectronMusicPlayer!.authorizeMusicKit!();
+			if (globalThis?.ElectronMusicPlayer) {
+				music.musicUserToken = await ElectronMusicPlayer.authorizeMusicKit!();
 			} else {
 				await music.authorize();
 			}

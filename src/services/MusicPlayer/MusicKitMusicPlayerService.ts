@@ -1,6 +1,8 @@
-import { useMusicKit } from "@/stores/musickit";
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 import { MusicKitSong } from "@/stores/music-player";
+import { useMusicKit } from "@/stores/musickit";
+
+import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+
 import { generateSongStyle } from "@/utils/songs";
 
 export async function musicKitSong(
@@ -73,6 +75,10 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		return [];
 	}
 
+	handleGetSongFromSearchResult(searchResult: MusicKitSong): MusicKitSong {
+		return searchResult;
+	}
+
 	async handleRefreshLibrarySongs(): Promise<void> {
 		// TODO: Unimplemented
 	}
@@ -110,8 +116,8 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		return await Promise.all(promises);
 	}
 
-	#timeUpdateCallback = () => {
-		this.store.time = this.music!.currentPlaybackTime;
+	#timeUpdateCallback = (): void => {
+		this.store.time = this.music.currentPlaybackTime;
 	};
 
 	async handleInitialization(): Promise<void> {
@@ -126,7 +132,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		this.music = music;
 	}
 
-	async handleDeinitialization(): Promise<void> {
+	handleDeinitialization(): void {
 		this.music.removeEventListener("playbackTimeDidChange", this.#timeUpdateCallback);
 	}
 
