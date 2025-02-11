@@ -10,7 +10,7 @@
 		"isolatedModules": true,
 		"esModuleInterop": true,
 		"allowJs": true,
-		"lib": ["ESNext", "DOM"],
+		"lib": ["ESNext", "DOM", "DOM.AsyncIterable", "DOM.Iterable"],
 		"outDir": "build/electron",
 		"noEmit": false,
 		"types": ["vite/client"]

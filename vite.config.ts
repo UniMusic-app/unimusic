@@ -8,6 +8,9 @@ import capacitorConfig from "./capacitor.config";
 export default defineConfig({
 	plugins: [vue()],
 	build: { outDir: capacitorConfig.webDir },
+	define: {
+		__IS_ELECTRON__: "false",
+	},
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./src"),

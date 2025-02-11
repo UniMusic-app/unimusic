@@ -4,7 +4,7 @@ import Innertube, { UniversalCache, YTMusic, YTNodes, Types as YTTypes } from "y
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 import type { YouTubeSong } from "@/stores/music-player";
 
-import { getPlatform } from "@/utils/os";
+import { getPlatform, isElectron } from "@/utils/os";
 import { generateSongStyle } from "@/utils/songs";
 
 export function youtubeSongSearchResult(
@@ -141,8 +141,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		// youtube.js seems to be destructurizing fetch somewhere, which causes
 		// "Illegal Invocation error", so we just provide our own
 		// TODO: Proxy for web support
-		// TODO: Expose a native fetch from electron rather than disable whole webSecurity
-		const fetch = window.fetch.bind(window);
+		const fetch = isElectron() ? ElectronMusicPlayer!.fetchShim : window.fetch.bind(window);
 
 		const tmp = await Innertube.create({
 			generate_session_locally: false,

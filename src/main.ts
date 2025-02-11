@@ -40,7 +40,12 @@ import "./theme/variables.css";
 /* Vue store */
 const pinia = createPinia();
 
+if (__IS_ELECTRON__) {
+	await import("./electron");
+}
+
 const app = createApp(App).use(IonicVue).use(pinia).use(router);
 
-await router.isReady();
-app.mount("#app");
+void router.isReady().then(() => {
+	app.mount("#app");
+});

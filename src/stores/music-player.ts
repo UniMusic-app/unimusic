@@ -10,18 +10,6 @@ import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPl
 import { getPlatform } from "@/utils/os";
 import { useLocalImages } from "./local-images";
 
-declare global {
-	namespace ElectronMusicPlayer {
-		// musickit:
-		const authorizeMusicKit: undefined | (() => Promise<string>);
-
-		// musicplayer:
-		const getMusicPath: () => Promise<string>;
-		const readFile: (path: string) => Promise<Uint8Array>;
-		const traverseDirectory: (path: string) => Promise<string[]>;
-	}
-}
-
 export type SongImage = { id: string; url?: never } | { id?: never; url: string };
 export interface Song<Type extends string, Data = unknown> {
 	type: Type;
