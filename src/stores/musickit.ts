@@ -1,8 +1,9 @@
-import { MusicKitAuthorizationService } from "@/services/MusicKitAuthorization";
-import { useMusicPlayer } from "@/stores/music-player";
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
+import { useMusicPlayer } from "@/stores/music-player";
+
+import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
 import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 
 export const useMusicKit = defineStore("MusicKit", () => {

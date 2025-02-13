@@ -1,3 +1,4 @@
+import { isElectron } from "@/utils/os";
 import { WebPlugin } from "@capacitor/core";
 import type { MusicKitAuthorizationPlugin, MusicKitTokens } from "../MusicKitAuthorization";
 
@@ -13,8 +14,8 @@ export class MusicKitAuthorization extends WebPlugin implements MusicKitAuthoriz
 				},
 			});
 
-			if (globalThis?.ElectronMusicPlayer) {
-				music.musicUserToken = await ElectronMusicPlayer.authorizeMusicKit!();
+			if (isElectron()) {
+				music.musicUserToken = await ElectronMusicPlayer!.authorizeMusicKit();
 			} else {
 				await music.authorize();
 			}
