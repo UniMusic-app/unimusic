@@ -1,5 +1,5 @@
 import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
-import Innertube, { UniversalCache, YTMusic, YTNodes, Types as YTTypes } from "youtubei.js/web";
+import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 import type { YouTubeSong } from "@/stores/music-player";
@@ -137,10 +137,23 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	innertube?: Innertube;
 	audio!: HTMLAudioElement;
 
-	#initialized = false;
+	#innertubePromise = Promise.withResolvers<void>();
+	#initializedInnertube?: Promise<void>;
 	async handleInitialization(): Promise<void> {
-		if (this.#initialized) return;
-		this.#initialized = true;
+		const audio = new Audio();
+		audio.addEventListener("timeupdate", () => {
+			this.store.time = audio.currentTime;
+		});
+		audio.addEventListener("playing", () => {
+			this.store.addMusicSessionActionHandlers();
+		});
+		this.audio = audio;
+
+		if (this.#initializedInnertube) {
+			await this.#initializedInnertube;
+			return;
+		}
+		this.#initializedInnertube = this.#innertubePromise.promise;
 
 		// youtube.js seems to be destructurizing fetch somewhere, which causes
 		// "Illegal Invocation error", so we just provide our own
@@ -165,28 +178,18 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const innertube = await Innertube.create({
 			po_token: poToken,
 			visitor_data: visitorData,
-			generate_session_locally: true,
-			cache: new UniversalCache(true),
+			generate_session_locally: false,
 			user_agent: USER_AGENT,
 			fetch,
 		});
 
 		this.innertube = innertube;
-
-		const audio = new Audio();
-		audio.addEventListener("timeupdate", () => {
-			this.store.time = audio.currentTime;
-		});
-		audio.addEventListener("playing", () => {
-			this.store.addMusicSessionActionHandlers();
-		});
-		this.audio = audio;
+		this.#innertubePromise.resolve();
 	}
 
 	handleDeinitialization(): void {
 		this.audio.remove();
 		this.audio = undefined!;
-		this.audio = new Audio();
 	}
 
 	async handleSearchSongs(term: string, _offset: number): Promise<SongSearchResult<YouTubeSong>[]> {
@@ -254,30 +257,47 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const song = this.song!;
 
 		const trackInfo = await innertube.getInfo(song.id);
-		const audioFormat: YTTypes.FormatOptions = { type: "audio", quality: "best" };
-
-		let format: ReturnType<typeof trackInfo.chooseFormat> | undefined;
-		// iOS cannot properly read duration data from adaptive formats (its often 2x the proper value)
-		if (getPlatform() === "ios") {
-			for (const potentialFormat of trackInfo.streaming_data!.formats) {
-				if (!potentialFormat.has_audio) continue;
-
-				if (!format) {
-					format = potentialFormat;
-					continue;
-				}
-
-				if (format.bitrate < potentialFormat.bitrate) {
-					format = format;
-				}
-			}
-		}
-		format ??= trackInfo.chooseFormat(audioFormat);
-
-		const url = format.decipher(innertube.session.player);
 
 		const { audio } = this;
-		audio.src = url;
+
+		const addAudioSource = (url: string, mimeType: string): void => {
+			const source = document.createElement("source");
+			source.src = url;
+			source.type = mimeType;
+			audio.appendChild(source);
+		};
+
+		type Format = ReturnType<typeof trackInfo.chooseFormat>;
+
+		const adaptiveFormats: Format[] = [];
+		for (const potentialFormat of trackInfo.streaming_data!.adaptive_formats) {
+			if (!potentialFormat.has_audio) continue;
+			if (audio.canPlayType(potentialFormat.mime_type) !== "probably") continue;
+
+			adaptiveFormats.push(potentialFormat);
+		}
+		adaptiveFormats.sort((a, b) => b.bitrate - a.bitrate);
+
+		const staticFormats: Format[] = [];
+		for (const potentialFormat of trackInfo.streaming_data!.formats) {
+			if (!potentialFormat.has_audio) continue;
+			if (audio.canPlayType(potentialFormat.mime_type) !== "probably") continue;
+
+			adaptiveFormats.push(potentialFormat);
+		}
+		staticFormats.sort((a, b) => b.bitrate - a.bitrate);
+
+		// iOS cannot properly read duration data from adaptive formats (its often 2x the proper value)
+		const formats =
+			getPlatform() === "ios"
+				? [...staticFormats, ...adaptiveFormats]
+				: [...adaptiveFormats, ...staticFormats];
+
+		audio.innerHTML = "";
+		for (const format of formats) {
+			const url = format.decipher(innertube.session.player);
+			addAudioSource(url, format.mime_type);
+		}
 		await audio.play();
 	}
 
