@@ -26,7 +26,7 @@ async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }
 			break;
 		}
 		case "electron": {
-			const musicPath = await ElectronMusicPlayer.getMusicPath();
+			const musicPath = await ElectronMusicPlayer!.getMusicPath();
 			yield* traverseDirectory(musicPath);
 			break;
 		}
@@ -38,7 +38,7 @@ async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }
 
 async function* traverseDirectory(path: string): AsyncGenerator<{ filePath: string }> {
 	if (getPlatform() === "electron") {
-		for (const filePath of await ElectronMusicPlayer.traverseDirectory(path)) {
+		for (const filePath of await ElectronMusicPlayer!.traverseDirectory(path)) {
 			yield { filePath };
 		}
 	} else {
@@ -75,7 +75,7 @@ async function readSongFile(path: string): Promise<Uint8Array> {
 			return buffer;
 		}
 		case "electron": {
-			const buffer = await ElectronMusicPlayer.readFile(path);
+			const buffer = await ElectronMusicPlayer!.readFile(path);
 			return buffer;
 		}
 		default: {

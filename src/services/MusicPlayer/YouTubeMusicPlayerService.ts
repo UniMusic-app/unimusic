@@ -137,7 +137,11 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	innertube?: Innertube;
 	audio!: HTMLAudioElement;
 
+	#initialized = false;
 	async handleInitialization(): Promise<void> {
+		if (this.#initialized) return;
+		this.#initialized = true;
+
 		// youtube.js seems to be destructurizing fetch somewhere, which causes
 		// "Illegal Invocation error", so we just provide our own
 		// TODO: Proxy for web support
@@ -182,6 +186,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	handleDeinitialization(): void {
 		this.audio.remove();
 		this.audio = undefined!;
+		this.audio = new Audio();
 	}
 
 	async handleSearchSongs(term: string, _offset: number): Promise<SongSearchResult<YouTubeSong>[]> {
@@ -230,25 +235,9 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		return hints;
 	}
 
-	async handleLibrarySongs(_offset: number): Promise<YouTubeSong[]> {
-		// TODO: Handle continuation
-		// TODO: Requires authorization
-		const innertube = this.innertube!;
-
-		const library = await innertube.music.getLibrary();
-		if (!library.contents) return [];
-
-		const songs: Promise<YouTubeSong>[] = [];
-		for (const result of library.contents) {
-			if (!result.is(YTNodes.MusicShelf)) continue;
-
-			for (const item of result.contents) {
-				if (!item.id) continue;
-				const song = innertube.music.getInfo(item.id).then(youtubeSong);
-				songs.push(song);
-			}
-		}
-		return await Promise.all(songs);
+	handleLibrarySongs(_offset: number): YouTubeSong[] {
+		// TODO: Implement local version of it
+		return [];
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {

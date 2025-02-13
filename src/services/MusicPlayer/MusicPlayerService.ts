@@ -60,7 +60,7 @@ export abstract class MusicPlayerService<
 		return await this.handleSearchHints(term);
 	}
 
-	abstract handleLibrarySongs(offset: number): Promise<Song[]>;
+	abstract handleLibrarySongs(offset: number): Song[] | Promise<Song[]>;
 	async librarySongs(offset = 0): Promise<Song[]> {
 		this.log("librarySongs");
 		await this.initialize();
