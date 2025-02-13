@@ -68,9 +68,6 @@ app.on("window-all-closed", () => {
 });
 
 void app.whenReady().then(async () => {
-	await components.whenReady();
-	await createWindow();
-
 	ipcMain.handle("musickit:authorize", () => authorizeMusicKit());
 
 	ipcMain.handle("musicplayer:fetch", async (_, input, init) => {
@@ -102,4 +99,7 @@ void app.whenReady().then(async () => {
 		}
 		return paths;
 	});
+
+	await components.whenReady();
+	await createWindow();
 });
