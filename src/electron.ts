@@ -42,6 +42,17 @@ globalThis.ElectronMusicPlayer = {
 	async fetchShim(input, init): Promise<globalThis.Response> {
 		let url: string;
 		let options: RequestInit | undefined;
+
+		const headers: Record<string, string> = {};
+		if (input instanceof Request) {
+			Object.assign(headers, Object.fromEntries(input.headers.entries()));
+		}
+		if (init?.headers instanceof Headers) {
+			for (const [key, value] of init.headers.entries()) {
+				headers[key] = value;
+			}
+		}
+
 		if (input instanceof Request) {
 			url = input.url;
 
@@ -56,12 +67,12 @@ globalThis.ElectronMusicPlayer = {
 				redirect: input.redirect,
 				referrer: input.referrer,
 				referrerPolicy: input.referrerPolicy,
-				headers: Object.fromEntries(input.headers.entries()),
 				...init,
+				headers,
 			};
 		} else {
 			url = typeof input === "string" ? input : input.toString();
-			options = init;
+			options = { ...init, headers };
 		}
 
 		const nativeResponse = await ElectronMusicPlayer!.fetch(url, options);
