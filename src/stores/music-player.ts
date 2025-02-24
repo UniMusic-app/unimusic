@@ -290,6 +290,14 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 				return;
 			}
 
+			// Since iOS's WKWebView is actually its own separate app setting AVAudioSession inside this app does nothing.
+			// However I was lucky enough to find this W3C AudioSession draft: https://w3c.github.io/audio-session.
+			// And Apple does indeed support it in both Safari and WKWebView. According to https://caniwebview.com/search/?s=audiosession it is supported since iOS 16.4
+			// NOTE: This might change in the future, since its not a web standard
+			if ("audioSession" in navigator) {
+				(navigator.audioSession as { type: string }).type = "playback";
+			}
+
 			navigator.mediaSession.metadata = new window.MediaMetadata({
 				title: song.title,
 				artist: song.artist,
