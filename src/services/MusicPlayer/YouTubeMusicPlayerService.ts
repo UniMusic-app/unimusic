@@ -158,7 +158,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		// youtube.js seems to be destructurizing fetch somewhere, which causes
 		// "Illegal Invocation error", so we just provide our own
 		// TODO: Proxy for web support
-		const fetch = isElectron() ? ElectronMusicPlayer!.fetchShim : window.fetch.bind(window);
+		const fetch = isElectron() ? ElectronMusicPlayer!.fetchShim : window.capacitorFetch;
 
 		const tmp = await Innertube.create({
 			generate_session_locally: false,

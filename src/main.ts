@@ -36,12 +36,15 @@ import "@ionic/vue/css/palettes/dark.system.css";
 
 /* Theme variables */
 import "./theme/variables.css";
+import { isMobilePlatform } from "./utils/os";
 
 /* Vue store */
 const pinia = createPinia();
 
 if (__IS_ELECTRON__) {
 	await import("./electron");
+} else if (isMobilePlatform()) {
+	void import("./mobile");
 }
 
 const app = createApp(App).use(IonicVue).use(pinia).use(router);
