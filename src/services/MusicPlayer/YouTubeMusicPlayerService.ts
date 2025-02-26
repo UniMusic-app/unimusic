@@ -279,13 +279,13 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		}
 
 		potentialFormats.sort((a, b) => {
-			// NOTE: Android WebView pauses the audio when it contains video!
-			//       So we only use it as a fallback in case other formats fail
+			// NOTE: When minimizing the app Android WebView pauses the audio when it contains video!
+			//       So we only use it as a fallback in case other formats fail.
 			//		 And its also a good idea to just ship audio when possible anyways 🤷‍♂️
 			const defaultComparison = Number(a.has_video) - Number(b.has_video) || b.bitrate - a.bitrate;
 
-			// NOTE: iOS cannot properly play and data from adaptive opus format
-			//       So we prefer other formats (even with video) over it
+			// NOTE: iOS cannot properly play and data from adaptive opus format,
+			//       so we prefer other formats (even with video) over it
 			if (getPlatform() === "ios") {
 				const aIsOpus = a.mime_type.includes("opus");
 				const bIsOpus = b.mime_type.includes("opus");
