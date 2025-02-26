@@ -72,6 +72,8 @@ function createCapacitorProxyUrl(url: string): string {
 }
 
 async function createWebPoMinter(): Promise<BG.WebPoMinter> {
+	const fetch = isElectron() ? window.fetch : window.capacitorFetch;
+
 	const headers = {
 		"content-type": "application/json+protobuf",
 		"user-agent": USER_AGENT,
@@ -155,8 +157,6 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		}
 		this.#initializedInnertube = this.#innertubePromise.promise;
 
-		// youtube.js seems to be destructurizing fetch somewhere, which causes
-		// "Illegal Invocation error", so we just provide our own
 		// TODO: Proxy for web support
 		const fetch = isElectron() ? ElectronMusicPlayer!.fetchShim : window.capacitorFetch;
 
@@ -256,7 +256,8 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const innertube = this.innertube!;
 		const song = this.song!;
 
-		const trackInfo = await innertube.getInfo(song.id);
+		// NOTE: WEB_EMBEDDED seems to not block audio only files
+		const trackInfo = await innertube.getInfo(song.id, "WEB_EMBEDDED");
 
 		const { audio } = this;
 
@@ -267,38 +268,48 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 			audio.appendChild(source);
 		};
 
-		type Format = ReturnType<typeof trackInfo.chooseFormat>;
-
-		const adaptiveFormats: Format[] = [];
-		for (const potentialFormat of trackInfo.streaming_data!.adaptive_formats) {
+		const streamingData = trackInfo.streaming_data;
+		const formats = [streamingData?.adaptive_formats ?? [], streamingData?.formats ?? []];
+		const potentialFormats = [];
+		for (const potentialFormat of formats.flat()) {
 			if (!potentialFormat.has_audio) continue;
 			if (audio.canPlayType(potentialFormat.mime_type) !== "probably") continue;
 
-			adaptiveFormats.push(potentialFormat);
+			potentialFormats.push(potentialFormat);
 		}
-		adaptiveFormats.sort((a, b) => b.bitrate - a.bitrate);
 
-		const staticFormats: Format[] = [];
-		for (const potentialFormat of trackInfo.streaming_data!.formats) {
-			if (!potentialFormat.has_audio) continue;
-			if (audio.canPlayType(potentialFormat.mime_type) !== "probably") continue;
+		potentialFormats.sort((a, b) => {
+			// NOTE: Android WebView pauses the audio when it contains video!
+			//       So we only use it as a fallback in case other formats fail
+			//		 And its also a good idea to just ship audio when possible anyways 🤷‍♂️
+			const defaultComparison = Number(a.has_video) - Number(b.has_video) || b.bitrate - a.bitrate;
 
-			adaptiveFormats.push(potentialFormat);
-		}
-		staticFormats.sort((a, b) => b.bitrate - a.bitrate);
+			// NOTE: iOS cannot properly play and data from adaptive opus format
+			//       So we prefer other formats (even with video) over it
+			if (getPlatform() === "ios") {
+				const aIsOpus = a.mime_type.includes("opus");
+				const bIsOpus = b.mime_type.includes("opus");
+				if (aIsOpus && !bIsOpus) {
+					return 1;
+				} else if (bIsOpus && !aIsOpus) {
+					return -1;
+				}
+			}
 
-		// iOS cannot properly read duration data from adaptive formats (its often 2x the proper value)
-		const formats =
-			getPlatform() === "ios"
-				? [...staticFormats, ...adaptiveFormats]
-				: [...adaptiveFormats, ...staticFormats];
+			return defaultComparison;
+		});
 
-		audio.innerHTML = "";
-		for (const format of formats) {
-			const url = format.decipher(innertube.session.player);
+		console.log(potentialFormats);
+
+		const urlToFormats: Record<string, unknown> = {};
+		for (const format of potentialFormats) {
+			const url = format.decipher(this.innertube!.session.player);
 			addAudioSource(url, format.mime_type);
+			urlToFormats[url] = format;
 		}
+
 		await audio.play();
+		this.log("Playing format:", urlToFormats[audio.currentSrc]);
 	}
 
 	async handleResume(): Promise<void> {
