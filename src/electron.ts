@@ -1,10 +1,10 @@
 /**
- * This module gets ran on the initialization on Electron
+ * This module gets ran on the initialization of Electron
  * @module
  */
-/* eslint-disable no-var */
 
 declare global {
+	// eslint-disable-next-line no-var
 	var __IS_ELECTRON__: boolean;
 
 	interface $ElectronMusicPlayer {
@@ -26,11 +26,14 @@ declare global {
 		readFile: (path: string) => Promise<Uint8Array>;
 		traverseDirectory: (path: string) => Promise<string[]>;
 	}
+
+	// eslint-disable-next-line no-var
 	var $ElectronMusicPlayer: $ElectronMusicPlayer | undefined;
 
 	interface ElectronMusicPlayer extends $ElectronMusicPlayer {
 		fetchShim: typeof globalThis.fetch;
 	}
+	// eslint-disable-next-line no-var
 	var ElectronMusicPlayer: ElectronMusicPlayer | undefined;
 }
 

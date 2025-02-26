@@ -50,7 +50,7 @@
 		"urlpattern-polyfill": "^10.0.0",
 		"vue": "^3.5.13",
 		"vue-router": "^4.5.0",
-		"youtubei.js": "^13.0.0"
+		"youtubei.js": "^13.1.0"
 	},
 	"devDependencies": {
 		"@capacitor/cli": "7.0.1",
