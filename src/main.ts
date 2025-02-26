@@ -41,14 +41,18 @@ import { isMobilePlatform } from "./utils/os";
 /* Vue store */
 const pinia = createPinia();
 
-if (__IS_ELECTRON__) {
-	await import("./electron");
-} else if (isMobilePlatform()) {
-	void import("./mobile");
+async function main(): Promise<void> {
+	if (__IS_ELECTRON__) {
+		await import("./electron");
+	} else if (isMobilePlatform()) {
+		await import("./mobile");
+	}
+
+	const app = createApp(App).use(IonicVue).use(pinia).use(router);
+
+	await router.isReady().then(() => {
+		app.mount("#app");
+	});
 }
 
-const app = createApp(App).use(IonicVue).use(pinia).use(router);
-
-void router.isReady().then(() => {
-	app.mount("#app");
-});
+void main();
