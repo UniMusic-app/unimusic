@@ -135,14 +135,14 @@ async function createWebPoMinter(): Promise<BG.WebPoMinter> {
 export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	logName = "YouTubeMusicPlayerService";
 	logColor = "#ff0000";
+	type = "youtube" as const;
 
 	innertube?: Innertube;
-	audio!: HTMLAudioElement;
+	audio?: HTMLAudioElement;
 
-	#innertubePromise = Promise.withResolvers<void>();
-	#initializedInnertube?: Promise<void>;
 	async handleInitialization(): Promise<void> {
 		const audio = new Audio();
+		document.body.appendChild(audio);
 		audio.addEventListener("timeupdate", () => {
 			this.store.time = audio.currentTime;
 		});
@@ -150,12 +150,6 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 			this.store.addMusicSessionActionHandlers();
 		});
 		this.audio = audio;
-
-		if (this.#initializedInnertube) {
-			await this.#initializedInnertube;
-			return;
-		}
-		this.#initializedInnertube = this.#innertubePromise.promise;
 
 		// TODO: Proxy for web support
 		const fetch = isElectron() ? ElectronMusicPlayer!.fetchShim : window.capacitorFetch;
@@ -184,19 +178,13 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		});
 
 		this.innertube = innertube;
-		this.#innertubePromise.resolve();
 	}
 
-	handleDeinitialization(): void {
-		this.audio.remove();
-		this.audio = undefined!;
-	}
+	handleDeinitialization(): void {}
 
 	async handleSearchSongs(term: string, _offset: number): Promise<SongSearchResult<YouTubeSong>[]> {
 		// TODO: Handle continuation
-		const innertube = this.innertube!;
-
-		const results = await innertube.music.search(term, { type: "song" });
+		const results = await this.innertube!.music.search(term, { type: "song" });
 		if (!results.contents) return [];
 
 		const songs: SongSearchResult<YouTubeSong>[] = [];
@@ -253,19 +241,16 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	}
 
 	async handlePlay(): Promise<void> {
-		const innertube = this.innertube!;
-		const song = this.song!;
+		const { innertube, song, audio } = this;
 
 		// NOTE: WEB_EMBEDDED seems to not block audio only files
-		const trackInfo = await innertube.getInfo(song.id, "WEB_EMBEDDED");
-
-		const { audio } = this;
+		const trackInfo = await innertube!.getInfo(song!.id, "WEB_EMBEDDED");
 
 		const addAudioSource = (url: string, mimeType: string): void => {
 			const source = document.createElement("source");
 			source.src = url;
 			source.type = mimeType;
-			audio.appendChild(source);
+			audio!.appendChild(source);
 		};
 
 		const streamingData = trackInfo.streaming_data;
@@ -273,7 +258,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const potentialFormats = [];
 		for (const potentialFormat of formats.flat()) {
 			if (!potentialFormat.has_audio) continue;
-			if (audio.canPlayType(potentialFormat.mime_type) !== "probably") continue;
+			if (audio!.canPlayType(potentialFormat.mime_type) !== "probably") continue;
 
 			potentialFormats.push(potentialFormat);
 		}
@@ -303,32 +288,36 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 
 		const urlToFormats: Record<string, unknown> = {};
 		for (const format of potentialFormats) {
-			const url = format.decipher(this.innertube!.session.player);
+			const url = format.decipher(innertube!.session.player);
 			addAudioSource(url, format.mime_type);
 			urlToFormats[url] = format;
 		}
-
-		await audio.play();
-		this.log("Playing format:", urlToFormats[audio.currentSrc]);
+		await audio!.play();
+		this.log("Playing format:", urlToFormats[audio!.currentSrc]);
 	}
 
 	async handleResume(): Promise<void> {
-		await this.audio.play();
+		await this.audio?.play();
 	}
 
 	handlePause(): void {
-		this.audio.pause();
+		this.audio?.pause();
 	}
 
 	handleStop(): void {
-		this.audio.pause();
+		if (this.audio) {
+			this.audio.pause();
+			this.audio.innerHTML = "";
+			this.audio.srcObject = null;
+			this.audio.load();
+		}
 	}
 
 	handleSeekToTime(timeInSeconds: number): void {
-		this.audio.currentTime = timeInSeconds;
+		this.audio!.currentTime = timeInSeconds;
 	}
 
 	handleSetVolume(volume: number): void {
-		this.audio.volume = volume;
+		this.audio!.volume = volume;
 	}
 }

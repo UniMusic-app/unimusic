@@ -38,6 +38,8 @@ export function musicKitSongIdType(song: MusicKitSong): "library" | "catalog" {
 export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong> {
 	logName = "MusicKitMusicPlayerService";
 	logColor = "#cc80dd";
+	type = "musickit" as const;
+
 	music!: MusicKit.MusicKitInstance;
 
 	constructor() {
@@ -142,9 +144,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		this.music = music;
 	}
 
-	handleDeinitialization(): void {
-		this.music.removeEventListener("playbackTimeDidChange", this.#timeUpdateCallback);
-	}
+	handleDeinitialization(): void {}
 
 	async handlePlay(): Promise<void> {
 		const { music } = this;

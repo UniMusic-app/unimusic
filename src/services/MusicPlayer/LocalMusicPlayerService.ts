@@ -183,7 +183,9 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	logName = "LocalMusicPlayerService";
 	logColor = "#ddd480";
-	audio!: HTMLAudioElement;
+	type = "local" as const;
+
+	audio?: HTMLAudioElement;
 
 	constructor() {
 		super();
@@ -246,11 +248,7 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		this.audio = audio;
 	}
 
-	handleDeinitialization(): void {
-		URL.revokeObjectURL(this.audio.src);
-		this.audio.remove();
-		this.audio = undefined!;
-	}
+	handleDeinitialization(): void {}
 
 	async handlePlay(): Promise<void> {
 		const { path } = this.song!.data;
@@ -259,27 +257,30 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		const url = URL.createObjectURL(blob);
 
 		const audio = this.audio;
-		audio.src = url;
-		await audio.play();
+		audio!.src = url;
+		await audio!.play();
 	}
 
 	async handleResume(): Promise<void> {
-		await this.audio.play();
+		await this.audio?.play?.();
 	}
 
 	handlePause(): void {
-		this.audio.pause();
+		this.audio?.pause?.();
 	}
 
 	handleStop(): void {
-		this.audio.pause();
+		if (this.audio) {
+			this.audio.pause();
+			URL.revokeObjectURL(this.audio.src);
+		}
 	}
 
 	handleSeekToTime(timeInSeconds: number): void {
-		this.audio.currentTime = timeInSeconds;
+		this.audio!.currentTime = timeInSeconds;
 	}
 
 	handleSetVolume(volume: number): void {
-		this.audio.volume = volume;
+		this.audio!.volume = volume;
 	}
 }
