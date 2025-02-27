@@ -6,8 +6,10 @@ import { computed, ref, watch } from "vue";
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 
 import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayerService";
+import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
 import { getPlatform } from "@/utils/os";
+import { Maybe } from "@/utils/types";
 import { useLocalImages } from "./local-images";
 
 export type SongImage = { id: string; url?: never } | { id?: never; url: string };
@@ -40,21 +42,29 @@ export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
-	const musicPlayerServices: Record<string, MusicPlayerService> = {
-		local: new LocalMusicPlayerService(),
-		youtube: new YouTubeMusicPlayerService(),
-	};
+	const musicPlayerServices: Record<string, MusicPlayerService> = {};
 
-	function addMusicPlayerService(type: string, service: MusicPlayerService): void {
-		musicPlayerServices[type] = service;
+	function addMusicPlayerService(service: MusicPlayerService): void {
+		if (!musicPlayerServices[service.type]) {
+			musicPlayerServices[service.type] = service;
+		}
 	}
 
-	function getMusicPlayerService(type: string): MusicPlayerService | void {
+	function getMusicPlayerService(type: string): Maybe<MusicPlayerService> {
 		return musicPlayerServices[type];
 	}
 
-	function removeMusicPlayerService(type: string): void {
-		delete musicPlayerServices[type];
+	async function removeMusicPlayerService(type: string): Promise<void> {
+		if (musicPlayerServices[type]) {
+			await musicPlayerServices[type]?.deinitialize?.();
+			delete musicPlayerServices[type];
+		}
+	}
+
+	addMusicPlayerService(new MusicKitMusicPlayerService());
+	if (getPlatform() !== "web") {
+		addMusicPlayerService(new YouTubeMusicPlayerService());
+		addMusicPlayerService(new LocalMusicPlayerService());
 	}
 
 	function withAllServices<T>(callback: (service: MusicPlayerService) => T): Promise<Awaited<T>[]> {

@@ -15,13 +15,13 @@ export const useMusicKit = defineStore("MusicKit", () => {
 
 	const authService = new MusicKitAuthorizationService();
 	authService.addEventListener("authorized", () => {
-		musicPlayer.addMusicPlayerService("musickit", new MusicKitMusicPlayerService());
+		musicPlayer.addMusicPlayerService(new MusicKitMusicPlayerService());
 		resolveMusicPromise(MusicKit.getInstance()!);
 		authorized.value = true;
 	});
-	authService.addEventListener("unauthorized", () => {
-		musicPlayer.removeMusicPlayerService("musickit");
+	authService.addEventListener("unauthorized", async () => {
 		authorized.value = false;
+		await musicPlayer.removeMusicPlayerService("musickit");
 	});
 	void authService.passivelyAuthorize();
 
