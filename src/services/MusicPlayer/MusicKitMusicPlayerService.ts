@@ -147,7 +147,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		}
 
 		const music = MusicKit.getInstance()!;
-		console.log("music:", music);
+		this.music = music;
 
 		music.repeatMode = MusicKit.PlayerRepeatMode.none;
 		music.addEventListener("playbackTimeDidChange", this.#timeUpdateCallback);
@@ -164,8 +164,6 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 				}
 			});
 		});
-
-		this.music = music;
 	}
 
 	handleDeinitialization(): void {}

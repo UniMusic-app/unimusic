@@ -237,6 +237,9 @@ export abstract class MusicPlayerService<
 		this.initialized = true;
 		this.#initialization.resolve();
 		this.#initialization = undefined;
+
+		await this.seekToTime(0);
+		await this.setVolume(this.store.volume);
 	}
 
 	#deinitialization?: PromiseWithResolvers<void>;
