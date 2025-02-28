@@ -14,14 +14,22 @@ export class UnauthorizedEvent extends CustomEvent<never> {
 	}
 }
 
-export abstract class AuthorizationService<const Key extends string, const Data> extends Service {
+export abstract class AuthorizationService<const Data = unknown> extends Service {
 	logName = "AuthorizationService";
 	logColor = "#3040ff";
 
-	abstract key: Key;
+	abstract key: string;
+	isAuthorized = false;
+
+	get #taggedKey(): string {
+		return `Auth-${this.key}`;
+	}
 
 	constructor() {
 		super();
+
+		this.addEventListener("authorized", () => (this.isAuthorized = true));
+		this.addEventListener("unauthorized", () => (this.isAuthorized = false));
 	}
 
 	addEventListener(
@@ -67,16 +75,16 @@ export abstract class AuthorizationService<const Key extends string, const Data>
 
 	async forget(): Promise<void> {
 		this.log("forget");
-		await Preferences.remove({ key: this.key });
+		await Preferences.remove({ key: this.#taggedKey });
 	}
 
 	async remember(data: Data): Promise<void> {
 		this.log("remember");
-		await Preferences.set({ key: this.key, value: JSON.stringify(data) });
+		await Preferences.set({ key: this.#taggedKey, value: JSON.stringify(data) });
 	}
 
 	async getRemembered(): Promise<Maybe<Data>> {
-		const { value } = await Preferences.get({ key: this.key });
+		const { value } = await Preferences.get({ key: this.#taggedKey });
 		return value && JSON.parse(value);
 	}
 }

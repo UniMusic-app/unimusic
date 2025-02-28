@@ -5,6 +5,7 @@ import { AnySong, SongImage, useMusicPlayer } from "@/stores/music-player";
 
 import { Service } from "@/services/Service";
 import { alertController } from "@ionic/vue";
+import { AuthorizationService } from "../Authorization/AuthorizationService";
 
 export interface SongSearchResult<Song extends AnySong = AnySong> {
 	type: Song["type"];
@@ -22,6 +23,8 @@ export abstract class MusicPlayerService<
 > extends Service {
 	abstract logName: string;
 	abstract type: Song["type"];
+
+	authorization?: AuthorizationService;
 
 	store = useMusicPlayer();
 	metadataStore = useSongMetadata();
@@ -216,11 +219,15 @@ export abstract class MusicPlayerService<
 			this.#initialization = Promise.withResolvers();
 		}
 
+		if (this.authorization) {
+			await this.withUnrecoverableErrorHandling(() => this.authorization!.authorize());
+		}
+
 		this.log("initializing");
 		try {
 			await this.withUnrecoverableErrorHandling(this.handleInitialization);
 		} catch (error) {
-			this.#initialization.reject(error);
+			this.#initialization?.reject(error);
 			this.#initialization = undefined;
 			throw error;
 		}

@@ -1,17 +1,17 @@
 import MusicKitAuthorizationPlugin from "@/plugins/MusicKitAuthorization";
+import { AuthorizationService } from "@/services/Authorization/AuthorizationService";
 import { Maybe } from "@/utils/types";
-import { AuthorizationService } from "./AuthorizationService";
 
 interface MusicKitTokens {
 	developerToken: string;
 	musicUserToken: string;
 }
 
-export class MusicKitAuthorizationService extends AuthorizationService<"MusicKit", MusicKitTokens> {
+export class MusicKitAuthorizationService extends AuthorizationService<MusicKitTokens> {
 	logName = "MusicKitAuthorizationService";
 	logColor = "#ff7080";
 
-	key = "MusicKit" as const;
+	key = "MusicKit";
 
 	constructor() {
 		super();
@@ -36,8 +36,12 @@ export class MusicKitAuthorizationService extends AuthorizationService<"MusicKit
 	async handlePassivelyAuthorize(): Promise<Maybe<MusicKitTokens>> {
 		if (!globalThis.MusicKit) {
 			this.log("MusicKit not yet initialized, retrying after it gets loaded...");
-			document.addEventListener("musickitloaded", () => this.passivelyAuthorize(), { once: true });
-			return;
+
+			return new Promise((resolve) => {
+				document.addEventListener("musickitloaded", () => resolve(this.passivelyAuthorize()), {
+					once: true,
+				});
+			});
 		}
 
 		const music = MusicKit.getInstance();

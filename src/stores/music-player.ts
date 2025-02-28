@@ -1,7 +1,7 @@
 import { useLocalStorage, useStorage, watchDebounced } from "@vueuse/core";
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
 import { defineStore } from "pinia";
-import { computed, ref, watch } from "vue";
+import { computed, reactive, readonly, ref, watch } from "vue";
 
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 
@@ -42,7 +42,7 @@ export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
-	const musicPlayerServices: Record<string, MusicPlayerService> = {};
+	const musicPlayerServices: Record<string, MusicPlayerService> = reactive({});
 
 	function addMusicPlayerService(service: MusicPlayerService): void {
 		if (!musicPlayerServices[service.type]) {
@@ -372,6 +372,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		refreshSong,
 		refreshLibrarySongs,
 
+		musicPlayerServices: readonly(musicPlayerServices),
 		addMusicPlayerService,
 		getMusicPlayerService,
 		removeMusicPlayerService,
