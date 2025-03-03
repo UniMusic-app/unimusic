@@ -184,6 +184,7 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	logName = "LocalMusicPlayerService";
 	logColor = "#ddd480";
 	type = "local" as const;
+	available = getPlatform() !== "web";
 
 	audio?: HTMLAudioElement;
 

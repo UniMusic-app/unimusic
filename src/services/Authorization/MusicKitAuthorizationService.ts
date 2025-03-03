@@ -11,12 +11,6 @@ export class MusicKitAuthorizationService extends AuthorizationService<MusicKitT
 	logName = "MusicKitAuthorizationService";
 	logColor = "#ff7080";
 
-	key = "MusicKit";
-
-	constructor() {
-		super();
-	}
-
 	async initialize(
 		developerToken: string,
 		musicUserToken: string,
@@ -54,7 +48,7 @@ export class MusicKitAuthorizationService extends AuthorizationService<MusicKitT
 			return tokens;
 		}
 
-		const tokens = await this.getRemembered();
+		const tokens = await this.getSavedState();
 		if (tokens) {
 			this.log("Restoring session");
 			const music = await this.initialize(tokens.developerToken, tokens.musicUserToken);
@@ -76,7 +70,6 @@ export class MusicKitAuthorizationService extends AuthorizationService<MusicKitT
 		const musicKitInstance = await this.initialize(tokens.developerToken, tokens.musicUserToken);
 
 		if (musicKitInstance.isAuthorized) {
-			await this.remember(tokens);
 			return tokens;
 		} else {
 			throw new Error("Failed to authorize MusicKit");

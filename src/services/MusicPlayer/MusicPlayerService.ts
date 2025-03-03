@@ -4,8 +4,14 @@ import { useSongMetadata } from "@/stores/metadata";
 import { AnySong, SongImage, useMusicPlayer } from "@/stores/music-player";
 
 import { Service } from "@/services/Service";
+import { Maybe } from "@/utils/types";
 import { alertController } from "@ionic/vue";
+import { computed, reactive, ref } from "vue";
 import { AuthorizationService } from "../Authorization/AuthorizationService";
+
+export interface MusicPlayerServiceState {
+	enabled: boolean;
+}
 
 export interface SongSearchResult<Song extends AnySong = AnySong> {
 	type: Song["type"];
@@ -26,9 +32,10 @@ export class SilentError extends Error {
 export abstract class MusicPlayerService<
 	Song extends AnySong = AnySong,
 	const SearchResult extends SongSearchResult<Song> = SongSearchResult<Song>,
-> extends Service {
+> extends Service<MusicPlayerServiceState> {
 	abstract logName: string;
 	abstract type: Song["type"];
+	abstract available: boolean;
 
 	authorization?: AuthorizationService;
 
@@ -38,7 +45,68 @@ export abstract class MusicPlayerService<
 	initialPlayed = false;
 	song?: Song;
 
-	static initializedServices = new Set<MusicPlayerService>();
+	#enabled = ref(false);
+	enabled = computed({
+		get: () => {
+			const enabled = this.#enabled.value;
+			return this.available && enabled;
+		},
+		set: async (value) => {
+			if (value) {
+				await this.enable();
+			} else {
+				await this.disable();
+			}
+		},
+	});
+
+	constructor() {
+		super();
+
+		// Execute restoreState after the whole class has been instantiated
+		queueMicrotask(() => void this.restoreState());
+	}
+
+	async restoreState(): Promise<void> {
+		if (!this.available) return;
+
+		this.log("restoreState");
+		const state = await this.getSavedState();
+		if (!state) return;
+
+		this.enabled.value = state.enabled;
+	}
+
+	async disable(): Promise<void> {
+		this.log("disable");
+		this.#enabled.value = false;
+		await this.deinitialize();
+		await this.saveState({ enabled: false });
+	}
+
+	async enable(): Promise<void> {
+		this.log("enable");
+		this.#enabled.value = true;
+		await this.initialize();
+		await this.saveState({ enabled: true });
+	}
+
+	static #registeredServices: Record<string, MusicPlayerService> = reactive({});
+	static registerService(service: MusicPlayerService): void {
+		this.#registeredServices[service.type] = service;
+	}
+	static getRegisteredServices(): Readonly<Record<string, MusicPlayerService>> {
+		return this.#registeredServices;
+	}
+	static getEnabledServices(): MusicPlayerService[] {
+		return Object.values(this.#registeredServices).filter((service) => service.enabled.value);
+	}
+	static getService(type: string): Maybe<MusicPlayerService> {
+		const service = this.#registeredServices[type];
+		if (!service.enabled) return undefined;
+		return service;
+	}
+
 	static async stopServices(except?: MusicPlayerService): Promise<void> {
 		console.log(
 			`%cMusicPlayerService:`,
@@ -46,7 +114,7 @@ export abstract class MusicPlayerService<
 			"Deinitializing MusicPlayer services",
 		);
 
-		for (const service of MusicPlayerService.initializedServices) {
+		for (const service of MusicPlayerService.getEnabledServices()) {
 			if (service === except) continue;
 			await service.stop();
 		}
@@ -201,11 +269,6 @@ export abstract class MusicPlayerService<
 		}
 	}
 
-	async disable(): Promise<void> {
-		this.log("disable");
-		await this.store.removeMusicPlayerService(this.type);
-	}
-
 	async changeSong(song: Song): Promise<void> {
 		this.log("changeSong");
 		if (this.song === song) return;
@@ -248,8 +311,6 @@ export abstract class MusicPlayerService<
 			throw error;
 		}
 
-		MusicPlayerService.initializedServices.add(this);
-
 		this.initialized = true;
 		this.#initialization.resolve();
 		this.#initialization = undefined;
@@ -278,8 +339,6 @@ export abstract class MusicPlayerService<
 			this.#deinitialization = undefined;
 			throw error;
 		}
-
-		MusicPlayerService.initializedServices.delete(this);
 
 		this.initialized = false;
 		this.#deinitialization.resolve();

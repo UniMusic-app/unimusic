@@ -136,6 +136,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	logName = "YouTubeMusicPlayerService";
 	logColor = "#ff0000";
 	type = "youtube" as const;
+	available = getPlatform() !== "web";
 
 	innertube?: Innertube;
 	audio?: HTMLAudioElement;

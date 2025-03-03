@@ -40,6 +40,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	logName = "MusicKitMusicPlayerService";
 	logColor = "#cc80dd";
 	type = "musickit" as const;
+	available = true;
 
 	music?: MusicKit.MusicKitInstance;
 	authorization = new MusicKitAuthorizationService();

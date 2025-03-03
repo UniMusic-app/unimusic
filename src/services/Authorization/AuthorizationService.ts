@@ -1,10 +1,9 @@
 import { Service } from "@/services/Service";
 import { Maybe } from "@/utils/types";
-import { Preferences } from "@capacitor/preferences";
 
-export class AuthorizedEvent<Data> extends CustomEvent<Data> {
-	constructor(data: Data) {
-		super("authorized", { detail: data });
+export class AuthorizedEvent<State> extends CustomEvent<State> {
+	constructor(state: State) {
+		super("authorized", { detail: state });
 	}
 }
 
@@ -14,16 +13,8 @@ export class UnauthorizedEvent extends CustomEvent<never> {
 	}
 }
 
-export abstract class AuthorizationService<const Data = unknown> extends Service {
-	logName = "AuthorizationService";
-	logColor = "#3040ff";
-
-	abstract key: string;
+export abstract class AuthorizationService<const State = unknown> extends Service<State> {
 	isAuthorized = false;
-
-	get #taggedKey(): string {
-		return `Auth-${this.key}`;
-	}
 
 	constructor() {
 		super();
@@ -40,53 +31,42 @@ export abstract class AuthorizationService<const Data = unknown> extends Service
 		super.addEventListener(type, callback, options);
 	}
 
-	emitAuthorized(data: Data): boolean {
-		return this.dispatchEvent(new AuthorizedEvent(data));
+	emitAuthorized(state: State): boolean {
+		return this.dispatchEvent(new AuthorizedEvent(state));
 	}
 	emitUnauthorized(): boolean {
 		return this.dispatchEvent(new UnauthorizedEvent());
 	}
-	emitAppropriate(data?: Maybe<Data>): boolean {
-		if (data) return this.emitAuthorized(data);
+	emitAppropriate(state?: Maybe<State>): boolean {
+		if (state) return this.emitAuthorized(state);
 		return this.emitUnauthorized();
 	}
 
-	abstract handlePassivelyAuthorize(): Promise<Maybe<Data>> | Maybe<Data>;
-	async passivelyAuthorize(): Promise<Maybe<Data>> {
+	abstract handlePassivelyAuthorize(): Promise<Maybe<State>> | Maybe<State>;
+	async passivelyAuthorize(): Promise<Maybe<State>> {
 		this.log("passivelyAuthorize");
-		const data = await this.handlePassivelyAuthorize();
-		this.emitAppropriate(data);
-		return data;
+		const state = await this.handlePassivelyAuthorize();
+		this.emitAppropriate(state);
+		if (state) {
+			await this.saveState(state);
+		}
+		return state;
 	}
 
-	abstract handleAuthorize(): Promise<Data> | Data;
-	async authorize(): Promise<Data> {
+	abstract handleAuthorize(): Promise<State> | State;
+	async authorize(): Promise<State> {
 		this.log("authorize");
-		const data = await this.handleAuthorize();
-		this.emitAuthorized(data);
-		return data;
+		const state = await this.handleAuthorize();
+		this.emitAuthorized(state);
+		await this.saveState(state);
+		return state;
 	}
 
 	abstract handleUnauthorize(): Promise<void> | void;
 	async unauthorize(): Promise<void> {
 		this.log("unauthorize");
 		await this.handleUnauthorize();
-		await this.forget();
+		await this.clearState();
 		this.emitUnauthorized();
-	}
-
-	async forget(): Promise<void> {
-		this.log("forget");
-		await Preferences.remove({ key: this.#taggedKey });
-	}
-
-	async remember(data: Data): Promise<void> {
-		this.log("remember");
-		await Preferences.set({ key: this.#taggedKey, value: JSON.stringify(data) });
-	}
-
-	async getRemembered(): Promise<Maybe<Data>> {
-		const { value } = await Preferences.get({ key: this.#taggedKey });
-		return value && JSON.parse(value);
 	}
 }

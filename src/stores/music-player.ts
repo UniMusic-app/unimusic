@@ -1,7 +1,7 @@
 import { useLocalStorage, useStorage, watchDebounced } from "@vueuse/core";
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
 import { defineStore } from "pinia";
-import { computed, reactive, readonly, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 
@@ -9,7 +9,6 @@ import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayer
 import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
 import { getPlatform } from "@/utils/os";
-import { Maybe } from "@/utils/types";
 import { useLocalImages } from "./local-images";
 
 export type SongImage = { id: string; url?: never } | { id?: never; url: string };
@@ -42,33 +41,12 @@ export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
-	const musicPlayerServices: Record<string, MusicPlayerService> = reactive({});
-
-	function addMusicPlayerService(service: MusicPlayerService): void {
-		if (!musicPlayerServices[service.type]) {
-			musicPlayerServices[service.type] = service;
-		}
-	}
-
-	function getMusicPlayerService(type: string): Maybe<MusicPlayerService> {
-		return musicPlayerServices[type];
-	}
-
-	async function removeMusicPlayerService(type: string): Promise<void> {
-		if (musicPlayerServices[type]) {
-			await musicPlayerServices[type]?.deinitialize?.();
-			delete musicPlayerServices[type];
-		}
-	}
-
-	addMusicPlayerService(new MusicKitMusicPlayerService());
-	if (getPlatform() !== "web") {
-		addMusicPlayerService(new YouTubeMusicPlayerService());
-		addMusicPlayerService(new LocalMusicPlayerService());
-	}
+	MusicPlayerService.registerService(new MusicKitMusicPlayerService());
+	MusicPlayerService.registerService(new YouTubeMusicPlayerService());
+	MusicPlayerService.registerService(new LocalMusicPlayerService());
 
 	function withAllServices<T>(callback: (service: MusicPlayerService) => T): Promise<Awaited<T>[]> {
-		return Promise.all(Object.values(musicPlayerServices).map(callback));
+		return Promise.all(MusicPlayerService.getEnabledServices().map(callback));
 	}
 
 	const queuedSongs = useIDBKeyval<AnySong[]>("queuedSongs", []);
@@ -77,14 +55,14 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	const currentService = computed<MusicPlayerService | undefined>(() => {
 		const song = currentSong.value;
-		return song && musicPlayerServices[song.type];
+		return song && MusicPlayerService.getService(song.type);
 	});
 
 	let autoPlay = false;
 	watchDebounced(
 		[currentSong, currentService],
 		async ([song, service]) => {
-			if (!service) return;
+			if (!service?.enabled?.value) return;
 
 			if (song) {
 				await service.changeSong(song);
@@ -207,11 +185,12 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	}
 
 	async function refreshSong(song: AnySong): Promise<void> {
-		await musicPlayerServices[song.type].refreshSong(song);
+		await MusicPlayerService.getService(song.type)?.refreshSong(song);
 	}
 
 	async function getSongFromSearchResult(searchResult: SongSearchResult): Promise<AnySong> {
-		const song = await musicPlayerServices[searchResult.type].getSongFromSearchResult(searchResult);
+		const service = MusicPlayerService.getService(searchResult.type)!;
+		const song = await service.getSongFromSearchResult(searchResult);
 		return song;
 	}
 
@@ -371,10 +350,5 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		librarySongs,
 		refreshSong,
 		refreshLibrarySongs,
-
-		musicPlayerServices: readonly(musicPlayerServices),
-		addMusicPlayerService,
-		getMusicPlayerService,
-		removeMusicPlayerService,
 	};
 });

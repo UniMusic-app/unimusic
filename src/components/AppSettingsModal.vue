@@ -8,14 +8,13 @@
 		</ion-toolbar>
 	</ion-header>
 	<ion-content class="ion-padding">
-		<ion-item v-for="service in musicPlayer.musicPlayerServices" :key="service.type">
+		<ion-item v-for="service in MusicPlayerService.getRegisteredServices()" :key="service.type">
 			<ion-label class="platform-status">
-				<div v-html="AppleMusicLogo" class="apple-music-logo-wrapper" />
-				<span class="platform-name" style="color: var(--apple-music-color)">Apple Music</span>
+				<span class="platform-name">{{ songTypeToDisplayName(service.type) }}</span>
 			</ion-label>
 
 			<ion-buttons>
-				<template v-if="service.authorization">
+				<template v-if="service.enabled.value && service.authorization">
 					<ion-button
 						v-if="service.authorization.isAuthorized"
 						@click="service.authorization.unauthorize()"
@@ -24,13 +23,20 @@
 					</ion-button>
 					<ion-button v-else @click="service.authorization.authorize()">Authorize</ion-button>
 				</template>
+
+				<ion-toggle
+					:checked="service.enabled.value"
+					@ion-change="service.enabled.value = !service.enabled.value"
+					:disabled="!service.available"
+				/>
 			</ion-buttons>
 		</ion-item>
 	</ion-content>
 </template>
 
 <script lang="ts">
-import { useMusicPlayer } from "@/stores/music-player";
+import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import { songTypeToDisplayName } from "@/utils/songs";
 import AppSettingsModal from "./AppSettingsModal.vue";
 export async function createSettingsModal(): Promise<HTMLIonModalElement> {
 	const modal = await modalController.create({
@@ -49,13 +55,10 @@ import {
 	IonItem,
 	IonLabel,
 	IonTitle,
+	IonToggle,
 	IonToolbar,
 	modalController,
 } from "@ionic/vue";
-
-import AppleMusicLogo from "@/assets/branding/AppleMusic.svg?raw";
-
-const musicPlayer = useMusicPlayer();
 
 async function close(): Promise<void> {
 	await modalController.dismiss();
