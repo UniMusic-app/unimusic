@@ -55,10 +55,12 @@ export abstract class MusicPlayerService<
 		} catch (error) {
 			console.error("Unrecoverable", error);
 
+			const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+
 			const alert = await alertController.create({
 				header: "Unrecoverable error!",
 				subHeader: this.logName,
-				message: `${this.logName} threw an unrecoverable error.`,
+				message: `${this.logName} threw an unrecoverable error:\n${errorMessage}`,
 				buttons: [
 					{ text: "Retry", role: "cancel" },
 					{ text: "Ignore", role: "confirm" },
@@ -90,10 +92,12 @@ export abstract class MusicPlayerService<
 		} catch (error) {
 			console.error("Recoverable", error);
 
+			const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+
 			const alert = await alertController.create({
 				header: "Error!",
 				subHeader: this.logName,
-				message: `${this.logName} threw an error.`,
+				message: `${this.logName} threw an error:\n${errorMessage}`,
 				buttons: [
 					{ text: "Retry", role: "cancel" },
 					{ text: "Ignore", role: "confirm" },
