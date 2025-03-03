@@ -292,7 +292,16 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 			addAudioSource(url, format.mime_type);
 			urlToFormats[url] = format;
 		}
-		await audio!.play();
+		try {
+			await audio!.play();
+		} catch (error) {
+			// Someone skipped or stopped the song while it was still trying to play it, let it slide
+			if (error instanceof Error && error.name === "AbortError") {
+				return;
+			}
+			throw error;
+		}
+
 		this.log("Playing format:", urlToFormats[audio!.currentSrc]);
 	}
 

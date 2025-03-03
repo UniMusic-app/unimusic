@@ -170,9 +170,15 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 
 	async handlePlay(): Promise<void> {
 		const { music } = this;
-
 		await music?.setQueue({ song: this.song!.id });
-		await music?.play();
+		try {
+			await music?.play();
+		} catch (error) {
+			// Someone skipped or stopped the song while it was still trying to play it, let it slide
+			if (error instanceof Error && error.name === "AbortError") {
+				return;
+			}
+		}
 	}
 
 	async handleResume(): Promise<void> {

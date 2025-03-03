@@ -258,7 +258,15 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 
 		const audio = this.audio;
 		audio!.src = url;
-		await audio!.play();
+
+		try {
+			await audio!.play();
+		} catch (error) {
+			// Someone skipped or stopped the song while it was still trying to play it, let it slide
+			if (error instanceof Error && error.name === "AbortError") {
+				return;
+			}
+		}
 	}
 
 	async handleResume(): Promise<void> {
