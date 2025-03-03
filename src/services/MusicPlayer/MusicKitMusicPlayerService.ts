@@ -1,6 +1,6 @@
 import { MusicKitSong } from "@/stores/music-player";
 
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import { MusicPlayerService, SilentError } from "@/services/MusicPlayer/MusicPlayerService";
 
 import { generateSongStyle } from "@/utils/songs";
 import { alertController } from "@ionic/vue";
@@ -142,7 +142,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 				await this.authorization.authorize();
 			} else {
 				await this.disable();
-				throw new Error("Failed authorization");
+				throw new SilentError("Failed authorization");
 			}
 		}
 
@@ -196,6 +196,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	}
 
 	handleSetVolume(volume: number): void {
-		this.music!.volume = volume;
+		if (!this.music) return;
+		this.music.volume = volume;
 	}
 }

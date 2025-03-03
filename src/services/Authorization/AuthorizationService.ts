@@ -54,7 +54,9 @@ export abstract class AuthorizationService<const Data = unknown> extends Service
 	abstract handlePassivelyAuthorize(): Promise<Maybe<Data>> | Maybe<Data>;
 	async passivelyAuthorize(): Promise<Maybe<Data>> {
 		this.log("passivelyAuthorize");
-		return await this.handlePassivelyAuthorize();
+		const data = await this.handlePassivelyAuthorize();
+		this.emitAppropriate(data);
+		return data;
 	}
 
 	abstract handleAuthorize(): Promise<Data> | Data;

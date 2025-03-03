@@ -17,6 +17,12 @@ export interface SongSearchResult<Song extends AnySong = AnySong> {
 	artwork?: SongImage;
 }
 
+export class SilentError extends Error {
+	constructor(message?: string, options?: ErrorOptions) {
+		super(message, options);
+	}
+}
+
 export abstract class MusicPlayerService<
 	Song extends AnySong = AnySong,
 	const SearchResult extends SongSearchResult<Song> = SongSearchResult<Song>,
@@ -53,6 +59,8 @@ export abstract class MusicPlayerService<
 		try {
 			return await fn.apply(this, args);
 		} catch (error) {
+			if (error instanceof SilentError) throw error;
+
 			console.error("Unrecoverable", error);
 
 			const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
@@ -90,6 +98,8 @@ export abstract class MusicPlayerService<
 		try {
 			return await fn.apply(this, args);
 		} catch (error) {
+			if (error instanceof SilentError) return fallback;
+
 			console.error("Recoverable", error);
 
 			const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
@@ -224,7 +234,7 @@ export abstract class MusicPlayerService<
 		}
 
 		if (this.authorization) {
-			await this.withUnrecoverableErrorHandling(() => this.authorization!.authorize());
+			await this.withUnrecoverableErrorHandling(() => this.authorization!.passivelyAuthorize());
 		}
 
 		this.log("initializing");
@@ -233,6 +243,8 @@ export abstract class MusicPlayerService<
 		} catch (error) {
 			this.#initialization?.reject(error);
 			this.#initialization = undefined;
+
+			if (error instanceof SilentError) throw error;
 			throw error;
 		}
 

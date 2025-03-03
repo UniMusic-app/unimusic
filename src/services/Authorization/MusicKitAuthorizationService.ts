@@ -51,7 +51,6 @@ export class MusicKitAuthorizationService extends AuthorizationService<MusicKitT
 				developerToken: music.developerToken,
 				musicUserToken: music.musicUserToken!,
 			};
-			this.emitAuthorized(tokens);
 			return tokens;
 		}
 
@@ -64,7 +63,6 @@ export class MusicKitAuthorizationService extends AuthorizationService<MusicKitT
 					developerToken: music.developerToken,
 					musicUserToken: music.musicUserToken!,
 				};
-				this.emitAuthorized(tokens);
 				return tokens;
 			}
 		}
