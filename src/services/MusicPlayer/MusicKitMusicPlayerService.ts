@@ -157,12 +157,10 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 
 		// MusicKit attaches listeners to persist playback state on visibility state changes
 		// Since we can pause/play/skip songs while in the background this isn't what we want, thus we make sure it is in the correct state
-		document.addEventListener("visibilitychange", () => {
-			queueMicrotask(async () => {
-				if (!this.song && music.playbackState === MusicKit.PlaybackStates.playing) {
-					await music.stop();
-				}
-			});
+		music.addEventListener("playbackStateDidChange", async ({ state }) => {
+			if (state === MusicKit.PlaybackStates.playing && !this.song) {
+				await music.stop();
+			}
 		});
 	}
 

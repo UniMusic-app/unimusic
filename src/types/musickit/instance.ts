@@ -181,6 +181,14 @@ declare global {
 			 * Listen to an Event on the MusicKit Instance.
 			 */
 			addEventListener(
+				name: "playbackStateDidChange",
+				callback: (event: {
+					oldState: MusicKit.PlaybackStates;
+					state: MusicKit.PlaybackStates;
+				}) => unknown,
+				options?: { once?: boolean },
+			): void;
+			addEventListener(
 				name: string,
 				callback: (...args: unknown[]) => unknown,
 				options?: { once?: boolean },
