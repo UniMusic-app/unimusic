@@ -110,10 +110,6 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		},
 	});
 
-	watch([time, duration], ([time, duration]) => {
-		if (Math.floor(duration - time) === 0) skipNext();
-	});
-
 	const hasPrevious = computed(() => queueIndex.value > 0);
 	const hasNext = computed(() => queuedSongs.data.value.length > queueIndex.value + 1);
 

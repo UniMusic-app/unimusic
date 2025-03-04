@@ -239,12 +239,17 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	}
 
 	handleInitialization(): void {
+		// TODO: Make an abstract MusicPlayerService class that uses HTMLAudioElement
+		// 		 Since this is shared between {YouTube,Local}MusicPlayerService's, and possibly more in the future
 		const audio = new Audio();
 		audio.addEventListener("timeupdate", () => {
 			this.store.time = audio.currentTime;
 		});
 		audio.addEventListener("playing", () => {
 			this.store.addMusicSessionActionHandlers();
+		});
+		audio.addEventListener("ended", () => {
+			this.store.skipNext();
 		});
 		this.audio = audio;
 	}

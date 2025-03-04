@@ -159,8 +159,15 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		// MusicKit attaches listeners to persist playback state on visibility state changes
 		// Since we can pause/play/skip songs while in the background this isn't what we want, thus we make sure it is in the correct state
 		music.addEventListener("playbackStateDidChange", async ({ state }) => {
-			if (state === MusicKit.PlaybackStates.playing && !this.song) {
-				await music.stop();
+			switch (state) {
+				case MusicKit.PlaybackStates.ended:
+					this.store.skipNext();
+					break;
+				case MusicKit.PlaybackStates.playing:
+					if (!this.song) {
+						await music.stop();
+					}
+					break;
 			}
 		});
 	}

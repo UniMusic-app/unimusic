@@ -150,6 +150,9 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		audio.addEventListener("playing", () => {
 			this.store.addMusicSessionActionHandlers();
 		});
+		audio.addEventListener("ended", () => {
+			this.store.skipNext();
+		});
 		this.audio = audio;
 
 		// TODO: Proxy for web support
