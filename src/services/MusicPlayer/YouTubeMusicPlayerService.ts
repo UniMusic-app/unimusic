@@ -273,8 +273,10 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 			//		 And its also a good idea to just ship audio when possible anyways 🤷‍♂️
 			const defaultComparison = Number(a.has_video) - Number(b.has_video) || b.bitrate - a.bitrate;
 
-			// NOTE: iOS cannot properly play and data from adaptive opus format,
-			//       so we prefer other formats (even with video) over it
+			// NOTE: iOS cannot properly play and data from adaptive formats.
+			//       For now we prefer static formats, even if they also contain video or have worse audio quality
+			//       For adaptive formats – we prefer anything thats not opus, as its support on iOS is catastrophic
+			// TODO: Check if there is a way to get just audio...
 			if (getPlatform() === "ios") {
 				const aIsOpus = a.mime_type.includes("opus");
 				const bIsOpus = b.mime_type.includes("opus");
@@ -283,6 +285,8 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 				} else if (bIsOpus && !aIsOpus) {
 					return -1;
 				}
+
+				return Number(a.average_bitrate ?? 0) - Number(b.average_bitrate ?? 0) || defaultComparison;
 			}
 
 			return defaultComparison;
