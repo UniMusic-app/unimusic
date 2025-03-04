@@ -24,7 +24,6 @@
 </template>
 
 <script setup lang="ts">
-import { useMusicKit } from "@/stores/musickit";
 import {
 	IonApp,
 	IonIcon,
@@ -35,7 +34,4 @@ import {
 	IonTabs,
 } from "@ionic/vue";
 import { home as homeIcon, library as libraryIcon, search as searchIcon } from "ionicons/icons";
-
-// Initialize MusicKit store to initialize authorization service
-useMusicKit();
 </script>

@@ -1,9 +1,10 @@
 import { MusicKitSong } from "@/stores/music-player";
-import { useMusicKit } from "@/stores/musickit";
 
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import { MusicPlayerService, SilentError } from "@/services/MusicPlayer/MusicPlayerService";
 
 import { generateSongStyle } from "@/utils/songs";
+import { alertController } from "@ionic/vue";
+import { MusicKitAuthorizationService } from "../Authorization/MusicKitAuthorizationService";
 
 export async function musicKitSong(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
@@ -38,7 +39,11 @@ export function musicKitSongIdType(song: MusicKitSong): "library" | "catalog" {
 export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong> {
 	logName = "MusicKitMusicPlayerService";
 	logColor = "#cc80dd";
-	music!: MusicKit.MusicKitInstance;
+	type = "musickit" as const;
+	available = true;
+
+	music?: MusicKit.MusicKitInstance;
+	authorization = new MusicKitAuthorizationService();
 
 	constructor() {
 		super();
@@ -47,7 +52,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	async handleSearchHints(term: string): Promise<string[]> {
 		if (!term) return [];
 
-		const response = await this.music.api.music<{ results: { terms: string[] } }>(
+		const response = await this.music!.api.music<{ results: { terms: string[] } }>(
 			"/v1/catalog/{{storefrontId}}/search/hints",
 			{ term },
 		);
@@ -57,15 +62,15 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	}
 
 	async handleSearchSongs(term: string, offset: number): Promise<MusicKitSong[]> {
-		const response = await this.music.api.music<MusicKit.SearchResponse, MusicKit.CatalogSearchQuery>(
-			"/v1/catalog/{{storefrontId}}/search",
-			{
-				term,
-				types: ["songs"],
-				limit: 25,
-				offset,
-			},
-		);
+		const response = await this.music!.api.music<
+			MusicKit.SearchResponse,
+			MusicKit.CatalogSearchQuery
+		>("/v1/catalog/{{storefrontId}}/search", {
+			term,
+			types: ["songs"],
+			limit: 25,
+			offset,
+		});
 
 		const songs = response?.data?.results?.songs?.data;
 		if (songs) {
@@ -86,7 +91,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	async handleRefreshSong(song: MusicKitSong): Promise<MusicKitSong> {
 		const idType = musicKitSongIdType(song);
 
-		const response = await this.music.api.music<
+		const response = await this.music!.api.music<
 			MusicKit.SongsResponse | MusicKit.LibrarySongsResponse
 		>(
 			idType === "catalog"
@@ -103,7 +108,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	}
 
 	async handleLibrarySongs(offset: number): Promise<MusicKitSong[]> {
-		const response = await this.music.api.music<
+		const response = await this.music!.api.music<
 			MusicKit.LibrarySongsResponse,
 			MusicKit.LibrarySongsQuery
 		>("/v1/me/library/songs", { limit: 25, offset });
@@ -117,11 +122,33 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	}
 
 	#timeUpdateCallback = (): void => {
-		this.store.time = this.music.currentPlaybackTime;
+		this.store.time = this.music!.currentPlaybackTime;
 	};
 
 	async handleInitialization(): Promise<void> {
-		const music = await useMusicKit().music;
+		while (!this.authorization.isAuthorized) {
+			const alert = await alertController.create({
+				header: "You need to authorize MusicKit",
+				subHeader: this.logName,
+				message: "To use MusicKit you have to be authorized",
+				buttons: [
+					{ text: "Authorize", role: "confirm" },
+					{ text: "Disable", role: "destructive" },
+				],
+			});
+
+			await alert.present();
+			const { role } = await alert.onDidDismiss();
+			if (role === "confirm") {
+				await this.authorization.authorize();
+			} else {
+				await this.disable();
+				throw new SilentError("Failed authorization");
+			}
+		}
+
+		const music = MusicKit.getInstance()!;
+		this.music = music;
 
 		music.repeatMode = MusicKit.PlayerRepeatMode.none;
 		music.addEventListener("playbackTimeDidChange", this.#timeUpdateCallback);
@@ -129,37 +156,55 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 			once: true,
 		});
 
-		this.music = music;
+		// MusicKit attaches listeners to persist playback state on visibility state changes
+		// Since we can pause/play/skip songs while in the background this isn't what we want, thus we make sure it is in the correct state
+		music.addEventListener("playbackStateDidChange", async ({ state }) => {
+			switch (state) {
+				case MusicKit.PlaybackStates.ended:
+					this.store.skipNext();
+					break;
+				case MusicKit.PlaybackStates.playing:
+					if (!this.song) {
+						await music.stop();
+					}
+					break;
+			}
+		});
 	}
 
-	handleDeinitialization(): void {
-		this.music.removeEventListener("playbackTimeDidChange", this.#timeUpdateCallback);
-	}
+	handleDeinitialization(): void {}
 
 	async handlePlay(): Promise<void> {
 		const { music } = this;
-
-		await music.setQueue({ song: this.song!.id });
-		await music.play();
+		await music?.setQueue({ song: this.song!.id });
+		try {
+			await music?.play();
+		} catch (error) {
+			// Someone skipped or stopped the song while it was still trying to play it, let it slide
+			if (error instanceof Error && error.name === "AbortError") {
+				return;
+			}
+		}
 	}
 
 	async handleResume(): Promise<void> {
-		await this.music.play();
+		await this.music?.play();
 	}
 
 	async handlePause(): Promise<void> {
-		await this.music.pause();
+		await this.music?.pause();
 	}
 
 	async handleStop(): Promise<void> {
-		await this.music.stop();
+		await this.music?.stop();
 	}
 
 	async handleSeekToTime(timeInSeconds: number): Promise<void> {
-		await this.music.seekToTime(timeInSeconds);
+		await this.music?.seekToTime(timeInSeconds);
 	}
 
 	handleSetVolume(volume: number): void {
+		if (!this.music) return;
 		this.music.volume = volume;
 	}
 }

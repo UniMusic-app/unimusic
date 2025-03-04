@@ -183,7 +183,10 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	logName = "LocalMusicPlayerService";
 	logColor = "#ddd480";
-	audio!: HTMLAudioElement;
+	type = "local" as const;
+	available = getPlatform() !== "web";
+
+	audio?: HTMLAudioElement;
 
 	constructor() {
 		super();
@@ -236,6 +239,8 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	}
 
 	handleInitialization(): void {
+		// TODO: Make an abstract MusicPlayerService class that uses HTMLAudioElement
+		// 		 Since this is shared between {YouTube,Local}MusicPlayerService's, and possibly more in the future
 		const audio = new Audio();
 		audio.addEventListener("timeupdate", () => {
 			this.store.time = audio.currentTime;
@@ -243,14 +248,13 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		audio.addEventListener("playing", () => {
 			this.store.addMusicSessionActionHandlers();
 		});
+		audio.addEventListener("ended", () => {
+			this.store.skipNext();
+		});
 		this.audio = audio;
 	}
 
-	handleDeinitialization(): void {
-		URL.revokeObjectURL(this.audio.src);
-		this.audio.remove();
-		this.audio = undefined!;
-	}
+	handleDeinitialization(): void {}
 
 	async handlePlay(): Promise<void> {
 		const { path } = this.song!.data;
@@ -259,27 +263,38 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		const url = URL.createObjectURL(blob);
 
 		const audio = this.audio;
-		audio.src = url;
-		await audio.play();
+		audio!.src = url;
+
+		try {
+			await audio!.play();
+		} catch (error) {
+			// Someone skipped or stopped the song while it was still trying to play it, let it slide
+			if (error instanceof Error && error.name === "AbortError") {
+				return;
+			}
+		}
 	}
 
 	async handleResume(): Promise<void> {
-		await this.audio.play();
+		await this.audio?.play?.();
 	}
 
 	handlePause(): void {
-		this.audio.pause();
+		this.audio?.pause?.();
 	}
 
 	handleStop(): void {
-		this.audio.pause();
+		if (this.audio) {
+			this.audio.pause();
+			URL.revokeObjectURL(this.audio.src);
+		}
 	}
 
 	handleSeekToTime(timeInSeconds: number): void {
-		this.audio.currentTime = timeInSeconds;
+		this.audio!.currentTime = timeInSeconds;
 	}
 
 	handleSetVolume(volume: number): void {
-		this.audio.volume = volume;
+		this.audio!.volume = volume;
 	}
 }

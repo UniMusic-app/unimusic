@@ -135,27 +135,25 @@ async function createWebPoMinter(): Promise<BG.WebPoMinter> {
 export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	logName = "YouTubeMusicPlayerService";
 	logColor = "#ff0000";
+	type = "youtube" as const;
+	available = getPlatform() !== "web";
 
 	innertube?: Innertube;
-	audio!: HTMLAudioElement;
+	audio?: HTMLAudioElement;
 
-	#innertubePromise = Promise.withResolvers<void>();
-	#initializedInnertube?: Promise<void>;
 	async handleInitialization(): Promise<void> {
 		const audio = new Audio();
+		document.body.appendChild(audio);
 		audio.addEventListener("timeupdate", () => {
 			this.store.time = audio.currentTime;
 		});
 		audio.addEventListener("playing", () => {
 			this.store.addMusicSessionActionHandlers();
 		});
+		audio.addEventListener("ended", () => {
+			this.store.skipNext();
+		});
 		this.audio = audio;
-
-		if (this.#initializedInnertube) {
-			await this.#initializedInnertube;
-			return;
-		}
-		this.#initializedInnertube = this.#innertubePromise.promise;
 
 		// TODO: Proxy for web support
 		const fetch = isElectron() ? ElectronMusicPlayer!.fetchShim : window.capacitorFetch;
@@ -184,19 +182,13 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		});
 
 		this.innertube = innertube;
-		this.#innertubePromise.resolve();
 	}
 
-	handleDeinitialization(): void {
-		this.audio.remove();
-		this.audio = undefined!;
-	}
+	handleDeinitialization(): void {}
 
 	async handleSearchSongs(term: string, _offset: number): Promise<SongSearchResult<YouTubeSong>[]> {
 		// TODO: Handle continuation
-		const innertube = this.innertube!;
-
-		const results = await innertube.music.search(term, { type: "song" });
+		const results = await this.innertube!.music.search(term, { type: "song" });
 		if (!results.contents) return [];
 
 		const songs: SongSearchResult<YouTubeSong>[] = [];
@@ -253,19 +245,16 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	}
 
 	async handlePlay(): Promise<void> {
-		const innertube = this.innertube!;
-		const song = this.song!;
+		const { innertube, song, audio } = this;
 
 		// NOTE: WEB_EMBEDDED seems to not block audio only files
-		const trackInfo = await innertube.getInfo(song.id, "WEB_EMBEDDED");
-
-		const { audio } = this;
+		const trackInfo = await innertube!.getInfo(song!.id, "WEB_EMBEDDED");
 
 		const addAudioSource = (url: string, mimeType: string): void => {
 			const source = document.createElement("source");
 			source.src = url;
 			source.type = mimeType;
-			audio.appendChild(source);
+			audio!.appendChild(source);
 		};
 
 		const streamingData = trackInfo.streaming_data;
@@ -273,7 +262,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const potentialFormats = [];
 		for (const potentialFormat of formats.flat()) {
 			if (!potentialFormat.has_audio) continue;
-			if (audio.canPlayType(potentialFormat.mime_type) !== "probably") continue;
+			if (audio!.canPlayType(potentialFormat.mime_type) !== "probably") continue;
 
 			potentialFormats.push(potentialFormat);
 		}
@@ -284,8 +273,10 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 			//		 And its also a good idea to just ship audio when possible anyways 🤷‍♂️
 			const defaultComparison = Number(a.has_video) - Number(b.has_video) || b.bitrate - a.bitrate;
 
-			// NOTE: iOS cannot properly play and data from adaptive opus format,
-			//       so we prefer other formats (even with video) over it
+			// NOTE: iOS cannot properly play and data from adaptive formats.
+			//       For now we prefer static formats, even if they also contain video or have worse audio quality
+			//       For adaptive formats – we prefer anything thats not opus, as its support on iOS is catastrophic
+			// TODO: Check if there is a way to get just audio...
 			if (getPlatform() === "ios") {
 				const aIsOpus = a.mime_type.includes("opus");
 				const bIsOpus = b.mime_type.includes("opus");
@@ -294,6 +285,8 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 				} else if (bIsOpus && !aIsOpus) {
 					return -1;
 				}
+
+				return Number(a.average_bitrate ?? 0) - Number(b.average_bitrate ?? 0) || defaultComparison;
 			}
 
 			return defaultComparison;
@@ -303,32 +296,45 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 
 		const urlToFormats: Record<string, unknown> = {};
 		for (const format of potentialFormats) {
-			const url = format.decipher(this.innertube!.session.player);
+			const url = format.decipher(innertube!.session.player);
 			addAudioSource(url, format.mime_type);
 			urlToFormats[url] = format;
 		}
+		try {
+			await audio!.play();
+		} catch (error) {
+			// Someone skipped or stopped the song while it was still trying to play it, let it slide
+			if (error instanceof Error && error.name === "AbortError") {
+				return;
+			}
+			throw error;
+		}
 
-		await audio.play();
-		this.log("Playing format:", urlToFormats[audio.currentSrc]);
+		this.log("Playing format:", urlToFormats[audio!.currentSrc]);
 	}
 
 	async handleResume(): Promise<void> {
-		await this.audio.play();
+		await this.audio?.play();
 	}
 
 	handlePause(): void {
-		this.audio.pause();
+		this.audio?.pause();
 	}
 
 	handleStop(): void {
-		this.audio.pause();
+		if (this.audio) {
+			this.audio.pause();
+			this.audio.innerHTML = "";
+			this.audio.srcObject = null;
+			this.audio.load();
+		}
 	}
 
 	handleSeekToTime(timeInSeconds: number): void {
-		this.audio.currentTime = timeInSeconds;
+		this.audio!.currentTime = timeInSeconds;
 	}
 
 	handleSetVolume(volume: number): void {
-		this.audio.volume = volume;
+		this.audio!.volume = volume;
 	}
 }

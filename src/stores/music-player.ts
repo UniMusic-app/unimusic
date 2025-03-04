@@ -6,6 +6,7 @@ import { computed, ref, watch } from "vue";
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 
 import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayerService";
+import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
 import { getPlatform } from "@/utils/os";
 import { useLocalImages } from "./local-images";
@@ -40,25 +41,12 @@ export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
-	const musicPlayerServices: Record<string, MusicPlayerService> = {
-		local: new LocalMusicPlayerService(),
-		youtube: new YouTubeMusicPlayerService(),
-	};
-
-	function addMusicPlayerService(type: string, service: MusicPlayerService): void {
-		musicPlayerServices[type] = service;
-	}
-
-	function getMusicPlayerService(type: string): MusicPlayerService | void {
-		return musicPlayerServices[type];
-	}
-
-	function removeMusicPlayerService(type: string): void {
-		delete musicPlayerServices[type];
-	}
+	MusicPlayerService.registerService(new MusicKitMusicPlayerService());
+	MusicPlayerService.registerService(new YouTubeMusicPlayerService());
+	MusicPlayerService.registerService(new LocalMusicPlayerService());
 
 	function withAllServices<T>(callback: (service: MusicPlayerService) => T): Promise<Awaited<T>[]> {
-		return Promise.all(Object.values(musicPlayerServices).map(callback));
+		return Promise.all(MusicPlayerService.getEnabledServices().map(callback));
 	}
 
 	const queuedSongs = useIDBKeyval<AnySong[]>("queuedSongs", []);
@@ -67,14 +55,14 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	const currentService = computed<MusicPlayerService | undefined>(() => {
 		const song = currentSong.value;
-		return song && musicPlayerServices[song.type];
+		return song && MusicPlayerService.getService(song.type);
 	});
 
 	let autoPlay = false;
 	watchDebounced(
 		[currentSong, currentService],
 		async ([song, service]) => {
-			if (!service) return;
+			if (!service?.enabled?.value) return;
 
 			if (song) {
 				await service.changeSong(song);
@@ -120,10 +108,6 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		set: async (progress) => {
 			await currentService.value?.seekToTime?.(progress * duration.value);
 		},
-	});
-
-	watch([time, duration], ([time, duration]) => {
-		if (Math.floor(duration - time) === 0) skipNext();
 	});
 
 	const hasPrevious = computed(() => queueIndex.value > 0);
@@ -197,11 +181,12 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	}
 
 	async function refreshSong(song: AnySong): Promise<void> {
-		await musicPlayerServices[song.type].refreshSong(song);
+		await MusicPlayerService.getService(song.type)?.refreshSong(song);
 	}
 
 	async function getSongFromSearchResult(searchResult: SongSearchResult): Promise<AnySong> {
-		const song = await musicPlayerServices[searchResult.type].getSongFromSearchResult(searchResult);
+		const service = MusicPlayerService.getService(searchResult.type)!;
+		const song = await service.getSongFromSearchResult(searchResult);
 		return song;
 	}
 
@@ -361,9 +346,5 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		librarySongs,
 		refreshSong,
 		refreshLibrarySongs,
-
-		addMusicPlayerService,
-		getMusicPlayerService,
-		removeMusicPlayerService,
 	};
 });

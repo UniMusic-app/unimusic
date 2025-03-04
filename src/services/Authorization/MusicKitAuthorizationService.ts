@@ -1,21 +1,15 @@
 import MusicKitAuthorizationPlugin from "@/plugins/MusicKitAuthorization";
+import { AuthorizationService } from "@/services/Authorization/AuthorizationService";
 import { Maybe } from "@/utils/types";
-import { AuthorizationService } from "./AuthorizationService";
 
 interface MusicKitTokens {
 	developerToken: string;
 	musicUserToken: string;
 }
 
-export class MusicKitAuthorizationService extends AuthorizationService<"MusicKit", MusicKitTokens> {
+export class MusicKitAuthorizationService extends AuthorizationService<MusicKitTokens> {
 	logName = "MusicKitAuthorizationService";
 	logColor = "#ff7080";
-
-	key = "MusicKit" as const;
-
-	constructor() {
-		super();
-	}
 
 	async initialize(
 		developerToken: string,
@@ -36,8 +30,12 @@ export class MusicKitAuthorizationService extends AuthorizationService<"MusicKit
 	async handlePassivelyAuthorize(): Promise<Maybe<MusicKitTokens>> {
 		if (!globalThis.MusicKit) {
 			this.log("MusicKit not yet initialized, retrying after it gets loaded...");
-			document.addEventListener("musickitloaded", () => this.passivelyAuthorize(), { once: true });
-			return;
+
+			return new Promise((resolve) => {
+				document.addEventListener("musickitloaded", () => resolve(this.passivelyAuthorize()), {
+					once: true,
+				});
+			});
 		}
 
 		const music = MusicKit.getInstance();
@@ -47,11 +45,10 @@ export class MusicKitAuthorizationService extends AuthorizationService<"MusicKit
 				developerToken: music.developerToken,
 				musicUserToken: music.musicUserToken!,
 			};
-			this.emitAuthorized(tokens);
 			return tokens;
 		}
 
-		const tokens = await this.getRemembered();
+		const tokens = await this.getSavedState();
 		if (tokens) {
 			this.log("Restoring session");
 			const music = await this.initialize(tokens.developerToken, tokens.musicUserToken);
@@ -60,7 +57,6 @@ export class MusicKitAuthorizationService extends AuthorizationService<"MusicKit
 					developerToken: music.developerToken,
 					musicUserToken: music.musicUserToken!,
 				};
-				this.emitAuthorized(tokens);
 				return tokens;
 			}
 		}
@@ -74,7 +70,6 @@ export class MusicKitAuthorizationService extends AuthorizationService<"MusicKit
 		const musicKitInstance = await this.initialize(tokens.developerToken, tokens.musicUserToken);
 
 		if (musicKitInstance.isAuthorized) {
-			await this.remember(tokens);
 			return tokens;
 		} else {
 			throw new Error("Failed to authorize MusicKit");
