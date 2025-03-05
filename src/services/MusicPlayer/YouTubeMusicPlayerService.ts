@@ -2,22 +2,24 @@ import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
-import type { YouTubeSong } from "@/stores/music-player";
+import type { Playlist, YouTubeSong } from "@/stores/music-player";
 
 import { getPlatform, isElectron } from "@/utils/os";
 import { generateSongStyle } from "@/utils/songs";
+import { Maybe } from "@/utils/types";
 
 export function youtubeSongSearchResult(
 	node: YTNodes.MusicResponsiveListItem,
 ): SongSearchResult<YouTubeSong> {
-	const artwork = node.thumbnails?.[0] && { url: createCapacitorProxyUrl(node.thumbnails[0].url) };
+	const artwork = node.thumbnails?.[0] && { url: node.thumbnails[0].url };
+	const artists = (node.artists ?? node.authors)?.map(({ name }) => name) ?? [];
 
 	return {
 		type: "youtube",
 		id: node.id!,
 		title: node.title,
 		album: node.album?.name,
-		artist: node.artists?.[0]?.name,
+		artists,
 		artwork,
 	};
 }
@@ -34,16 +36,19 @@ export async function youtubeSong(
 
 	const artwork = thumbnail?.[0] && { url: createCapacitorProxyUrl(thumbnail[0].url) };
 	const album = searchResult?.album ?? tags?.at(-2);
+	const artists = searchResult?.artists ?? (author ? [author] : []);
 
 	return {
 		type: "youtube",
 
 		id,
-		title,
-		artist: author,
-		duration,
-		album,
+		artists,
 		// TODO: genre
+		genres: [],
+
+		title,
+		album,
+		duration,
 
 		artwork,
 		style: await generateSongStyle(artwork),

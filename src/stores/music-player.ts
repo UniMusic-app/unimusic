@@ -9,6 +9,8 @@ import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayer
 import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
 import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
 import { getPlatform } from "@/utils/os";
+import { formatArtists } from "@/utils/songs";
+import { Maybe } from "@/utils/types";
 import { useLocalImages } from "./local-images";
 
 export type SongImage = { id: string; url?: never } | { id?: never; url: string };
@@ -16,11 +18,13 @@ export interface Song<Type extends string, Data = unknown> {
 	type: Type;
 
 	id: string;
+
+	artists: string[];
+	genres: string[];
+
 	title?: string;
-	artist?: string;
 	album?: string;
 	duration?: number;
-	genre?: string;
 
 	artwork?: SongImage;
 	style: {
@@ -211,7 +215,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 						hasSkipForward: false,
 
 						track: currentSong?.title ?? "",
-						artist: currentSong?.artist ?? "",
+						artist: formatArtists(currentSong?.artists),
 						album: currentSong?.album ?? "",
 
 						// FIXME: Local artworks
@@ -285,7 +289,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 			navigator.mediaSession.metadata = new window.MediaMetadata({
 				title: song.title,
-				artist: song.artist,
+				artist: formatArtists(song.artists),
 				album: song.album,
 				artwork: song.artwork && [{ src: (await localImages.getSongImageUrl(song.artwork))! }],
 			});

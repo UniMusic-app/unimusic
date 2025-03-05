@@ -7,7 +7,7 @@
 		@contextmenu.prevent="createPopover"
 	>
 		<ion-thumbnail v-if="artwork" slot="start">
-			<SongImg :src="artwork" :alt="`Artwork for song '${title}' by ${artist}`" />
+			<SongImg :src="artwork" :alt="`Artwork for song '${title}' by ${formatArtists(artists)}`" />
 		</ion-thumbnail>
 
 		<ion-label class="ion-text-nowrap">
@@ -16,7 +16,7 @@
 				<ion-icon :icon="compassIcon" />
 				{{ songTypeToDisplayName(song.type) }}
 				<ion-icon :icon="musicalNoteIcon" />
-				{{ artist }}
+				{{ formatArtists(artists) }}
 			</ion-note>
 		</ion-label>
 	</ion-item>
@@ -27,13 +27,13 @@ import SongImg from "@/components/SongImg.vue";
 import SongItemMenu from "@/components/SongItemMenu.vue";
 import { createSongMenuPopover, handleHoldSongMenuPopover } from "@/components/SongMenu.vue";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
-import { songTypeToDisplayName } from "@/utils/songs";
+import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { IonIcon, IonItem, IonLabel, IonNote, IonThumbnail } from "@ionic/vue";
 import { vOnLongPress } from "@vueuse/components";
 import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
 
 const { song } = defineProps<{ song: AnySong }>();
-const { title, artist, artwork } = song;
+const { title, artists, artwork } = song;
 
 const musicPlayer = useMusicPlayer();
 

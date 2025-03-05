@@ -7,7 +7,7 @@
 		@contextmenu.prevent="createPopover"
 	>
 		<ion-thumbnail v-if="artwork" slot="start">
-			<SongImg :src="artwork" :alt="`Artwork for song '${title}' by ${artist}`" />
+			<SongImg :src="artwork" :alt="`Artwork for song '${title}' by ${formatArtists(artists)}`" />
 		</ion-thumbnail>
 
 		<ion-label class="ion-text-nowrap">
@@ -16,7 +16,7 @@
 				<ion-icon :icon="compassIcon" />
 				{{ songTypeToDisplayName(searchResult.type) }}
 				<ion-icon :icon="musicalNoteIcon" />
-				{{ artist }}
+				{{ formatArtists(artists) }}
 			</ion-note>
 		</ion-label>
 	</ion-item>
@@ -27,7 +27,7 @@ import SongImg from "@/components/SongImg.vue";
 import { createSongMenuPopover, handleHoldSongMenuPopover } from "@/components/SongMenu.vue";
 import type { SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
-import { songTypeToDisplayName } from "@/utils/songs";
+import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { IonIcon, IonItem, IonLabel, IonNote, IonThumbnail } from "@ionic/vue";
 import { vOnLongPress } from "@vueuse/components";
 import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
@@ -35,7 +35,7 @@ import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons
 import SongSearchResultMenu from "./SongSearchResultMenu.vue";
 
 const { searchResult } = defineProps<{ searchResult: SongSearchResult }>();
-const { title, artist, artwork } = searchResult;
+const { title, artists, artwork } = searchResult;
 const { resolve, promise: song } = Promise.withResolvers<AnySong>();
 
 const musicPlayer = useMusicPlayer();

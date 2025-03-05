@@ -10,17 +10,23 @@ export async function musicKitSong(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
 ): Promise<MusicKitSong> {
 	const attributes = song.attributes;
+
 	const artworkUrl = attributes?.artwork;
 	const artwork = artworkUrl && { url: MusicKit.formatArtworkURL(artworkUrl, 256, 256) };
+
+	const artists = attributes?.artistName ? [attributes?.artistName] : [];
+	const genres = attributes?.genreNames ?? [];
+
 	return {
 		type: "musickit",
 
 		id: song.id,
+		artists,
+		genres,
+
 		title: attributes?.name,
-		artist: attributes?.artistName,
 		album: attributes?.albumName,
 		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
-		genre: attributes?.genreNames?.[0],
 
 		artwork,
 		style: await generateSongStyle(artwork),

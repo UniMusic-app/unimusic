@@ -43,6 +43,7 @@ export class LocalImageManagementService extends Service {
 		resize: if (resize) {
 			this.log("resize");
 
+			// FIXME: Zoom/fit images (or let user choose) rather than stretch them
 			const { width, height } = resize;
 
 			const canvas = document.createElement("canvas");

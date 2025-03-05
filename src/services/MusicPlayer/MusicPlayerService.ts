@@ -17,8 +17,8 @@ export interface SongSearchResult<Song extends AnySong = AnySong> {
 	type: Song["type"];
 
 	id: string;
+	artists: string[];
 	title?: string;
-	artist?: string;
 	album?: string;
 	artwork?: SongImage;
 }

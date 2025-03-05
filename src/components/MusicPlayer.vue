@@ -23,7 +23,7 @@
 						{{ currentSong.title }}
 					</h1>
 					<h2 id="artist" class="ion-text-nowrap">
-						{{ currentSong.artist }}
+						{{ formatArtists(currentSong.artists) }}
 					</h2>
 				</div>
 			</div>
@@ -51,7 +51,7 @@
 							<ion-label class="ion-text-nowrap">
 								<h2>{{ song.title }}</h2>
 								<ion-note>
-									{{ song.artist }}
+									{{ formatArtists(song.artists) }}
 								</ion-note>
 							</ion-label>
 
@@ -176,7 +176,7 @@ import SongImg from "@/components/SongImg.vue";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
 import { getPlatform } from "@/utils/os";
-import { songTypeToDisplayName } from "@/utils/songs";
+import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
 import { getUniqueObjectId } from "@/utils/vue";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
