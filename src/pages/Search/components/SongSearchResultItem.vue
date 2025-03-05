@@ -60,6 +60,10 @@ async function createPopover(event: Event): Promise<void> {
 ion-item {
 	& > ion-thumbnail {
 		pointer-events: none;
+
+		& > .song-img {
+			border-radius: 8px;
+		}
 	}
 
 	& > ion-label {

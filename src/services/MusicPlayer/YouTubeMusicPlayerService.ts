@@ -227,12 +227,48 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const hints: string[] = [];
 		for (const section of sections) {
 			for (const suggestion of section.contents) {
-				if (suggestion.is(YTNodes.SearchSuggestion)) {
-					hints.push(suggestion.suggestion.toString());
-				}
+				if (!suggestion.is(YTNodes.SearchSuggestion)) continue;
+				hints.push(suggestion.suggestion.toString());
 			}
 		}
 		return hints;
+	}
+
+	async handleGetPlaylist(idOrUrl: URL): Promise<Maybe<Playlist>> {
+		const id = idOrUrl.searchParams.get("list");
+		if (!id) {
+			return;
+		}
+
+		let playlist = await this.innertube!.music.getPlaylist(id);
+		if (!playlist.contents) {
+			return;
+		}
+
+		const header = playlist.header?.as(YTNodes.MusicResponsiveHeader);
+		const title = header?.title?.toString() ?? "Unknown title";
+		const thumbnails = header?.thumbnail?.contents;
+		const artwork = thumbnails?.[0] && { url: thumbnails[0].url };
+
+		const songs = [];
+		while (playlist?.contents) {
+			for (const node of playlist.contents) {
+				if (!node.is(YTNodes.MusicResponsiveListItem)) continue;
+				const searchResult = youtubeSongSearchResult(node);
+				const song = await this.getSongFromSearchResult(searchResult);
+				songs.push(song);
+			}
+
+			if (!playlist.has_continuation) break;
+			playlist = await playlist.getContinuation();
+		}
+
+		return {
+			id,
+			title,
+			artwork,
+			songs,
+		};
 	}
 
 	handleLibrarySongs(_offset: number): YouTubeSong[] {

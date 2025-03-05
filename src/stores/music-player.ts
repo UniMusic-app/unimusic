@@ -42,8 +42,36 @@ export type LocalSong = Song<"local", { path: string }>;
 
 export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
 
+export interface Playlist {
+	id: string;
+	importInfo?: {
+		type: AnySong["type"];
+		info: string;
+	};
+	title: string;
+	artwork?: SongImage;
+	songs: AnySong[];
+}
+
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
+
+	const playlists = useIDBKeyval<Playlist[]>("playlists", []);
+
+	function addPlaylist(playlist: Playlist): void {
+		playlists.data.value.push(playlist);
+	}
+
+	function removePlaylist(id: string): void {
+		const index = playlists.data.value.findIndex((playlist) => playlist.id === id);
+		if (index !== -1) {
+			playlists.data.value.splice(index, 1);
+		}
+	}
+
+	function getPlaylist(id: string): Maybe<Playlist> {
+		return playlists.data.value.find((playlist) => playlist.id === id);
+	}
 
 	MusicPlayerService.registerService(new MusicKitMusicPlayerService());
 	MusicPlayerService.registerService(new YouTubeMusicPlayerService());
@@ -329,6 +357,11 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		time,
 		duration,
 		timeRemaining,
+
+		playlists: computed(() => playlists.data.value),
+		addPlaylist,
+		removePlaylist,
+		getPlaylist,
 
 		queuedSongs: computed(() => queuedSongs.data.value),
 		queueIndex,

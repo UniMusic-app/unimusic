@@ -33,3 +33,13 @@ export function getUniqueObjectId(object: WeakKey): number {
 	}
 	return id;
 }
+
+export function usePresentingElement(): Ref<HTMLElement | undefined> {
+	const presentingElement = ref();
+
+	onMounted(() => {
+		presentingElement.value = document.querySelector("ion-router-outlet");
+	});
+
+	return presentingElement;
+}

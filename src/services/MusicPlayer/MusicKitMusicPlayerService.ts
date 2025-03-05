@@ -1,8 +1,9 @@
-import { MusicKitSong } from "@/stores/music-player";
+import { MusicKitSong, Playlist } from "@/stores/music-player";
 
 import { MusicPlayerService, SilentError } from "@/services/MusicPlayer/MusicPlayerService";
 
 import { generateSongStyle } from "@/utils/songs";
+import { Maybe } from "@/utils/types";
 import { alertController } from "@ionic/vue";
 import { MusicKitAuthorizationService } from "../Authorization/MusicKitAuthorizationService";
 
@@ -67,6 +68,68 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		return terms;
 	}
 
+	async handleGetPlaylist(url: URL): Promise<Maybe<Playlist>> {
+		let endpoint: string | undefined;
+
+		const { pathname } = url;
+
+		if (!url.origin.endsWith("music.apple.com")) {
+			return;
+		}
+
+		/// e.g.
+		// https://music.apple.com/library/playlist/<libraryPlaylistId>
+		if (pathname.includes("library")) {
+			endpoint = "/v1/me/library/playlists";
+		} else {
+			// https://music.apple.com/pl/playlist/heavy-rotation-mix/<storefrontPlaylistId>
+			// https://music.apple.com/pl/playlist/get-up-mix/<storefrontPlaylistId>
+
+			endpoint = "/v1/catalog/{{storefrontId}}/playlists";
+		}
+
+		const idStartIndex = pathname.lastIndexOf("/");
+		if (idStartIndex === -1) {
+			return;
+		}
+
+		const id = pathname.slice(idStartIndex + 1);
+		if (!id) {
+			return;
+		}
+
+		const response = await this.music!.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
+			`${endpoint}/${id}`,
+			{
+				extend: ["editorialArtwork", "editorialVideo", "offers"],
+				include: ["tracks"],
+			},
+		);
+		const playlist = response.data.data?.[0];
+
+		if (!playlist) {
+			return;
+		}
+
+		const title = playlist.attributes?.name ?? "Unknown title";
+		const artworkUrl = playlist.attributes?.artwork;
+		const artwork = artworkUrl && { url: MusicKit.formatArtworkURL(artworkUrl) };
+
+		const tracks = playlist.relationships?.tracks.data ?? [];
+		const songs = await Promise.all(tracks.map(musicKitSong));
+
+		return {
+			id,
+			importInfo: {
+				type: "musickit",
+				info: url.toString(),
+			},
+			title,
+			artwork,
+			songs,
+		};
+	}
+
 	async handleSearchSongs(term: string, offset: number): Promise<MusicKitSong[]> {
 		const response = await this.music!.api.music<
 			MusicKit.SearchResponse,
@@ -80,8 +143,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 
 		const songs = response?.data?.results?.songs?.data;
 		if (songs) {
-			const promises = songs.map((song) => musicKitSong(song));
-			return await Promise.all(promises);
+			return await Promise.all(songs.map(musicKitSong));
 		}
 		return [];
 	}

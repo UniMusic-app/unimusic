@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { useSongMetadata } from "@/stores/metadata";
-import { AnySong, SongImage, useMusicPlayer } from "@/stores/music-player";
+import { AnySong, Playlist, SongImage, useMusicPlayer } from "@/stores/music-player";
 
 import { Service } from "@/services/Service";
 import { Maybe } from "@/utils/types";
@@ -234,6 +234,12 @@ export abstract class MusicPlayerService<
 			return songs;
 		});
 		return songs;
+	}
+
+	abstract handleGetPlaylist(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
+	async getPlaylist(url: URL): Promise<Maybe<Playlist>> {
+		const playlist = await this.withUnrecoverableErrorHandling(this.handleGetPlaylist, url);
+		return playlist;
 	}
 
 	async handleApplyMetadata(song: Song): Promise<void> {

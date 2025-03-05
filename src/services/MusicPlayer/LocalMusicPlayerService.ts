@@ -196,6 +196,10 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		return [];
 	}
 
+	handleGetPlaylist(_url: URL): undefined {
+		return undefined;
+	}
+
 	#fuse?: Fuse<LocalSong>;
 	async handleSearchSongs(term: string, offset: number): Promise<LocalSong[]> {
 		// TODO: Maybe split results in smaller chunks and actually paginate it?

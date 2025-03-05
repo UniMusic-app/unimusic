@@ -64,17 +64,16 @@ const modalOpen = ref(false);
 </script>
 
 <style scoped>
-ion-label {
-	font-weight: bold;
-}
-
 ion-thumbnail {
-	--border-radius: 12px;
+	pointer-events: none;
+	& > .song-img {
+		border-radius: 8px;
+	}
 }
 
 ion-item {
-	& > ion-thumbnail,
-	ion-label {
+	& > ion-label {
+		font-weight: bold;
 		pointer-events: none;
 	}
 }
