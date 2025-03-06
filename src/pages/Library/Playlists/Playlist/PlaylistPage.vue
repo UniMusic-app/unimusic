@@ -25,7 +25,7 @@
 			<template v-else>
 				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
 				<ion-list>
-					<SongSearchResultItem :search-result="song" v-for="song in playlist.songs" :key="song.id" />
+					<SongItem :song v-for="song in playlist.songs" :key="song.id" />
 				</ion-list>
 			</template>
 
@@ -49,7 +49,6 @@ import {
 	IonButtons,
 	IonContent,
 	IonIcon,
-	IonItem,
 	IonList,
 	IonNote,
 	IonPage,
@@ -57,7 +56,7 @@ import {
 } from "@ionic/vue";
 import { pencil as pencilIcon } from "ionicons/icons";
 
-import SongSearchResultItem from "@/pages/Search/components/SongSearchResultItem.vue";
+import SongItem from "@/components/SongItem.vue";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute } from "vue-router";
 
