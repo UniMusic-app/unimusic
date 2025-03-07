@@ -147,6 +147,11 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	const timeRemaining = computed(() => duration.value * (1 - progress.value));
 
+	function setQueue(songs: AnySong[]): void {
+		queuedSongs.data.value = songs;
+		queueIndex.value = 0;
+	}
+
 	function addToQueue(song: AnySong, index = queuedSongs.data.value.length): void {
 		queuedSongs.data.value.splice(index, 0, song);
 	}
@@ -365,6 +370,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 		queuedSongs: computed(() => queuedSongs.data.value),
 		queueIndex,
+		setQueue,
 		addToQueue,
 		removeFromQueue,
 		moveQueueItem,

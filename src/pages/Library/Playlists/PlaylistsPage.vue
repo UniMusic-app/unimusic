@@ -86,7 +86,6 @@ import SongImg from "@/components/SongImg.vue";
 import {
 	actionSheetController,
 	alertController,
-	IonAlert,
 	IonBackButton,
 	IonButton,
 	IonButtons,

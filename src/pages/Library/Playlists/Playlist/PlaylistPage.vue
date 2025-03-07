@@ -24,6 +24,11 @@
 			<ion-note v-if="isEmpty">This playlist has no songs, fill it up!</ion-note>
 			<template v-else>
 				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
+				<ion-button strong @click="play">
+					<ion-icon slot="start" :icon="playIcon" />
+					Play
+				</ion-button>
+
 				<ion-list>
 					<SongItem :song v-for="song in playlist.songs" :key="song.id" />
 				</ion-list>
@@ -49,12 +54,13 @@ import {
 	IonButtons,
 	IonContent,
 	IonIcon,
+	IonItem,
 	IonList,
 	IonNote,
 	IonPage,
 	IonTitle,
 } from "@ionic/vue";
-import { pencil as pencilIcon } from "ionicons/icons";
+import { pencil as pencilIcon, play as playIcon } from "ionicons/icons";
 
 import SongItem from "@/components/SongItem.vue";
 import { useMusicPlayer } from "@/stores/music-player";
@@ -69,6 +75,10 @@ const totalDuration = computed(() => {
 	const songs = playlist?.value?.songs ?? [];
 	return songs.reduce((p, n) => p + (n.duration ?? 0), 0);
 });
+
+function play(): void {
+	musicPlayer.setQueue(playlist.value!.songs);
+}
 </script>
 
 <style>
@@ -83,6 +93,18 @@ const totalDuration = computed(() => {
 	& > h2 {
 		font-size: 1rem;
 		margin-top: 0;
+	}
+
+	& > ion-button {
+		&::part(native) {
+			width: 33%;
+			margin-inline: auto;
+		}
+
+		width: 100%;
+		padding-bottom: 1rem;
+		border-bottom: 0.55px solid
+			var(--ion-color-step-250, var(--ion-background-color-step-250, #c8c7cc));
 	}
 
 	& > .song-img {
