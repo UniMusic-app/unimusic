@@ -1,8 +1,10 @@
 <template>
 	<ion-item button :detail="false" @click.self="modalOpen = true" v-if="currentSong?.id">
-		<ion-thumbnail slot="start">
-			<SongImg :src="currentSong.artwork" :alt="`Artwork for song '${currentSong.title}'`" />
-		</ion-thumbnail>
+		<SongImg
+			slot="start"
+			:src="currentSong.artwork"
+			:alt="`Artwork for song '${currentSong.title}'`"
+		/>
 
 		<ion-label class="ion-text-nowrap">
 			{{ currentSong.title }}
@@ -44,7 +46,6 @@ import {
 	IonLabel,
 	IonModal,
 	IonSpinner,
-	IonThumbnail,
 } from "@ionic/vue";
 import {
 	pause as pauseIcon,
@@ -64,11 +65,11 @@ const modalOpen = ref(false);
 </script>
 
 <style scoped>
-ion-thumbnail {
+.song-img {
 	pointer-events: none;
-	& > .song-img {
-		border-radius: 8px;
-	}
+	border-radius: 8px;
+	--width: auto;
+	--height: 56px;
 }
 
 ion-item {

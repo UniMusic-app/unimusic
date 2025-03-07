@@ -6,9 +6,12 @@
 		v-on-long-press.prevent="[handleHoldPopover, { delay: 200 }]"
 		@contextmenu.prevent="createPopover"
 	>
-		<ion-thumbnail v-if="artwork" slot="start">
-			<SongImg :src="artwork" :alt="`Artwork for song '${title}' by ${formatArtists(artists)}`" />
-		</ion-thumbnail>
+		<SongImg
+			v-if="artwork"
+			slot="start"
+			:src="artwork"
+			:alt="`Artwork for song '${title}' by ${formatArtists(artists)}`"
+		/>
 
 		<ion-label class="ion-text-nowrap">
 			<h2>{{ title ?? "Unknown title" }}</h2>
@@ -28,7 +31,7 @@ import SongItemMenu from "@/components/SongItemMenu.vue";
 import { createSongMenuPopover, handleHoldSongMenuPopover } from "@/components/SongMenu.vue";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
-import { IonIcon, IonItem, IonLabel, IonNote, IonThumbnail } from "@ionic/vue";
+import { IonIcon, IonItem, IonLabel, IonNote } from "@ionic/vue";
 import { vOnLongPress } from "@vueuse/components";
 import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
 
@@ -53,12 +56,12 @@ async function createPopover(event: Event): Promise<void> {
 
 <style scoped>
 ion-item {
-	& > ion-thumbnail {
+	& > .song-img {
 		pointer-events: none;
+		border-radius: 8px;
 
-		& > .song-img {
-			border-radius: 8px;
-		}
+		--width: auto;
+		--height: 56px;
 	}
 
 	& > ion-label {

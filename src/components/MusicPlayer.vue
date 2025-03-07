@@ -44,9 +44,12 @@
 							@contextmenu.prevent="createPopover(i, song, $event)"
 							@click.self="queueIndex = i"
 						>
-							<ion-thumbnail slot="start">
-								<SongImg :src="song.artwork" :alt="`Artwork for song '${song.title}'`" />
-							</ion-thumbnail>
+							<SongImg
+								slot="start"
+								v-if="song.artwork"
+								:src="song.artwork"
+								:alt="`Artwork for song '${song.title}'`"
+							/>
 
 							<ion-label class="ion-text-nowrap">
 								<h2>{{ song.title }}</h2>
@@ -155,7 +158,6 @@ import {
 	IonReorder,
 	IonReorderGroup,
 	IonSpinner,
-	IonThumbnail,
 	ItemReorderCustomEvent,
 	popoverController,
 } from "@ionic/vue";
@@ -460,9 +462,12 @@ useIntersectionObserver(
 						color: color-mix(in srgb, var(--fg-color) 80%, transparent);
 					}
 
-					& > ion-thumbnail {
-						--border-radius: 8px;
+					& > .song-img {
+						border-radius: 8px;
 						pointer-events: none;
+
+						--width: auto;
+						--height: 56px;
 					}
 
 					& > ion-button {
