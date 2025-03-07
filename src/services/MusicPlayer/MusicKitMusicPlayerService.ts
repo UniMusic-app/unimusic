@@ -146,7 +146,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 			MusicKit.CatalogSearchQuery
 		>("/v1/catalog/{{storefrontId}}/search", {
 			term,
-			types: ["songs"],
+			types: ["songs", "music-videos"],
 			limit: 25,
 			offset,
 		});
@@ -248,6 +248,10 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 					break;
 			}
 		});
+
+		// NOTE: Required for Music Videos to work
+		const dummyVideoContainer = document.createElement("div");
+		music.videoContainerElement = dummyVideoContainer;
 	}
 
 	handleDeinitialization(): void {}
