@@ -1,8 +1,16 @@
+import { Maybe } from "@/utils/types";
 import { useIDBKeyvalAsync } from "@/utils/vue";
 import { Service } from "./Service";
 
 interface LocalImageInfo {
-	[imageId: string]: { image?: Blob; url?: string } | undefined;
+	// NOTE: We don't store Blob in IndexedDB because of Safari's shenanigans: https://stackoverflow.com/a/70253220/14053734
+	[imageId: string]: Maybe<{
+		image?: {
+			buffer: ArrayBuffer;
+			type: string;
+		};
+		url?: string;
+	}>;
 }
 
 /**
@@ -73,7 +81,10 @@ export class LocalImageManagementService extends Service {
 
 		await this.revokeBlobUrl(id);
 		const imageInfo = (localImageInfo.value[id] ??= {});
-		imageInfo.image = image;
+		imageInfo.image = {
+			buffer: await image.arrayBuffer(),
+			type: image.type,
+		};
 	}
 
 	async getBlobUrl(id: string): Promise<string | undefined> {
@@ -95,7 +106,8 @@ export class LocalImageManagementService extends Service {
 
 		if (imageInfo?.image) {
 			this.log("createObjectURL");
-			imageInfo.url = URL.createObjectURL(imageInfo.image);
+			const { buffer, type } = imageInfo.image;
+			imageInfo.url = URL.createObjectURL(new Blob([buffer], { type }));
 			return imageInfo.url;
 		}
 	}
