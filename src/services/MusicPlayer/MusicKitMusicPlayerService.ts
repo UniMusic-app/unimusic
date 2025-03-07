@@ -94,13 +94,13 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 			return;
 		}
 
-		const id = pathname.slice(idStartIndex + 1);
-		if (!id) {
+		const musicKitId = pathname.slice(idStartIndex + 1);
+		if (!musicKitId) {
 			return;
 		}
 
 		const response = await this.music!.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
-			`${endpoint}/${id}`,
+			`${endpoint}/${musicKitId}`,
 			{
 				extend: ["editorialArtwork", "editorialVideo", "offers"],
 				include: ["tracks"],
@@ -112,16 +112,15 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 			return;
 		}
 
+		const id = generateUUID();
 		const title = playlist.attributes?.name ?? "Unknown title";
 		const artworkUrl = playlist.attributes?.artwork;
 
 		let artwork: Maybe<SongImage>;
 		if (artworkUrl) {
 			const localImages = useLocalImages();
-
 			const artworkBlob = await (await fetch(MusicKit.formatArtworkURL(artworkUrl))).blob();
 			await localImages.localImageManagementService.associateImage(id, artworkBlob);
-
 			artwork = { id };
 		}
 
@@ -129,9 +128,9 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		const songs = await Promise.all(tracks.map(musicKitSong));
 
 		return {
-			id: generateUUID(),
+			id,
 			importInfo: {
-				id,
+				id: musicKitId,
 				type: "musickit",
 				info: url.toString(),
 			},
