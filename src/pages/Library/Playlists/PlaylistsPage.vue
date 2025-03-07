@@ -162,8 +162,8 @@ async function importPlaylist(): Promise<void> {
 		for (const service of MusicPlayerService.getEnabledServices()) {
 			console.log(service.type);
 			const playlist = await service.getPlaylist(url);
+
 			if (playlist) {
-				console.log(playlist);
 				musicPlayer.addPlaylist(playlist);
 				await loading.dismiss();
 				return;

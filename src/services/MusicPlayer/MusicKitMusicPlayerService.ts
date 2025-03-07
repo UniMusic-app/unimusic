@@ -1,7 +1,9 @@
-import { MusicKitSong, Playlist } from "@/stores/music-player";
+import { MusicKitSong, Playlist, SongImage } from "@/stores/music-player";
 
 import { MusicPlayerService, SilentError } from "@/services/MusicPlayer/MusicPlayerService";
 
+import { useLocalImages } from "@/stores/local-images";
+import { generateUUID } from "@/utils/crypto";
 import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
 import { alertController } from "@ionic/vue";
@@ -84,7 +86,6 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		} else {
 			// https://music.apple.com/pl/playlist/heavy-rotation-mix/<storefrontPlaylistId>
 			// https://music.apple.com/pl/playlist/get-up-mix/<storefrontPlaylistId>
-
 			endpoint = "/v1/catalog/{{storefrontId}}/playlists";
 		}
 
@@ -113,14 +114,24 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 
 		const title = playlist.attributes?.name ?? "Unknown title";
 		const artworkUrl = playlist.attributes?.artwork;
-		const artwork = artworkUrl && { url: MusicKit.formatArtworkURL(artworkUrl) };
+
+		let artwork: Maybe<SongImage>;
+		if (artworkUrl) {
+			const localImages = useLocalImages();
+
+			const artworkBlob = await (await fetch(MusicKit.formatArtworkURL(artworkUrl))).blob();
+			await localImages.localImageManagementService.associateImage(id, artworkBlob);
+
+			artwork = { id };
+		}
 
 		const tracks = playlist.relationships?.tracks.data ?? [];
 		const songs = await Promise.all(tracks.map(musicKitSong));
 
 		return {
-			id,
+			id: generateUUID(),
 			importInfo: {
+				id,
 				type: "musickit",
 				info: url.toString(),
 			},

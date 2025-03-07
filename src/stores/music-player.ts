@@ -45,8 +45,9 @@ export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
 export interface Playlist {
 	id: string;
 	importInfo?: {
+		id: string;
 		type: AnySong["type"];
-		info: string;
+		info?: string;
 	};
 	title: string;
 	artwork?: SongImage;

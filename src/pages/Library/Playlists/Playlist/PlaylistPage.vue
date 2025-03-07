@@ -54,7 +54,6 @@ import {
 	IonButtons,
 	IonContent,
 	IonIcon,
-	IonItem,
 	IonList,
 	IonNote,
 	IonPage,

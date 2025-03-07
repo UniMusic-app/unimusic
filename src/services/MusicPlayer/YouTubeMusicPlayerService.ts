@@ -4,6 +4,7 @@ import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
 import type { Playlist, YouTubeSong } from "@/stores/music-player";
 
+import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
@@ -264,7 +265,11 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		}
 
 		return {
-			id,
+			id: generateUUID(),
+			importInfo: {
+				id,
+				type: "youtube",
+			},
 			title,
 			artwork,
 			songs,
