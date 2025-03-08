@@ -236,9 +236,13 @@ export abstract class MusicPlayerService<
 		return songs;
 	}
 
-	abstract handleGetPlaylist(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
+	handleGetPlaylist?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
 	async getPlaylist(url: URL): Promise<Maybe<Playlist>> {
-		const playlist = await this.withUnrecoverableErrorHandling(this.handleGetPlaylist, url);
+		if (!this.handleGetPlaylist) {
+			throw new Error("This service does not support getPlaylist");
+		}
+
+		const playlist = await this.withErrorHandling(undefined, this.handleGetPlaylist, url);
 		return playlist;
 	}
 

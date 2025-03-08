@@ -10,12 +10,22 @@
 
 				<ion-buttons slot="end">
 					<ion-button id="edit-playlist">
-						<!-- TODO: editing -->
 						<ion-icon slot="icon-only" :icon="pencilIcon" />
+					</ion-button>
+					<ion-button id="delete-playlist">
+						<ion-icon slot="icon-only" :icon="deleteIcon" />
 					</ion-button>
 				</ion-buttons>
 			</template>
 		</AppHeader>
+
+		<ion-action-sheet
+			trigger="delete-playlist"
+			:header="`Are you sure you want to delete playlist ${playlist?.title}?`"
+			:buttons="deleteActionSheetButtons"
+			@didDismiss="onDeleteActionDismiss"
+		/>
+		<PlaylistEditModal v-if="playlist" :playlist trigger="edit-playlist" />
 
 		<ion-content id="playlist-content" v-if="playlist" :fullscreen="true">
 			<SongImg :src="playlist.artwork" />
@@ -47,8 +57,12 @@ import { computed } from "vue";
 import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import SongImg from "@/components/SongImg.vue";
+import SongItem from "@/components/SongItem.vue";
+import PlaylistEditModal from "../components/PlaylistEditModal.vue";
 
 import {
+	ActionSheetButton,
+	IonActionSheet,
 	IonBackButton,
 	IonButton,
 	IonButtons,
@@ -59,9 +73,9 @@ import {
 	IonPage,
 	IonTitle,
 } from "@ionic/vue";
-import { pencil as pencilIcon, play as playIcon } from "ionicons/icons";
+import { trashOutline as deleteIcon, pencil as pencilIcon, play as playIcon } from "ionicons/icons";
 
-import SongItem from "@/components/SongItem.vue";
+import router from "@/pages/router";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute } from "vue-router";
 
@@ -75,8 +89,22 @@ const totalDuration = computed(() => {
 	return songs.reduce((p, n) => p + (n.duration ?? 0), 0);
 });
 
+const deleteActionSheetButtons: ActionSheetButton[] = [
+	{ text: "Delete", role: "destructive" },
+	{ text: "Cancel", role: "cancel" },
+];
+
 function play(): void {
 	musicPlayer.setQueue(playlist.value!.songs);
+}
+
+function onDeleteActionDismiss(event: CustomEvent): void {
+	if (typeof event.detail !== "object" || !playlist.value) return;
+
+	if (event.detail?.role === "destructive") {
+		musicPlayer.removePlaylist(playlist.value.id);
+		router.back();
+	}
 }
 </script>
 
@@ -109,8 +137,8 @@ function play(): void {
 	& > .song-img {
 		margin-inline: auto;
 
-		width: 192px;
-		height: 192px;
+		--img-height: 192px;
+		--img-width: auto;
 
 		--shadow-color: rgba(var(--ion-color-dark-rgb), 0.1);
 

@@ -68,8 +68,8 @@ const modalOpen = ref(false);
 .song-img {
 	pointer-events: none;
 	border-radius: 8px;
-	--width: auto;
-	--height: 56px;
+	--img-width: auto;
+	--img-height: 56px;
 }
 
 ion-item {

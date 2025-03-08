@@ -466,8 +466,8 @@ useIntersectionObserver(
 						border-radius: 8px;
 						pointer-events: none;
 
-						--width: auto;
-						--height: 56px;
+						--img-width: auto;
+						--img-height: 56px;
 					}
 
 					& > ion-button {

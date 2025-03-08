@@ -11,7 +11,7 @@ const localImages = useLocalImages();
 const { id } = defineProps<{ id: string }>();
 const emit = defineEmits<{ input: [{ value: SongImage }] }>();
 
-const image = ref<SongImage>();
+const image = ref<SongImage>({ id });
 const imagePicker = ref<HTMLInputElement>();
 
 async function changeArtwork(): Promise<void> {
@@ -33,20 +33,20 @@ async function changeArtwork(): Promise<void> {
 </script>
 
 <template>
-	<div class="image-picker">
+	<div class="song-image-picker">
 		<SongImg :src="image" :alt="`Image picker preview`" @click="imagePicker?.click()" />
 		<input ref="imagePicker" type="file" accept="image/*" @change="changeArtwork" />
 	</div>
 </template>
 
 <style>
-.image-picker {
+.song-image-picker {
 	display: flex;
 	justify-content: center;
 
 	& > .song-img {
-		width: 192px;
-		height: 192px;
+		--img-height: 192px;
+		--img-width: auto;
 
 		--shadow-color: rgba(var(--ion-color-dark-rgb), 0.1);
 

@@ -40,6 +40,10 @@ watchEffect(async () => {
 .song-img {
 	position: relative;
 
+	display: inline-block;
+	width: var(--img-width, auto);
+	height: var(--img-height, auto);
+
 	& > .fallback {
 		--size: 16px;
 
@@ -62,8 +66,8 @@ watchEffect(async () => {
 	& > ion-img {
 		border-radius: inherit;
 		position: relative;
-		width: var(--width, 100%);
-		height: var(--height, 100%);
+		width: var(--img-width, auto);
+		height: var(--img-height, auto);
 	}
 }
 </style>
