@@ -1,3 +1,10 @@
+<script lang="ts">
+export interface PlaylistEditEvent {
+	title: string;
+	artwork?: SongImage;
+}
+</script>
+
 <script lang="ts" setup>
 import { computed, ref, toRaw, useTemplateRef } from "vue";
 
@@ -16,12 +23,15 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { Playlist } from "@/stores/music-player";
+import { Playlist, SongImage } from "@/stores/music-player";
 import { usePresentingElement } from "@/utils/vue";
 
 const { trigger, playlist } = defineProps<{
 	trigger: string;
 	playlist: Playlist;
+}>();
+const emit = defineEmits<{
+	change: [PlaylistEditEvent];
 }>();
 
 const modal = useTemplateRef("modal");
@@ -35,8 +45,10 @@ const canEdit = computed(() => !!playlistTitle.value && modified.value);
 function edit(): void {
 	if (!canEdit.value) return;
 
-	playlist.title = playlistTitle.value;
-	playlist.artwork = toRaw(artwork.value);
+	emit("change", {
+		title: playlistTitle.value,
+		artwork: toRaw(artwork.value),
+	});
 
 	modal.value?.$el.dismiss("editedPlaylist");
 }

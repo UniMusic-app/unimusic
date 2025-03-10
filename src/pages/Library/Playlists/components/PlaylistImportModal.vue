@@ -43,8 +43,8 @@ const loading = ref(false);
 
 const canLoad = computed(() => serviceType.value && url.value && !loading.value);
 
-const supportedServices = () =>
-	MusicPlayerService.getEnabledServices().filter((service) => service.handleGetPlaylist);
+const supportedServices = (): MusicPlayerService[] =>
+	MusicPlayerService.getEnabledServices().filter((service) => !!service.handleGetPlaylist);
 
 function resetModal(): void {
 	serviceType.value = undefined;
@@ -136,7 +136,11 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 			<ion-list>
 				<ion-item>
 					<ion-select label="Music Service" placeholder="Apple Music" v-model="serviceType">
-						<ion-select-option v-for="service in supportedServices()" :value="service.type">
+						<ion-select-option
+							v-for="service in supportedServices()"
+							:key="service.type"
+							:value="service.type"
+						>
 							{{ songTypeToDisplayName(service.type) }}
 						</ion-select-option>
 					</ion-select>

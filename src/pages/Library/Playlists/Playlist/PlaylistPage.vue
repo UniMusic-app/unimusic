@@ -25,7 +25,8 @@
 			:buttons="deleteActionSheetButtons"
 			@didDismiss="onDeleteActionDismiss"
 		/>
-		<PlaylistEditModal v-if="playlist" :playlist trigger="edit-playlist" />
+
+		<PlaylistEditModal v-if="playlist" :playlist trigger="edit-playlist" @change="editPlaylist" />
 
 		<ion-content id="playlist-content" v-if="playlist" :fullscreen="true">
 			<SongImg :src="playlist.artwork" />
@@ -58,7 +59,7 @@ import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import SongImg from "@/components/SongImg.vue";
 import SongItem from "@/components/SongItem.vue";
-import PlaylistEditModal from "../components/PlaylistEditModal.vue";
+import PlaylistEditModal, { PlaylistEditEvent } from "../components/PlaylistEditModal.vue";
 
 import {
 	ActionSheetButton,
@@ -96,6 +97,12 @@ const deleteActionSheetButtons: ActionSheetButton[] = [
 
 function play(): void {
 	musicPlayer.setQueue(playlist.value!.songs);
+}
+
+function editPlaylist(event: PlaylistEditEvent): void {
+	if (!playlist.value) return;
+	playlist.value.title = event.title;
+	playlist.value.artwork = event.artwork;
 }
 
 function onDeleteActionDismiss(event: CustomEvent): void {
