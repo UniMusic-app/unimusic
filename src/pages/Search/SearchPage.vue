@@ -46,11 +46,37 @@
 
 			<ion-list v-if="!isSearching && search" id="search-results">
 				<ion-list>
-					<SongSearchResultItem
+					<GenericSongItem
 						v-for="searchResult of searchResults"
 						:key="getUniqueObjectId(searchResult)"
-						:search-result
-					/>
+						:title="searchResult.title"
+						:artists="searchResult.artists"
+						:artwork="searchResult.artwork"
+						:type="searchResult.type"
+						@item-click="playNow(searchResult)"
+					>
+						<template #options>
+							<ion-item :button="true" :detail="false" @click="playNow(searchResult)">
+								<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
+								Play now
+							</ion-item>
+
+							<ion-item :button="true" :detail="false" @click="playNext(searchResult)">
+								<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
+								Play next
+							</ion-item>
+
+							<ion-item :button="true" :detail="false" @click="addToQueue(searchResult)">
+								<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
+								Add to queue
+							</ion-item>
+
+							<ion-item :button="true" :detail="false" @click="modifyMetadata(searchResult)">
+								<ion-icon aria-hidden="true" :icon="documentIcon" slot="end" />
+								Modify metadata
+							</ion-item>
+						</template>
+					</GenericSongItem>
 				</ion-list>
 			</ion-list>
 		</ion-content>
@@ -72,17 +98,23 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
-import { search as searchIcon } from "ionicons/icons";
+import {
+	addOutline as addIcon,
+	documentOutline as documentIcon,
+	hourglassOutline as hourglassIcon,
+	playOutline as playIcon,
+	search as searchIcon,
+} from "ionicons/icons";
 import { ref } from "vue";
 
 import type { SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
-import { useMusicPlayer } from "@/stores/music-player";
+import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
 import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 
-import SongSearchResultItem from "./components/SongSearchResultItem.vue";
-
+import GenericSongItem from "@/components/GenericSongItem.vue";
+import { createMetadataModal } from "@/components/SongMetadataModal.vue";
 import { getUniqueObjectId } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
@@ -107,6 +139,28 @@ async function searchFor(term: string): Promise<void> {
 
 async function updateSearchResults(): Promise<void> {
 	searchResults.value = await musicPlayer.searchSongs(search.value);
+}
+
+async function playNow(searchResult: SongSearchResult<AnySong>): Promise<void> {
+	const song = await musicPlayer.getSongFromSearchResult(searchResult);
+	musicPlayer.addToQueue(song, musicPlayer.queueIndex);
+}
+
+async function playNext(searchResult: SongSearchResult<AnySong>): Promise<void> {
+	const song = await musicPlayer.getSongFromSearchResult(searchResult);
+	musicPlayer.addToQueue(song, musicPlayer.queueIndex + 1);
+}
+
+async function addToQueue(searchResult: SongSearchResult<AnySong>): Promise<void> {
+	const song = await musicPlayer.getSongFromSearchResult(searchResult);
+	musicPlayer.addToQueue(song);
+}
+
+async function modifyMetadata(searchResult: SongSearchResult<AnySong>): Promise<void> {
+	const song = await musicPlayer.getSongFromSearchResult(searchResult);
+	const modal = await createMetadataModal(song);
+	await modal.present();
+	await modal.onDidDismiss();
 }
 </script>
 

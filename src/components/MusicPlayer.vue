@@ -40,8 +40,6 @@
 							button
 							:detail="false"
 							:class="{ current: i === queueIndex }"
-							v-on-long-press.prevent="[(event) => handleHoldPopover(i, song, event), { delay: 200 }]"
-							@contextmenu.prevent="createPopover(i, song, $event)"
 							@click.self="queueIndex = i"
 						>
 							<SongImg
@@ -159,7 +157,6 @@ import {
 	IonReorderGroup,
 	IonSpinner,
 	ItemReorderCustomEvent,
-	popoverController,
 } from "@ionic/vue";
 import {
 	list as listIcon,
@@ -172,17 +169,14 @@ import {
 	volumeLow as volumeLowIcon,
 } from "ionicons/icons";
 
-import MusicPlayerSongMenu from "@/components/MusicPlayerSongMenu.vue";
 import SongImg from "@/components/SongImg.vue";
 
-import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { useMusicPlayer } from "@/stores/music-player";
 
 import { getPlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
 import { getUniqueObjectId } from "@/utils/vue";
-import { Haptics, ImpactStyle } from "@capacitor/haptics";
-import { vOnLongPress } from "@vueuse/components";
 import { useIntersectionObserver } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
@@ -206,39 +200,6 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 	const { from, to } = event.detail;
 	musicPlayer.moveQueueItem(from, to);
 	event.detail.complete();
-}
-
-async function handleHoldPopover(index: number, song: AnySong, event: Event): Promise<void> {
-	// Disable on non-touch devices
-	if (!navigator.maxTouchPoints) {
-		return;
-	}
-
-	event.preventDefault();
-	await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
-	await createPopover(index, song, event);
-}
-
-async function createPopover(index: number, song: AnySong, event: Event): Promise<void> {
-	const popover = await popoverController.create({
-		component: MusicPlayerSongMenu,
-		event,
-		componentProps: { song, index },
-
-		arrow: false,
-		reference: "event",
-		alignment: "start",
-		side: "right",
-
-		// Built-in popover animations feel weird, so we have our own
-		cssClass: "song-item-popover",
-		backdropDismiss: false,
-		dismissOnSelect: false,
-		animated: false,
-		mode: "ios",
-	});
-	popover.componentProps!.popover = popover;
-	await popover.present();
 }
 
 const queueHeader = ref<HTMLElement | null>(null);

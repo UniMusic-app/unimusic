@@ -64,8 +64,8 @@ watchEffect(async () => {
 
 	& > img,
 	& > ion-img {
-		border-radius: inherit;
 		position: relative;
+		border-radius: var(--img-border-radius, inherit);
 		width: var(--img-width, auto);
 		height: var(--img-height, auto);
 	}
