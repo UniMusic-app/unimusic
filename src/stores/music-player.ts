@@ -6,7 +6,7 @@ import { useLocalImages } from "@/stores/local-images";
 import { useMusicServices } from "@/stores/music-services";
 import { useMusicPlayerState } from "@/stores/music-state";
 
-import type { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import type { MusicService } from "@/services/Music/MusicService";
 
 import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
@@ -63,7 +63,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const { enabledServices } = storeToRefs(services);
 
 	// #region Managing services
-	const currentService = computed<Maybe<MusicPlayerService>>(() => {
+	const currentService = computed<Maybe<MusicService>>(() => {
 		const song = currentSong.value;
 		if (!song) return;
 		return services.getService(song.type);

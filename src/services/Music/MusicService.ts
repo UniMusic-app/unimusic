@@ -12,21 +12,21 @@ import { useMusicServices } from "@/stores/music-services";
 
 import { Maybe } from "@/utils/types";
 
-export interface MusicPlayerServiceState {
+export interface MusicServiceState {
 	enabled: boolean;
 }
 
-interface MusicPlayerServiceEventTypes {
+interface MusicServiceEventTypes {
 	playing: never;
 	ended: never;
 	timeupdate: number;
 }
-type MusicPlayerServiceEventType = keyof MusicPlayerServiceEventTypes;
+type MusicServiceEventType = keyof MusicServiceEventTypes;
 
-export class MusicPlayerServiceEvent<Type extends MusicPlayerServiceEventType> extends CustomEvent<
-	MusicPlayerServiceEventTypes[Type]
+export class MusicServiceEvent<Type extends MusicServiceEventType> extends CustomEvent<
+	MusicServiceEventTypes[Type]
 > {
-	constructor(type: Type, detail?: MusicPlayerServiceEventTypes[Type]) {
+	constructor(type: Type, detail?: MusicServiceEventTypes[Type]) {
 		super(type, { detail });
 	}
 }
@@ -47,10 +47,10 @@ export class SilentError extends Error {
 	}
 }
 
-export abstract class MusicPlayerService<
+export abstract class MusicService<
 	Song extends AnySong = AnySong,
 	const SearchResult extends SongSearchResult<Song> = SongSearchResult<Song>,
-> extends Service<MusicPlayerServiceState> {
+> extends Service<MusicServiceState> {
 	abstract logName: string;
 	abstract type: Song["type"];
 	abstract available: boolean;
@@ -101,17 +101,15 @@ export abstract class MusicPlayerService<
 		});
 	}
 
-	dispatchEvent<Type extends MusicPlayerServiceEventType>(
-		event: MusicPlayerServiceEvent<Type>,
-	): boolean {
+	dispatchEvent<Type extends MusicServiceEventType>(event: MusicServiceEvent<Type>): boolean {
 		return super.dispatchEvent(event);
 	}
 
-	addEventListener<Type extends MusicPlayerServiceEventType>(
+	addEventListener<Type extends MusicServiceEventType>(
 		type: Type,
 		callback:
-			| ((event: MusicPlayerServiceEvent<Type>) => void)
-			| { handleEvent(object: MusicPlayerServiceEvent<Type>): void }
+			| ((event: MusicServiceEvent<Type>) => void)
+			| { handleEvent(object: MusicServiceEvent<Type>): void }
 			| null,
 		options?: AddEventListenerOptions | boolean,
 	): void {

@@ -6,10 +6,7 @@ import LocalMusic from "@/plugins/LocalMusicPlugin";
 import { useLocalImages } from "@/stores/local-images";
 import { LocalSong, SongImage } from "@/stores/music-player";
 
-import {
-	MusicPlayerService,
-	MusicPlayerServiceEvent,
-} from "@/services/MusicPlayer/MusicPlayerService";
+import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
 
 import { base64StringToBuffer } from "@/utils/buffer";
 import { getPlatform } from "@/utils/os";
@@ -183,8 +180,8 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 	return songs.value;
 }
 
-export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
-	logName = "LocalMusicPlayerService";
+export class LocalMusicService extends MusicService<LocalSong> {
+	logName = "LocalMusicService";
 	logColor = "#ddd480";
 	type = "local" as const;
 	available = getPlatform() !== "web";
@@ -242,17 +239,17 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	}
 
 	handleInitialization(): void {
-		// TODO: Make an abstract MusicPlayerService class that uses HTMLAudioElement
-		// 		 Since this is shared between {YouTube,Local}MusicPlayerService's, and possibly more in the future
+		// TODO: Make an abstract MusicService class that uses HTMLAudioElement
+		// 		 Since this is shared between {YouTube,Local}MusicService's, and possibly more in the future
 		const audio = new Audio();
 		audio.addEventListener("timeupdate", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("timeupdate", audio.currentTime));
+			this.dispatchEvent(new MusicServiceEvent("timeupdate", audio.currentTime));
 		});
 		audio.addEventListener("playing", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("playing"));
+			this.dispatchEvent(new MusicServiceEvent("playing"));
 		});
 		audio.addEventListener("ended", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("ended"));
+			this.dispatchEvent(new MusicServiceEvent("ended"));
 		});
 		this.audio = audio;
 	}

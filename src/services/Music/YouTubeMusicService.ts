@@ -1,11 +1,7 @@
 import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
-import {
-	MusicPlayerService,
-	MusicPlayerServiceEvent,
-	SongSearchResult,
-} from "@/services/MusicPlayer/MusicPlayerService";
+import { MusicService, MusicServiceEvent, SongSearchResult } from "@/services/Music/MusicService";
 import type { Playlist, SongImage, YouTubeSong } from "@/stores/music-player";
 
 import { useLocalImages } from "@/stores/local-images";
@@ -143,8 +139,8 @@ async function createWebPoMinter(): Promise<BG.WebPoMinter> {
 	return integrityTokenBasedMinter;
 }
 
-export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
-	logName = "YouTubeMusicPlayerService";
+export class YouTubeMusicService extends MusicService<YouTubeSong> {
+	logName = "YouTubeMusicService";
 	logColor = "#ff0000";
 	type = "youtube" as const;
 	available = getPlatform() !== "web";
@@ -156,13 +152,13 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const audio = new Audio();
 		document.body.appendChild(audio);
 		audio.addEventListener("timeupdate", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("timeupdate", audio.currentTime));
+			this.dispatchEvent(new MusicServiceEvent("timeupdate", audio.currentTime));
 		});
 		audio.addEventListener("playing", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("playing"));
+			this.dispatchEvent(new MusicServiceEvent("playing"));
 		});
 		audio.addEventListener("ended", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("ended"));
+			this.dispatchEvent(new MusicServiceEvent("ended"));
 		});
 		this.audio = audio;
 
@@ -219,7 +215,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	): Promise<YouTubeSong> {
 		if (!this.innertube) {
 			throw new Error(
-				"Tried to call handleGetSongFromSearchResult() while YouTubeMusicPlayerService is not initialized",
+				"Tried to call handleGetSongFromSearchResult() while YouTubeMusicService is not initialized",
 			);
 		}
 

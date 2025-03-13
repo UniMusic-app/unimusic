@@ -107,7 +107,7 @@ import {
 } from "ionicons/icons";
 import { ref } from "vue";
 
-import type { SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
+import type { SongSearchResult } from "@/services/Music/MusicService";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
 import AppFooter from "@/components/AppFooter.vue";

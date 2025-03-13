@@ -1,10 +1,6 @@
 import { MusicKitSong, Playlist, SongImage } from "@/stores/music-player";
 
-import {
-	MusicPlayerService,
-	MusicPlayerServiceEvent,
-	SilentError,
-} from "@/services/MusicPlayer/MusicPlayerService";
+import { MusicService, MusicServiceEvent, SilentError } from "@/services/Music/MusicService";
 
 import { useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
@@ -49,8 +45,8 @@ export function musicKitSongIdType(song: MusicKitSong): "library" | "catalog" {
 	return "library";
 }
 
-export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong> {
-	logName = "MusicKitMusicPlayerService";
+export class MusicKitMusicService extends MusicService<MusicKitSong> {
+	logName = "MusicKitMusicService";
 	logColor = "#cc80dd";
 	type = "musickit" as const;
 	available = true;
@@ -230,10 +226,10 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 
 		music.repeatMode = MusicKit.PlayerRepeatMode.none;
 		music.addEventListener("playbackTimeDidChange", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("timeupdate", this.music!.currentPlaybackTime));
+			this.dispatchEvent(new MusicServiceEvent("timeupdate", this.music!.currentPlaybackTime));
 		});
 		music.addEventListener("mediaCanPlay", () => {
-			this.dispatchEvent(new MusicPlayerServiceEvent("playing"));
+			this.dispatchEvent(new MusicServiceEvent("playing"));
 		});
 
 		// MusicKit attaches listeners to persist playback state on visibility state changes
@@ -241,7 +237,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		music.addEventListener("playbackStateDidChange", async ({ state }) => {
 			switch (state) {
 				case MusicKit.PlaybackStates.ended:
-					this.dispatchEvent(new MusicPlayerServiceEvent("ended"));
+					this.dispatchEvent(new MusicServiceEvent("ended"));
 					break;
 				case MusicKit.PlaybackStates.playing:
 					if (!this.song) {

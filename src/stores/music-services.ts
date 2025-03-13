@@ -1,28 +1,28 @@
 import { defineStore } from "pinia";
 import { computed, reactive } from "vue";
 
-import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
+import { MusicService, SongSearchResult } from "@/services/Music/MusicService";
 
-import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayerService";
-import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
-import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
+import { LocalMusicService } from "@/services/Music/LocalMusicService";
+import { MusicKitMusicService } from "@/services/Music/MusicKitMusicService";
+import { YouTubeMusicService } from "@/services/Music/YouTubeMusicService";
 
 import { AnySong } from "@/stores/music-player";
 
 import { Maybe } from "@/utils/types";
 
 export const useMusicServices = defineStore("MusicServices", () => {
-	const registeredServices = reactive<Record<string, MusicPlayerService>>({});
-	const enabledServices = computed<MusicPlayerService[]>(() =>
+	const registeredServices = reactive<Record<string, MusicService>>({});
+	const enabledServices = computed<MusicService[]>(() =>
 		Object.values(registeredServices).filter((service) => service.enabled.value),
 	);
 
 	// #region Actions for managing services
-	function registerService(service: MusicPlayerService): void {
+	function registerService(service: MusicService): void {
 		registeredServices[service.type] = service;
 	}
 
-	function getService(type: string): Maybe<MusicPlayerService> {
+	function getService(type: string): Maybe<MusicService> {
 		const service = registeredServices[type];
 		if (service?.enabled?.value) {
 			return service;
@@ -31,7 +31,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	// #endregion
 
 	// #region Actions for calling service methods
-	function withAllServices<T>(callback: (service: MusicPlayerService) => T): Promise<Awaited<T>[]> {
+	function withAllServices<T>(callback: (service: MusicService) => T): Promise<Awaited<T>[]> {
 		return Promise.all(enabledServices.value.map(callback));
 	}
 
@@ -65,9 +65,9 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	}
 	// #endregion
 
-	registerService(new MusicKitMusicPlayerService());
-	registerService(new YouTubeMusicPlayerService());
-	registerService(new LocalMusicPlayerService());
+	registerService(new MusicKitMusicService());
+	registerService(new YouTubeMusicService());
+	registerService(new LocalMusicService());
 
 	return {
 		registeredServices,
