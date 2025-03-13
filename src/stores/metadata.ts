@@ -1,7 +1,9 @@
-import { AnySong, SongImage } from "@/stores/music-player";
-import { useIDBKeyvalAsync } from "@/utils/vue";
 import { defineStore } from "pinia";
 import { reactive, Reactive, toRaw } from "vue";
+
+import { AnySong, SongImage } from "@/stores/music-player";
+
+import { useIDBKeyvalAsync } from "@/utils/vue";
 
 export interface MetadataOverride {
 	artists?: string[];

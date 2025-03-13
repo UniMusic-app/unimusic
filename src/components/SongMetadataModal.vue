@@ -70,7 +70,6 @@
 import SongMetadataModal from "./SongMetadataModal.vue";
 export async function createMetadataModal(song: AnySong): Promise<HTMLIonModalElement> {
 	const songMetadata = useSongMetadata();
-	const musicPlayer = useMusicPlayer();
 
 	const modal = await modalController.create({
 		component: SongMetadataModal,
@@ -96,7 +95,7 @@ export async function createMetadataModal(song: AnySong): Promise<HTMLIonModalEl
 			switch (info?.data?.action) {
 				case "save":
 					await songMetadata.setMetadata(song, data!.metadata!);
-					await musicPlayer.refreshSong(song);
+					// await musicPlayer.refreshSong(song);
 					return true;
 				case "discard":
 					return true;
@@ -114,7 +113,7 @@ export async function createMetadataModal(song: AnySong): Promise<HTMLIonModalEl
 import SongImg from "@/components/SongImg.vue";
 import { useLocalImages } from "@/stores/local-images";
 import { MetadataOverride, useSongMetadata } from "@/stores/metadata";
-import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { AnySong } from "@/stores/music-player";
 import {
 	InputCustomEvent,
 	IonButton,
@@ -155,7 +154,7 @@ async function changeArtwork(): Promise<void> {
 		return;
 	}
 
-	const artwork = files[0];
+	const artwork = files[0]!;
 	await localImages.localImageManagementService.associateImage(song.id, artwork, {
 		width: 256,
 		height: 256,

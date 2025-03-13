@@ -1,17 +1,16 @@
-import { useLocalStorage, useStorage, watchDebounced } from "@vueuse/core";
-import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
-import { defineStore } from "pinia";
-import { computed, ref, watch } from "vue";
+import { watchDebounced } from "@vueuse/core";
+import { defineStore, storeToRefs } from "pinia";
+import { computed, watch } from "vue";
 
-import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
+import { useLocalImages } from "@/stores/local-images";
+import { useMusicServices } from "@/stores/music-services";
+import { useMusicPlayerState } from "@/stores/music-state";
 
-import { LocalMusicPlayerService } from "@/services/MusicPlayer/LocalMusicPlayerService";
-import { MusicKitMusicPlayerService } from "@/services/MusicPlayer/MusicKitMusicPlayerService";
-import { YouTubeMusicPlayerService } from "@/services/MusicPlayer/YouTubeMusicPlayerService";
+import type { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+
 import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
-import { useLocalImages } from "./local-images";
 
 export type SongImage = { id: string; url?: never } | { id?: never; url: string };
 export interface Song<Type extends string, Data = unknown> {
@@ -57,126 +56,61 @@ export interface Playlist {
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
-	const playlists = useIDBKeyval<Playlist[]>("playlists", []);
+	const state = useMusicPlayerState();
+	const { currentSong, currentQueueSong, autoplay, playing, time, volume } = storeToRefs(state);
 
-	function addPlaylist(playlist: Playlist): void {
-		playlists.data.value.push(playlist);
-	}
+	const services = useMusicServices();
+	const { enabledServices } = storeToRefs(services);
 
-	function removePlaylist(id: string): void {
-		const index = playlists.data.value.findIndex((playlist) => playlist.id === id);
-		if (index !== -1) {
-			playlists.data.value.splice(index, 1);
-		}
-	}
-
-	function getPlaylist(id: string): Maybe<Playlist> {
-		return playlists.data.value.find((playlist) => playlist.id === id);
-	}
-
-	MusicPlayerService.registerService(new MusicKitMusicPlayerService());
-	MusicPlayerService.registerService(new YouTubeMusicPlayerService());
-	MusicPlayerService.registerService(new LocalMusicPlayerService());
-
-	function withAllServices<T>(callback: (service: MusicPlayerService) => T): Promise<Awaited<T>[]> {
-		return Promise.all(MusicPlayerService.getEnabledServices().map(callback));
-	}
-
-	const queuedSongs = useIDBKeyval<AnySong[]>("queuedSongs", []);
-	const queueIndex = useStorage("queueIndex", 0);
-	const currentSong = computed<AnySong | undefined>(() => queuedSongs.data.value[queueIndex.value]);
-
-	const currentService = computed<MusicPlayerService | undefined>(() => {
+	// #region Managing services
+	const currentService = computed<Maybe<MusicPlayerService>>(() => {
 		const song = currentSong.value;
-		return song && MusicPlayerService.getService(song.type);
+		if (!song) return;
+		return services.getService(song.type);
 	});
 
-	let autoPlay = false;
+	watch(volume, async (volume) => {
+		await services.withAllServices((service) => service.setVolume(volume));
+	});
+
 	watchDebounced(
-		[currentSong, currentService],
-		async ([song, service]) => {
-			if (!service?.enabled?.value) return;
-
-			if (song) {
-				await service.changeSong(song);
-				if (autoPlay) {
-					await service.play();
-				} else {
-					await service.initialize();
-					autoPlay = true;
+		[currentService, currentQueueSong],
+		async ([service, queueSong]) => {
+			if (!queueSong) {
+				for (const service of enabledServices.value) {
+					await service.stop();
 				}
-			} else {
-				await MusicPlayerService.stopServices();
+				return;
 			}
+			if (!service) return;
+
+			await service.changeSong(queueSong.song);
+
+			switch (autoplay.value) {
+				case "auto":
+					autoplay.value = true;
+					return;
+				case false:
+					return;
+			}
+
+			await service.play();
 		},
-		{ debounce: 500 },
+		{ debounce: 150 },
 	);
+	// #endregion
 
-	const loadingStack = ref<boolean[]>([]);
-	const loading = computed({
-		get() {
-			return loadingStack.value.length > 0;
-		},
+	// #region Actions for managing MusicPlayer
+	const hasPrevious = computed(() => state.queueIndex > 0);
+	const hasNext = computed(() => state.queue.length > state.queueIndex + 1);
 
-		set(value) {
-			if (value) {
-				loadingStack.value.push(true);
-			} else {
-				loadingStack.value.pop();
-			}
-		},
-	});
-
-	const playing = ref(false);
-	const volume = useLocalStorage("volume", 1);
-
-	watch(volume, async (volume) => await withAllServices((service) => service.setVolume(volume)), {
-		immediate: true,
-	});
-
-	const time = ref(0);
-	const duration = ref(1);
-	const progress = computed({
-		get: () => time.value / duration.value,
-		set: async (progress) => {
-			await currentService.value?.seekToTime?.(progress * duration.value);
-		},
-	});
-
-	const hasPrevious = computed(() => queueIndex.value > 0);
-	const hasNext = computed(() => queuedSongs.data.value.length > queueIndex.value + 1);
-
-	const timeRemaining = computed(() => duration.value * (1 - progress.value));
-
-	function setQueue(songs: AnySong[]): void {
-		queuedSongs.data.value = songs;
-		queueIndex.value = 0;
+	function skipPrevious(): void {
+		if (!hasPrevious.value) return;
+		state.queueIndex--;
 	}
-
-	function addToQueue(song: AnySong, index = queuedSongs.data.value.length): void {
-		queuedSongs.data.value.splice(index, 0, song);
-	}
-
-	function removeFromQueue(index: number): void {
-		queuedSongs.data.value.splice(index, 1);
-		if (index < queueIndex.value) {
-			queueIndex.value -= 1;
-		}
-	}
-
-	function moveQueueItem(from: number, to: number): void {
-		// Move item in the array
-		const [item] = queuedSongs.data.value.splice(from, 1);
-		queuedSongs.data.value.splice(to, 0, item);
-
-		// Then make sure that currently playing song is still the one playing
-		if (from > queueIndex.value && to <= queueIndex.value) {
-			queueIndex.value += 1;
-		} else if (from < queueIndex.value && to >= queueIndex.value) {
-			queueIndex.value -= 1;
-		} else if (from === queueIndex.value) {
-			queueIndex.value = to;
-		}
+	function skipNext(): void {
+		if (!hasNext.value) return;
+		state.queueIndex++;
 	}
 
 	async function play(): Promise<void> {
@@ -189,46 +123,9 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	async function togglePlay(): Promise<void> {
 		await currentService.value?.togglePlay();
 	}
+	// #endregion
 
-	function skipPrevious(): void {
-		if (!hasPrevious.value) return;
-		queueIndex.value--;
-	}
-	function skipNext(): void {
-		if (!hasNext.value) return;
-		queueIndex.value++;
-	}
-
-	async function searchHints(term: string): Promise<string[]> {
-		const allHints = await withAllServices((service) => service.searchHints(term));
-		return allHints.flat();
-	}
-
-	async function searchSongs(term: string, offset = 0): Promise<SongSearchResult[]> {
-		const allResults = await withAllServices((service) => service.searchSongs(term, offset));
-		return allResults.flat();
-	}
-
-	async function librarySongs(offset = 0): Promise<AnySong[]> {
-		const allSongs = await withAllServices((service) => service.librarySongs(offset));
-		return allSongs.flat();
-	}
-
-	async function refreshLibrarySongs(): Promise<void> {
-		await withAllServices((service) => service.refreshLibrarySongs());
-	}
-
-	async function refreshSong(song: AnySong): Promise<void> {
-		await MusicPlayerService.getService(song.type)?.refreshSong(song);
-	}
-
-	async function getSongFromSearchResult(searchResult: SongSearchResult): Promise<AnySong> {
-		const service = MusicPlayerService.getService(searchResult.type)!;
-		const song = await service.getSongFromSearchResult(searchResult);
-		return song;
-	}
-
-	//#region System Music Controls
+	// #region System Music Controls
 	// Android's WebView doesn't support MediaSession
 	if (getPlatform() === "android") {
 		void import("capacitor-music-controls-plugin").then(({ CapacitorMusicControls }) => {
@@ -302,11 +199,9 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	// iOS, Web and Electron
 	if (getPlatform() !== "android" && "mediaSession" in navigator) {
-		// These action handlers MUST also be added after audio elements emitted "playing" event
-		// Otherwise WKWebView on iOS does not respect the action handlers and shows the seek buttons
 		addMusicSessionActionHandlers();
 
-		watch([currentSong], async ([song]) => {
+		watch(currentSong, async (song) => {
 			if (!song) {
 				navigator.mediaSession.metadata = null;
 				navigator.mediaSession.playbackState = "none";
@@ -330,6 +225,10 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		});
 	}
 
+	/**
+	 * These action handlers MUST also be added after audio elements emitted "playing" event
+	 * Otherwise WKWebView on iOS does not respect the action handlers and shows the seek buttons
+	 */
 	function addMusicSessionActionHandlers(): void {
 		if (!("mediaSession" in navigator)) return;
 
@@ -348,47 +247,35 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 			skipNext();
 		});
 	}
-	//#endregion
+	// #endregion
+
+	// #region Properties
+	const progress = computed({
+		get: () => state.time / state.duration,
+		set: async (progress) => {
+			const time = progress * state.duration;
+			await currentService?.value?.seekToTime(time);
+		},
+	});
+
+	const timeRemaining = computed(() => state.duration - state.time);
+	// #endregion
 
 	return {
-		loading,
-		playing,
 		play,
 		pause,
 		togglePlay,
-
-		volume,
-		progress,
-
-		time,
-		duration,
-		timeRemaining,
-
-		playlists: computed(() => playlists.data.value),
-		addPlaylist,
-		removePlaylist,
-		getPlaylist,
-
-		queuedSongs: computed(() => queuedSongs.data.value),
-		queueIndex,
-		setQueue,
-		addToQueue,
-		removeFromQueue,
-		moveQueueItem,
-
 		hasPrevious,
-		hasNext,
 		skipPrevious,
+		hasNext,
 		skipNext,
-		currentSong,
+
+		progress,
+		timeRemaining,
 
 		addMusicSessionActionHandlers,
 
-		searchSongs,
-		searchHints,
-		getSongFromSearchResult,
-		librarySongs,
-		refreshSong,
-		refreshLibrarySongs,
+		state,
+		services,
 	};
 });

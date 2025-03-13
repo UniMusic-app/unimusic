@@ -25,7 +25,6 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 import { Playlist, useMusicPlayer } from "@/stores/music-player";
 import { songTypeToDisplayName } from "@/utils/songs";
 import { usePresentingElement } from "@/utils/vue";
@@ -43,8 +42,9 @@ const loading = ref(false);
 
 const canLoad = computed(() => serviceType.value && url.value && !loading.value);
 
-const supportedServices = (): MusicPlayerService[] =>
-	MusicPlayerService.getEnabledServices().filter((service) => !!service.handleGetPlaylist);
+const supportedServices = computed(() =>
+	musicPlayer.services.enabledServices.filter((service) => !!service.handleGetPlaylist),
+);
 
 function resetModal(): void {
 	serviceType.value = undefined;
@@ -55,7 +55,7 @@ function resetModal(): void {
 
 function importPlaylist(): void {
 	if (!playlist.value) return;
-	musicPlayer.addPlaylist(playlist.value);
+	musicPlayer.state.addPlaylist(playlist.value);
 	modal.value?.$el.dismiss("importedPlaylist");
 }
 
@@ -65,7 +65,7 @@ async function loadPlaylist(): Promise<void> {
 	loading.value = true;
 
 	try {
-		const service = MusicPlayerService.getService(serviceType.value);
+		const service = musicPlayer.services.getService(serviceType.value);
 		playlist.value = await service?.getPlaylist(new URL(url.value));
 		loading.value = false;
 		return;
@@ -137,7 +137,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 				<ion-item>
 					<ion-select label="Music Service" placeholder="Apple Music" v-model="serviceType">
 						<ion-select-option
-							v-for="service in supportedServices()"
+							v-for="service in supportedServices"
 							:key="service.type"
 							:value="service.type"
 						>

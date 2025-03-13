@@ -1,17 +1,17 @@
 <template>
-  <ion-page>
-    <AppHeader>
-      <template #toolbar>
-        <ion-title>Home</ion-title>
-      </template>
-    </AppHeader>
+	<ion-page>
+		<AppHeader>
+			<template #toolbar>
+				<ion-title>Home</ion-title>
+			</template>
+		</AppHeader>
 
-    <ion-content :fullscreen="true" class="ion-padding">
-      <SongItem v-for="item in musicPlayer.queuedSongs" :song="item" :key="item.id" />
-    </ion-content>
+		<ion-content :fullscreen="true" class="ion-padding">
+			<SongItem v-for="{ song, id } in musicPlayer.state.queue" :song :key="id" />
+		</ion-content>
 
-    <AppFooter />
-  </ion-page>
+		<AppFooter />
+	</ion-page>
 </template>
 
 <script setup lang="ts">
@@ -22,6 +22,4 @@ import { IonContent, IonPage, IonTitle } from "@ionic/vue";
 import SongItem from "@/components/SongItem.vue";
 import { useMusicPlayer } from "@/stores/music-player";
 const musicPlayer = useMusicPlayer();
-
-musicPlayer.play();
 </script>

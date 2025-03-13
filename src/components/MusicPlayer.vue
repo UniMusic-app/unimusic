@@ -35,8 +35,8 @@
 					</ion-item-divider>
 					<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
 						<ion-item
-							v-for="(song, i) in queuedSongs"
-							:key="getUniqueObjectId(song)"
+							v-for="({ song, id }, i) in queue"
+							:key="id"
 							button
 							:detail="false"
 							:class="{ current: i === queueIndex }"
@@ -69,8 +69,8 @@
 				:min="0"
 				:max="1"
 				:step="0.001"
-				:value="progress"
-				@ion-change="progress = $event.detail.value as number"
+				:value="musicPlayer.progress"
+				@ion-change="musicPlayer.progress = $event.detail.value as number"
 			/>
 
 			<div class="labels">
@@ -78,7 +78,7 @@
 				<ion-label id="source">
 					{{ songTypeToDisplayName(currentSong.type) }}
 				</ion-label>
-				<ion-label id="time-remaining">{{ secondsToMMSS(timeRemaining) }}</ion-label>
+				<ion-label id="time-remaining">{{ secondsToMMSS(musicPlayer.timeRemaining) }}</ion-label>
 			</div>
 		</div>
 
@@ -86,7 +86,7 @@
 			<ion-button
 				aria-label="Skip to previous song"
 				size="large"
-				:disabled="!hasPrevious"
+				:disabled="!musicPlayer.hasPrevious"
 				@click="musicPlayer.skipPrevious"
 			>
 				<ion-icon aria-hidden="true" :icon="skipPreviousIcon" slot="icon-only" />
@@ -103,7 +103,7 @@
 			<ion-button
 				aria-label="Skip to next song"
 				size="large"
-				:disabled="!hasNext"
+				:disabled="!musicPlayer.hasNext"
 				@click="musicPlayer.skipNext"
 			>
 				<ion-icon aria-hidden="true" :icon="skipNextIcon" slot="icon-only" />
@@ -176,29 +176,18 @@ import { useMusicPlayer } from "@/stores/music-player";
 import { getPlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
-import { getUniqueObjectId } from "@/utils/vue";
 import { useIntersectionObserver } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
-const {
-	queueIndex,
-	queuedSongs,
-	playing,
-	currentSong,
-	volume,
-	hasPrevious,
-	hasNext,
-	loading,
-	time,
-	progress,
-	timeRemaining,
-} = storeToRefs(musicPlayer);
+const { queueIndex, queue, playing, currentSong, volume, loading, time } = storeToRefs(
+	musicPlayer.state,
+);
 
 const showQueue = ref(false);
 
 function reorderQueue(event: ItemReorderCustomEvent): void {
 	const { from, to } = event.detail;
-	musicPlayer.moveQueueItem(from, to);
+	musicPlayer.state.moveQueueItem(from, to);
 	event.detail.complete();
 }
 
@@ -206,7 +195,7 @@ const queueHeader = ref<HTMLElement | null>(null);
 useIntersectionObserver(
 	queueHeader,
 	([entry]) =>
-		queueHeader.value?.parentElement?.classList?.toggle?.("is-sticky", !entry.isIntersecting),
+		queueHeader.value?.parentElement?.classList?.toggle?.("is-sticky", !entry?.isIntersecting),
 	{ rootMargin: "-24px 0px 0px 0px", threshold: [1] },
 );
 </script>

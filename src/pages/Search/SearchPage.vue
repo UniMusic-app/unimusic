@@ -47,8 +47,8 @@
 			<ion-list v-if="!isSearching && search" id="search-results">
 				<ion-list>
 					<GenericSongItem
-						v-for="searchResult of searchResults"
-						:key="getUniqueObjectId(searchResult)"
+						v-for="(searchResult, i) of searchResults"
+						:key="i"
 						:title="searchResult.title"
 						:artists="searchResult.artists"
 						:artwork="searchResult.artwork"
@@ -115,7 +115,6 @@ import AppHeader from "@/components/AppHeader.vue";
 
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import { createMetadataModal } from "@/components/SongMetadataModal.vue";
-import { getUniqueObjectId } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
 const search = ref("");
@@ -126,7 +125,7 @@ const searchResults = ref<SongSearchResult[]>([]);
 const isLoading = ref(false);
 
 async function updateSearchHints(): Promise<void> {
-	searchSuggestions.value = await musicPlayer.searchHints(search.value);
+	searchSuggestions.value = await musicPlayer.services.searchHints(search.value);
 }
 
 async function searchFor(term: string): Promise<void> {
@@ -138,26 +137,26 @@ async function searchFor(term: string): Promise<void> {
 }
 
 async function updateSearchResults(): Promise<void> {
-	searchResults.value = await musicPlayer.searchSongs(search.value);
+	searchResults.value = await musicPlayer.services.searchSongs(search.value);
 }
 
 async function playNow(searchResult: SongSearchResult<AnySong>): Promise<void> {
-	const song = await musicPlayer.getSongFromSearchResult(searchResult);
-	musicPlayer.addToQueue(song, musicPlayer.queueIndex);
+	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
+	musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
 }
 
 async function playNext(searchResult: SongSearchResult<AnySong>): Promise<void> {
-	const song = await musicPlayer.getSongFromSearchResult(searchResult);
-	musicPlayer.addToQueue(song, musicPlayer.queueIndex + 1);
+	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
+	musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
 }
 
 async function addToQueue(searchResult: SongSearchResult<AnySong>): Promise<void> {
-	const song = await musicPlayer.getSongFromSearchResult(searchResult);
-	musicPlayer.addToQueue(song);
+	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
+	musicPlayer.state.addToQueue(song);
 }
 
 async function modifyMetadata(searchResult: SongSearchResult<AnySong>): Promise<void> {
-	const song = await musicPlayer.getSongFromSearchResult(searchResult);
+	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
 	const modal = await createMetadataModal(song);
 	await modal.present();
 	await modal.onDidDismiss();

@@ -26,7 +26,7 @@
 		<ion-content :fullscreen="true">
 			<ion-list id="playlists-content">
 				<ion-item
-					v-for="playlist in musicPlayer.playlists"
+					v-for="playlist in musicPlayer.state.playlists"
 					:key="playlist.id"
 					:router-link="`/library/playlists/${playlist.id}`"
 				>

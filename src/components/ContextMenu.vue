@@ -196,6 +196,7 @@ function close(): void {
 	border: none;
 	padding: 0;
 	margin: 0;
+	overflow: hidden;
 
 	background-color: transparent;
 

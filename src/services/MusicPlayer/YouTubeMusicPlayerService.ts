@@ -1,7 +1,11 @@
 import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
-import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
+import {
+	MusicPlayerService,
+	MusicPlayerServiceEvent,
+	SongSearchResult,
+} from "@/services/MusicPlayer/MusicPlayerService";
 import type { Playlist, SongImage, YouTubeSong } from "@/stores/music-player";
 
 import { useLocalImages } from "@/stores/local-images";
@@ -152,13 +156,13 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const audio = new Audio();
 		document.body.appendChild(audio);
 		audio.addEventListener("timeupdate", () => {
-			this.store.time = audio.currentTime;
+			this.dispatchEvent(new MusicPlayerServiceEvent("timeupdate", audio.currentTime));
 		});
 		audio.addEventListener("playing", () => {
-			this.store.addMusicSessionActionHandlers();
+			this.dispatchEvent(new MusicPlayerServiceEvent("playing"));
 		});
 		audio.addEventListener("ended", () => {
-			this.store.skipNext();
+			this.dispatchEvent(new MusicPlayerServiceEvent("ended"));
 		});
 		this.audio = audio;
 

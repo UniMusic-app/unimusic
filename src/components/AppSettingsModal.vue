@@ -9,7 +9,7 @@
 	</ion-header>
 	<ion-content>
 		<ion-list inset>
-			<ion-item v-for="service in MusicPlayerService.getRegisteredServices()" :key="service.type">
+			<ion-item v-for="service in services.registeredServices" :key="service.type">
 				<ion-label class="platform-status">
 					<span class="platform-name">{{ songTypeToDisplayName(service.type) }}</span>
 				</ion-label>
@@ -17,7 +17,7 @@
 				<ion-buttons>
 					<template v-if="service.enabled.value && service.authorization">
 						<ion-button
-							v-if="service.authorization.isAuthorized"
+							v-if="service.authorization.authorized.value"
 							@click="service.authorization.unauthorize()"
 						>
 							Unauthorize
@@ -37,9 +37,9 @@
 </template>
 
 <script lang="ts">
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
 import { songTypeToDisplayName } from "@/utils/songs";
 import AppSettingsModal from "./AppSettingsModal.vue";
+
 export async function createSettingsModal(): Promise<HTMLIonModalElement> {
 	const modal = await modalController.create({
 		component: AppSettingsModal,
@@ -62,6 +62,10 @@ import {
 	IonToolbar,
 	modalController,
 } from "@ionic/vue";
+
+import { useMusicServices } from "@/stores/music-services";
+
+const services = useMusicServices();
 
 async function close(): Promise<void> {
 	await modalController.dismiss();

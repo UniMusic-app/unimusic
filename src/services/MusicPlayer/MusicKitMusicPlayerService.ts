@@ -1,6 +1,10 @@
 import { MusicKitSong, Playlist, SongImage } from "@/stores/music-player";
 
-import { MusicPlayerService, SilentError } from "@/services/MusicPlayer/MusicPlayerService";
+import {
+	MusicPlayerService,
+	MusicPlayerServiceEvent,
+	SilentError,
+} from "@/services/MusicPlayer/MusicPlayerService";
 
 import { useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
@@ -199,12 +203,8 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		return await Promise.all(promises);
 	}
 
-	#timeUpdateCallback = (): void => {
-		this.store.time = this.music!.currentPlaybackTime;
-	};
-
 	async handleInitialization(): Promise<void> {
-		while (!this.authorization.isAuthorized) {
+		while (!this.authorization.authorized.value) {
 			const alert = await alertController.create({
 				header: "You need to authorize MusicKit",
 				subHeader: this.logName,
@@ -229,9 +229,11 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		this.music = music;
 
 		music.repeatMode = MusicKit.PlayerRepeatMode.none;
-		music.addEventListener("playbackTimeDidChange", this.#timeUpdateCallback);
-		music.addEventListener("mediaCanPlay", () => this.store.addMusicSessionActionHandlers(), {
-			once: true,
+		music.addEventListener("playbackTimeDidChange", () => {
+			this.dispatchEvent(new MusicPlayerServiceEvent("timeupdate", this.music!.currentPlaybackTime));
+		});
+		music.addEventListener("mediaCanPlay", () => {
+			this.dispatchEvent(new MusicPlayerServiceEvent("playing"));
 		});
 
 		// MusicKit attaches listeners to persist playback state on visibility state changes
@@ -239,7 +241,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		music.addEventListener("playbackStateDidChange", async ({ state }) => {
 			switch (state) {
 				case MusicKit.PlaybackStates.ended:
-					this.store.skipNext();
+					this.dispatchEvent(new MusicPlayerServiceEvent("ended"));
 					break;
 				case MusicKit.PlaybackStates.playing:
 					if (!this.song) {
@@ -257,9 +259,9 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	handleDeinitialization(): void {}
 
 	async handlePlay(): Promise<void> {
-		const { music } = this;
-		await music?.setQueue({ song: this.song!.id });
 		try {
+			const { music } = this;
+			await music?.setQueue({ song: this.song!.id });
 			await music?.play();
 		} catch (error) {
 			// Someone skipped or stopped the song while it was still trying to play it, let it slide

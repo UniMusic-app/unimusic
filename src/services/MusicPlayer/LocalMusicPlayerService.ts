@@ -6,7 +6,10 @@ import LocalMusic from "@/plugins/LocalMusicPlugin";
 import { useLocalImages } from "@/stores/local-images";
 import { LocalSong, SongImage } from "@/stores/music-player";
 
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import {
+	MusicPlayerService,
+	MusicPlayerServiceEvent,
+} from "@/services/MusicPlayer/MusicPlayerService";
 
 import { base64StringToBuffer } from "@/utils/buffer";
 import { getPlatform } from "@/utils/os";
@@ -243,13 +246,13 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		// 		 Since this is shared between {YouTube,Local}MusicPlayerService's, and possibly more in the future
 		const audio = new Audio();
 		audio.addEventListener("timeupdate", () => {
-			this.store.time = audio.currentTime;
+			this.dispatchEvent(new MusicPlayerServiceEvent("timeupdate", audio.currentTime));
 		});
 		audio.addEventListener("playing", () => {
-			this.store.addMusicSessionActionHandlers();
+			this.dispatchEvent(new MusicPlayerServiceEvent("playing"));
 		});
 		audio.addEventListener("ended", () => {
-			this.store.skipNext();
+			this.dispatchEvent(new MusicPlayerServiceEvent("ended"));
 		});
 		this.audio = audio;
 	}

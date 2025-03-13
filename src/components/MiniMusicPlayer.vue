@@ -11,14 +11,14 @@
 		</ion-label>
 
 		<ion-buttons slot="end">
-			<ion-button :disabled="!hasPrevious" @click="musicPlayer.skipPrevious">
+			<ion-button :disabled="!musicPlayer.hasPrevious" @click="musicPlayer.skipPrevious">
 				<ion-icon :icon="skipPreviousIcon" slot="icon-only" />
 			</ion-button>
 			<ion-button @click="musicPlayer.togglePlay" :disabled="loading">
 				<ion-spinner v-if="loading" />
 				<ion-icon v-else :icon="playing ? pauseIcon : playIcon" slot="icon-only" />
 			</ion-button>
-			<ion-button :disabled="!hasNext" @click="musicPlayer.skipNext">
+			<ion-button :disabled="!musicPlayer.hasNext" @click="musicPlayer.skipNext">
 				<ion-icon :icon="skipNextIcon" slot="icon-only" />
 			</ion-button>
 		</ion-buttons>
@@ -59,7 +59,7 @@ import SongImg from "@/components/SongImg.vue";
 import { useMusicPlayer } from "@/stores/music-player";
 
 const musicPlayer = useMusicPlayer();
-const { loading, playing, currentSong, hasPrevious, hasNext } = storeToRefs(musicPlayer);
+const { loading, playing, currentSong } = storeToRefs(musicPlayer.state);
 
 const modalOpen = ref(false);
 </script>

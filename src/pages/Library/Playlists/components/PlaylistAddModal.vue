@@ -41,7 +41,7 @@ function resetModal(): void {
 function create(): void {
 	if (!canCreate.value) return;
 
-	musicPlayer.addPlaylist({
+	musicPlayer.state.addPlaylist({
 		id: playlistId.value,
 		title: playlistTitle.value,
 		artwork: toRaw(artwork.value),

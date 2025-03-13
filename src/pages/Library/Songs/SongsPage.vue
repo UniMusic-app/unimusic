@@ -17,7 +17,7 @@
 				<ion-refresher-content />
 			</ion-refresher>
 
-			<SongItem v-for="song in songs" :key="getUniqueObjectId(song)" :song />
+			<SongItem v-for="(song, i) in librarySongs" :key="i" :song />
 		</ion-content>
 
 		<AppFooter />
@@ -43,22 +43,21 @@ import {
 } from "@ionic/vue";
 
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
-import { getUniqueObjectId } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
 
-const songs = ref<AnySong[]>([]);
+const librarySongs = ref<AnySong[]>([]);
 const isLoading = ref(false);
 
 onUpdated(async () => {
 	isLoading.value = true;
-	songs.value = await musicPlayer.librarySongs();
+	librarySongs.value = await musicPlayer.services.librarySongs();
 	isLoading.value = false;
 });
 
 async function refreshLocalLibrary(event: RefresherCustomEvent): Promise<void> {
-	await musicPlayer.refreshLibrarySongs();
-	songs.value = await musicPlayer.librarySongs();
+	await musicPlayer.services.refreshLibrarySongs();
+	librarySongs.value = await musicPlayer.services.librarySongs();
 	await event.target.complete();
 }
 </script>

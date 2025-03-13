@@ -83,7 +83,7 @@ import { useRoute } from "vue-router";
 const musicPlayer = useMusicPlayer();
 const route = useRoute();
 
-const playlist = computed(() => musicPlayer.getPlaylist(route.params.id as string));
+const playlist = computed(() => musicPlayer.state.getPlaylist(route.params.id as string));
 const isEmpty = computed(() => !playlist.value?.songs.length);
 const totalDuration = computed(() => {
 	const songs = playlist?.value?.songs ?? [];
@@ -96,7 +96,7 @@ const deleteActionSheetButtons: ActionSheetButton[] = [
 ];
 
 function play(): void {
-	musicPlayer.setQueue(playlist.value!.songs);
+	musicPlayer.state.setQueue(playlist.value!.songs);
 }
 
 function editPlaylist(event: PlaylistEditEvent): void {
@@ -109,7 +109,7 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 	if (typeof event.detail !== "object" || !playlist.value) return;
 
 	if (event.detail?.role === "destructive") {
-		musicPlayer.removePlaylist(playlist.value.id);
+		musicPlayer.state.removePlaylist(playlist.value.id);
 		router.back();
 	}
 }

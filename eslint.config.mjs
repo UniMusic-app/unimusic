@@ -40,6 +40,7 @@ export default defineConfigWithVueTs([
 			"@typescript-eslint/no-namespace": "off",
 			"@typescript-eslint/no-misused-promises": "off",
 			"@typescript-eslint/prefer-promise-reject-errors": "off",
+			"@typescript-eslint/no-unnecessary-type-assertion": "off",
 
 			"@typescript-eslint/no-unused-vars": [
 				"warn",

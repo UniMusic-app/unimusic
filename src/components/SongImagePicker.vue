@@ -21,7 +21,7 @@ async function changeArtwork(): Promise<void> {
 		return;
 	}
 
-	const artwork = files[0];
+	const artwork = files[0]!;
 	await localImages.localImageManagementService.associateImage(id, artwork, {
 		width: 256,
 		height: 256,

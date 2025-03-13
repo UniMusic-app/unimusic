@@ -15,15 +15,15 @@ const { song } = defineProps<{ song: AnySong }>();
 const musicPlayer = useMusicPlayer();
 
 function play(): void {
-	musicPlayer.addToQueue(song, musicPlayer.queueIndex);
+	musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
 }
 
 function playNext(): void {
-	musicPlayer.addToQueue(song, musicPlayer.queueIndex + 1);
+	musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
 }
 
 function addToQueue(): void {
-	musicPlayer.addToQueue(song);
+	musicPlayer.state.addToQueue(song);
 }
 
 async function modifyMetadata(): Promise<void> {

@@ -1,6 +1,5 @@
 import { useLocalImages } from "@/stores/local-images";
 import { AnySong, SongImage } from "@/stores/music-player";
-import { intensity } from "./color";
 
 export function formatArtists(artists?: string[]): string {
 	return artists?.join?.(" & ") || "Unknown artist(s)";
@@ -16,6 +15,10 @@ export function songTypeToDisplayName(type: AnySong["type"]): string {
 			return "YouTube";
 	}
 }
+
+const intensity = ([r, g, b]: Uint8ClampedArray): number => {
+	return r! * 0.21 + g! * 0.72 + b! * 0.07;
+};
 
 /**
  *
@@ -37,9 +40,21 @@ export async function generateSongStyle(artwork?: SongImage): Promise<AnySong["s
 	const image = new Image(RESOLUTION, RESOLUTION);
 	image.crossOrigin = "anonymous";
 	image.src = (await localImages.getSongImageUrl(artwork))!;
-	await new Promise<void>((r) => {
-		image.onload = (): void => r();
+	const loadedImage = await new Promise<boolean>((r) => {
+		image.onload = (): void => r(true);
+		image.onerror = (): void => {
+			console.warn("Failed loading artwork:", artwork);
+			r(false);
+		};
 	});
+
+	if (!loadedImage) {
+		return {
+			fgColor: "#ffffff",
+			bgColor: "#000000",
+			bgGradient: "#000000",
+		};
+	}
 
 	const canvas = document.createElement("canvas");
 	canvas.width = RESOLUTION;
@@ -78,8 +93,8 @@ export async function generateSongStyle(artwork?: SongImage): Promise<AnySong["s
 
 	const bgGradient = `linear-gradient(65deg, ${cssColors.join(",")})`;
 
-	const bgColor = cssColors[2];
-	const bgColorIntensity = intensity(colors[2]);
+	const bgColor = cssColors[2]!;
+	const bgColorIntensity = intensity(colors[2]!);
 
 	// Generate foreground color based on how intense the background is to ensure proper contrast
 	let fgColor: string;
