@@ -13,18 +13,36 @@ const emit = defineEmits<{
 	visibilitychange: [value: boolean];
 }>();
 
-const { event = "contextmenu" } = defineProps<{
+const {
+	event = "contextmenu",
+	move = true,
+	backdrop = true,
+	haptics = true,
+	x = "left",
+	y = "top",
+} = defineProps<{
 	event?: "click" | "contextmenu";
+	move?: boolean;
+	backdrop?: boolean;
+	haptics?: boolean;
+	x?: "left" | "center" | "right" | (string & {});
+	y?: "top" | "center" | "bottom" | (string & {});
 }>();
 
 const opened = ref(false);
 
 const unpopoverElement = useTemplateRef("unpopoverElement");
 if (event === "contextmenu") {
-	onLongPress(unpopoverElement, open, {
-		delay: 200,
-		modifiers: { prevent: true },
-	});
+	onLongPress(
+		unpopoverElement,
+		async (event) => {
+			if (event.target instanceof HTMLElement) {
+				if ("contextMenuIgnore" in event.target.dataset) return;
+			}
+			await open();
+		},
+		{ delay: 200, modifiers: { prevent: true } },
+	);
 }
 
 const popoverElement = useTemplateRef("popoverElement");
@@ -35,7 +53,9 @@ const style = ref<Record<string, string>>({});
 async function open(): Promise<void> {
 	if (opened.value) return;
 
-	await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+	if (haptics) {
+		await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+	}
 
 	opened.value = true;
 
@@ -46,6 +66,8 @@ async function open(): Promise<void> {
 	const optionsChildren = options.value?.$el?.children?.length ?? 0;
 
 	style.value = {
+		"--context-menu-direction-x": x,
+		"--context-menu-direction-y": y,
 		"--context-menu-item-top": `${top}px`,
 		"--context-menu-item-left": `${left}px`,
 		"--context-menu-item-width": `${width}px`,
@@ -59,12 +81,20 @@ async function open(): Promise<void> {
 
 function close(): void {
 	const element = popoverElement.value;
-	if (!opened.value || !element || element.classList.contains("closed")) return;
+	if (!opened.value || !element || element.classList.contains("closed")) {
+		return;
+	}
 
 	element.classList.add("closed");
 	element.addEventListener("animationend", () => {
 		opened.value = false;
 	});
+
+	emit("visibilitychange", false);
+}
+
+function closeImmediately(): void {
+	opened.value = false;
 	emit("visibilitychange", false);
 }
 </script>
@@ -72,17 +102,24 @@ function close(): void {
 <template>
 	<template v-if="opened">
 		<div class="context-menu-dummy" :style />
-		<div class="context-menu" ref="popoverElement" popover="manual" :style open>
+		<div
+			class="context-menu"
+			ref="popoverElement"
+			popover="manual"
+			:style
+			:class="{ move, backdrop }"
+			open
+		>
 			<div class="backdrop" @click.self="close" />
 			<div class="context-menu-item">
 				<slot />
 			</div>
-			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="close">
+			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="closeImmediately">
 				<slot name="options" />
 			</ion-list>
 		</div>
 	</template>
-	<div v-else ref="unpopoverElement" @[event].prevent="open">
+	<div class="context-item-container" v-else ref="unpopoverElement" @[event].prevent="open">
 		<slot />
 	</div>
 </template>
@@ -117,6 +154,11 @@ function close(): void {
 		left: var(--context-menu-item-left);
 		width: var(--context-menu-item-width);
 		height: var(--context-menu-item-height);
+
+		&:not(.move) {
+			top: var(--context-menu-top);
+			left: var(--context-menu-left);
+		}
 	}
 }
 
@@ -178,15 +220,6 @@ function close(): void {
 	--context-menu-transition: all var(--context-menu-transition-duration)
 		var(--context-menu-transition-easing) inset: unset;
 
-	--context-menu-width: 90%;
-	--context-menu-height: calc-size(max-content, size);
-	--context-menu-top: clamp(
-		calc(var(--ion-safe-area-top) + 64px),
-		calc(var(--context-menu-item-top) - 64px),
-		calc(100vh - 64px - var(--context-menu-item-height) - var(--context-menu-options-height))
-	);
-	--context-menu-left: calc((100% - var(--context-menu-width)) / 2);
-
 	@media screen and (min-width: 576px) {
 		--context-menu-width: 50%;
 	}
@@ -201,8 +234,30 @@ function close(): void {
 	background-color: transparent;
 
 	transition: var(--context-menu-transition);
+
+	--context-menu-top: clamp(
+		calc(var(--ion-safe-area-top) + 64px),
+		calc(var(--context-menu-item-top) - 64px),
+		calc(90vh - 64px - var(--context-menu-item-height) - var(--context-menu-options-height))
+	);
+	--context-menu-left: clamp(0, var(--context-menu-item-left), 100vw);
+	--context-menu-width: 90%;
+	--context-menu-height: max-content;
+
+	&.move {
+		--context-menu-width: 90%;
+		--context-menu-height: calc-size(max-content, size);
+		--context-menu-top: clamp(
+			calc(var(--ion-safe-area-top) + 64px),
+			calc(var(--context-menu-item-top) - 64px),
+			calc(90vh - 64px - var(--context-menu-item-height) - var(--context-menu-options-height))
+		);
+		--context-menu-left: calc((100% - var(--context-menu-width)) / 2);
+	}
+
 	animation: move-in var(--context-menu-transition-duration) var(--context-menu-transition-easing)
 		forwards;
+
 	&.closed {
 		animation: move-out var(--context-menu-transition-duration) var(--context-menu-transition-easing)
 			forwards;
@@ -224,17 +279,27 @@ function close(): void {
 		width: 100vw;
 		height: 100vh;
 		content: "";
+	}
+
+	&.backdrop > .backdrop {
 		background-color: rgba(0, 0, 0, 0.2);
 		animation: backdrop-in var(--context-menu-transition-duration)
 			var(--context-menu-transition-easing) forwards;
 	}
-	&.closed > .backdrop {
+
+	&.backdrop.closed > .backdrop {
 		animation: backdrop-out var(--context-menu-transition-duration)
 			var(--context-menu-transition-easing-out) forwards;
 	}
 
 	& > .context-menu-item {
 		--context-menu-item-background: var(--ion-background-color-step-100, #fff);
+	}
+
+	&:not(.move) > .context-menu-item {
+		position: fixed;
+		top: var(--context-menu-item-top);
+		left: var(--context-menu-item-left);
 	}
 
 	& > .context-menu-list {
@@ -245,7 +310,7 @@ function close(): void {
 		min-width: max-content;
 		width: 90%;
 
-		transform-origin: top left;
+		transform-origin: var(--context-menu-direction-y) var(--context-menu-direction-x);
 		animation: list-in var(--context-menu-transition-duration) var(--context-menu-transition-easing);
 
 		background-color: transparent;
@@ -265,6 +330,7 @@ function close(): void {
 			outline: 0.02px solid var(--ion-item-background);
 		}
 	}
+
 	&.closed > .context-menu-list {
 		animation: list-out var(--context-menu-transition-duration)
 			var(--context-menu-transition-easing-out);
