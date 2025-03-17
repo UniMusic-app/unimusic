@@ -57,10 +57,9 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
 	const state = useMusicPlayerState();
-	const { currentSong, currentQueueSong, autoplay, playing, time, volume } = storeToRefs(state);
+	const { queueIndex, currentSong, autoplay, playing, time, volume } = storeToRefs(state);
 
 	const services = useMusicServices();
-	const { enabledServices } = storeToRefs(services);
 
 	// #region Managing services
 	const currentService = computed<Maybe<MusicService>>(() => {
@@ -73,44 +72,58 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		await services.withAllServices((service) => service.setVolume(volume));
 	});
 
-	watchDebounced(
-		[currentService, currentQueueSong],
-		async ([service, queueSong]) => {
-			if (!queueSong) {
-				for (const service of enabledServices.value) {
-					await service.stop();
-				}
-				return;
-			}
-			if (!service) return;
-
-			await service.changeSong(queueSong.song);
-
-			switch (autoplay.value) {
-				case "auto":
-					autoplay.value = true;
-					return;
-				case false:
-					return;
-			}
-
-			await service.play();
-		},
-		{ debounce: 150 },
-	);
+	// Prepare current song in queue after everything has loaded
+	watch([currentService], async () => await setQueueIndex(state.queueIndex), { once: true });
+	// Automatically change songs
+	watchDebounced([queueIndex], async () => await setQueueIndex(state.queueIndex), { debounce: 150 });
 	// #endregion
 
 	// #region Actions for managing MusicPlayer
 	const hasPrevious = computed(() => state.queueIndex > 0);
 	const hasNext = computed(() => state.queue.length > state.queueIndex + 1);
 
-	function skipPrevious(): void {
-		if (!hasPrevious.value) return;
-		state.queueIndex--;
+	async function setQueueIndex(index: number): Promise<void> {
+		if (
+			index === state.queueIndex &&
+			currentSong.value &&
+			currentSong.value === currentService.value?.song
+		) {
+			return;
+		}
+
+		state.loading.queueChange = true;
+
+		state.queueIndex = index;
+		const service = currentService.value;
+		if (service) {
+			await service.changeSong(currentSong.value!);
+
+			switch (autoplay.value) {
+				case true:
+					await play();
+					break;
+				case "auto":
+					autoplay.value = true;
+					break;
+				case false:
+					break;
+			}
+		} else {
+			await services.withAllServices((service) => service.stop());
+		}
+
+		state.loading.queueChange = false;
 	}
-	function skipNext(): void {
+
+	async function skipPrevious(): Promise<void> {
+		if (!hasPrevious.value) return;
+		state.queueIndex -= 1;
+		await state.loadingCounters.queueChange.onLoad();
+	}
+	async function skipNext(): Promise<void> {
 		if (!hasNext.value) return;
-		state.queueIndex++;
+		state.queueIndex += 1;
+		await state.loadingCounters.queueChange.onLoad();
 	}
 
 	async function play(): Promise<void> {
@@ -187,10 +200,10 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 						await pause();
 						break;
 					case "music-controls-next":
-						skipNext();
+						await skipNext();
 						break;
 					case "music-controls-previous":
-						skipPrevious();
+						await skipPrevious();
 						break;
 				}
 			});
@@ -240,11 +253,11 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 			await play();
 			navigator.mediaSession.playbackState = "playing";
 		});
-		navigator.mediaSession.setActionHandler("previoustrack", () => {
-			skipPrevious();
+		navigator.mediaSession.setActionHandler("previoustrack", async () => {
+			await skipPrevious();
 		});
-		navigator.mediaSession.setActionHandler("nexttrack", () => {
-			skipNext();
+		navigator.mediaSession.setActionHandler("nexttrack", async () => {
+			await skipNext();
 		});
 	}
 	// #endregion
@@ -265,6 +278,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		play,
 		pause,
 		togglePlay,
+		setQueueIndex,
 		hasPrevious,
 		skipPrevious,
 		hasNext,
