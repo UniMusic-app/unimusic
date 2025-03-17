@@ -143,8 +143,11 @@ async function canDismiss(reason?: "editedPlaylist"): Promise<boolean> {
 
 	& > ion-list {
 		width: 100%;
+		background: transparent;
 
 		& > ion-item {
+			--background: transparent;
+
 			& > ion-input {
 				font-size: 1.625rem;
 				font-weight: bold;

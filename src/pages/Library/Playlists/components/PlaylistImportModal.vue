@@ -25,6 +25,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
+import GenericSongItem from "@/components/GenericSongItem.vue";
 import { Playlist, useMusicPlayer } from "@/stores/music-player";
 import { songTypeToDisplayName } from "@/utils/songs";
 import { usePresentingElement } from "@/utils/vue";
@@ -184,7 +185,14 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 					</h2>
 
 					<ion-list>
-						<SongItem :song v-for="song in playlist.songs" :key="song.id" />
+						<GenericSongItem
+							v-for="song in playlist.songs"
+							:key="song.id"
+							:title="song.title"
+							:artists="song.artists"
+							:artwork="song.artwork"
+							:type="song.type"
+						/>
 					</ion-list>
 				</template>
 			</div>
@@ -265,7 +273,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 #playlist-preview {
 	margin-top: 12px;
 	padding: 0.5rem;
-	border-radius: 32px;
+	border-radius: 12px 12px 0 0;
 	background-color: var(--ion-color-light);
 	animation: appear 750ms;
 
@@ -273,6 +281,18 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 		font-size: 2.25rem;
 		padding-bottom: 0.5rem;
 		color: var(--ion-color-medium);
+	}
+
+	& > ion-list {
+		background: transparent;
+
+		:global(& ion-item) {
+			--background: transparent;
+		}
+
+		:global(& ion-item ion-note) {
+			--color: var(--ion-color-medium);
+		}
 	}
 }
 </style>
