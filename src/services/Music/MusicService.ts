@@ -91,9 +91,9 @@ export abstract class MusicService<
 			musicPlayer.addMusicSessionActionHandlers();
 		});
 
-		this.addEventListener("ended", () => {
+		this.addEventListener("ended", async () => {
 			const musicPlayer = useMusicPlayer();
-			musicPlayer.skipNext();
+			await musicPlayer.skipNext();
 		});
 
 		this.addEventListener("timeupdate", (event) => {
