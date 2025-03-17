@@ -33,6 +33,39 @@ export function usePresentingElement(): Ref<HTMLElement | undefined> {
 	return presentingElement;
 }
 
+interface UseWillKeyboard {
+	willBeOpen: Ref<boolean>;
+	unregister(): void;
+}
+
+/**
+ * Ionic's useKeyboard, but runs on the the "will" events
+ * @see `useKeyboard` in `@ionic/vue`
+ */
+export function useWillKeyboard(): UseWillKeyboard {
+	const willBeOpen = ref(false);
+
+	const showCallback = (): void => {
+		willBeOpen.value = true;
+	};
+	const hideCallback = (): void => {
+		willBeOpen.value = false;
+	};
+
+	const unregister = (): void => {
+		window.removeEventListener("keyboardWillShow", showCallback);
+		window.removeEventListener("keyboardWillHide", hideCallback);
+	};
+
+	window.addEventListener("keyboardWillShow", showCallback);
+	window.addEventListener("keyboardWillHide", hideCallback);
+
+	return {
+		willBeOpen,
+		unregister,
+	};
+}
+
 interface UseLoadingCounter {
 	loadingCounter: Ref<number>;
 	loading: Ref<boolean>;

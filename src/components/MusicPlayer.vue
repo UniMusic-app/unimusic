@@ -1,204 +1,303 @@
-<template>
-	<div
-		id="music-player-modal"
-		v-if="currentSong"
-		:style="{
-			'--fg-color': currentSong.style.fgColor,
-			'--bg-color': currentSong.style.bgColor,
-			'--bg-gradient': currentSong.style.bgGradient,
-		}"
-	>
-		<ion-content id="song" :scroll-y="showQueue">
-			<!-- FIXME: Make artwork optional -->
-			<!-- TODO: Marquee on overflow -->
-			<div id="song-details" :class="{ compact: showQueue }">
-				<SongImg
-					id="artwork"
-					:src="currentSong.artwork"
-					:alt="`Artwork for song '${currentSong.title}'`"
-				/>
-
-				<div id="song-info">
-					<h1 id="title" class="ion-text-nowrap">
-						{{ currentSong.title }}
-					</h1>
-					<h2 id="artist" class="ion-text-nowrap">
-						{{ formatArtists(currentSong.artists) }}
-					</h2>
-				</div>
-			</div>
-
-			<div v-if="showQueue" id="queue">
-				<ion-list lines="none">
-					<ion-item-divider sticky>
-						<span ref="queueHeader">Queue</span>
-					</ion-item-divider>
-					<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
-						<ion-item
-							v-for="({ song, id }, i) in queue"
-							:key="id"
-							button
-							:detail="false"
-							:class="{ current: i === queueIndex }"
-							@click.self="queueIndex = i"
-						>
-							<SongImg
-								slot="start"
-								v-if="song.artwork"
-								:src="song.artwork"
-								:alt="`Artwork for song '${song.title}'`"
-							/>
-
-							<ion-label class="ion-text-nowrap">
-								<h2>{{ song.title }}</h2>
-								<ion-note>
-									{{ formatArtists(song.artists) }}
-								</ion-note>
-							</ion-label>
-
-							<ion-reorder slot="end" />
-						</ion-item>
-					</ion-reorder-group>
-				</ion-list>
-			</div>
-		</ion-content>
-
-		<div class="time-controls">
-			<ion-range
-				aria-label="Time"
-				:min="0"
-				:max="1"
-				:step="0.001"
-				:value="musicPlayer.progress"
-				@ion-change="musicPlayer.progress = $event.detail.value as number"
-			/>
-
-			<div class="labels">
-				<ion-label id="current-time">{{ secondsToMMSS(time) }}</ion-label>
-				<ion-label id="source">
-					{{ songTypeToDisplayName(currentSong.type) }}
-				</ion-label>
-				<ion-label id="time-remaining">{{ secondsToMMSS(musicPlayer.timeRemaining) }}</ion-label>
-			</div>
-		</div>
-
-		<ion-buttons class="media-controls">
-			<ion-button
-				aria-label="Skip to previous song"
-				size="large"
-				:disabled="!musicPlayer.hasPrevious"
-				@click="musicPlayer.skipPrevious"
-			>
-				<ion-icon aria-hidden="true" :icon="skipPreviousIcon" slot="icon-only" />
-			</ion-button>
-			<ion-button
-				aria-label="Play or pause the song"
-				:disabled="loading"
-				size="large"
-				@click="musicPlayer.togglePlay"
-			>
-				<ion-spinner v-if="loading" />
-				<ion-icon v-else aria-hidden="true" :icon="playing ? pauseIcon : playIcon" slot="icon-only" />
-			</ion-button>
-			<ion-button
-				aria-label="Skip to next song"
-				size="large"
-				:disabled="!musicPlayer.hasNext"
-				@click="musicPlayer.skipNext"
-			>
-				<ion-icon aria-hidden="true" :icon="skipNextIcon" slot="icon-only" />
-			</ion-button>
-		</ion-buttons>
-
-		<!-- NOTE: volume control does not work on iOS due to Apple putting arbitrary restrictions around setting app volume -->
-		<div class="volume-controls" v-if="getPlatform() !== 'ios'">
-			<ion-range
-				:snaps="false"
-				aria-label="Volume"
-				:min="0"
-				:max="1"
-				:step="0.001"
-				:value="volume"
-				@ion-change="volume = $event.detail.value as number"
-			>
-				<ion-icon aria-hidden="true" slot="start" :icon="volumeLowIcon" />
-				<ion-icon aria-hidden="true" slot="end" :icon="volumeHighIcon" />
-			</ion-range>
-		</div>
-
-		<div class="actions">
-			<ion-button fill="clear" aria-label="Lyrics">
-				<ion-icon slot="icon-only" :icon="musicalNotesIcon" />
-			</ion-button>
-
-			<ion-button aria-label="Queue" :class="{ active: showQueue }" @click="showQueue = !showQueue">
-				<ion-icon slot="icon-only" :icon="listIcon" />
-			</ion-button>
-		</div>
-	</div>
-</template>
-
-<script setup lang="ts">
+<script lang="ts" setup>
+import { Haptics } from "@capacitor/haptics";
 import { storeToRefs } from "pinia";
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 
+import ContextMenu from "@/components/ContextMenu.vue";
+import GenericSongItem from "@/components/GenericSongItem.vue";
+import SongImg from "@/components/SongImg.vue";
+import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import {
 	IonButton,
-	IonButtons,
-	IonContent,
 	IonIcon,
 	IonItem,
 	IonItemDivider,
-	IonLabel,
 	IonList,
-	IonNote,
+	IonListHeader,
+	IonModal,
 	IonRange,
-	IonReorder,
 	IonReorderGroup,
-	IonSpinner,
 	ItemReorderCustomEvent,
 } from "@ionic/vue";
 import {
-	list as listIcon,
-	musicalNotes as musicalNotesIcon,
+	ellipsisHorizontal as ellipsisIcon,
+	musicalNotes as lyricsIcon,
+	pencilOutline as modifyMetadataIcon,
 	pause as pauseIcon,
 	play as playIcon,
+	listOutline as playLastIcon,
+	playOutline as playNextIcon,
+	list as queueIcon,
+	trashOutline as removeIcon,
 	playSkipForward as skipNextIcon,
 	playSkipBack as skipPreviousIcon,
-	volumeHigh as volumeHighIcon,
-	volumeLow as volumeLowIcon,
 } from "ionicons/icons";
-
-import SongImg from "@/components/SongImg.vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
-import { getPlatform } from "@/utils/os";
+import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
-import { useIntersectionObserver } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
-const { queueIndex, queue, playing, currentSong, volume, loading, time } = storeToRefs(
-	musicPlayer.state,
+const state = musicPlayer.state;
+const { currentSong, time, playing, duration } = storeToRefs(state);
+
+const formattedArtists = computed(() => formatArtists(currentSong.value?.artists));
+const currentTime = computed(() => secondsToMMSS(time.value));
+const timeRemaining = computed(() => secondsToMMSS(musicPlayer.timeRemaining));
+const currentService = computed(
+	() => currentSong.value && songTypeToDisplayName(currentSong.value.type),
 );
 
-const showQueue = ref(false);
+const queueOpen = ref(false);
+const canDismiss = ref(true);
+
+function toggleQueue(): void {
+	queueOpen.value = !queueOpen.value;
+	if (!queueOpen.value) {
+		canDismiss.value = true;
+	}
+}
+
+const seekPreview = ref(false);
+const seekPreviewValue = ref(0);
+const seekPreviewTime = computed(() => secondsToMMSS(seekPreviewValue.value * duration.value));
+if (isMobilePlatform()) {
+	watch(seekPreviewValue, async (value) => {
+		if (value === 0 || value === 1) {
+			await Haptics.impact();
+		}
+	});
+}
+
+const seekPreviewRemainingTime = computed(() =>
+	secondsToMMSS(duration.value * (1 - seekPreviewValue.value)),
+);
 
 function reorderQueue(event: ItemReorderCustomEvent): void {
 	const { from, to } = event.detail;
+	// We offset from and to by 1 because of "Queue" label
 	musicPlayer.state.moveQueueItem(from, to);
 	event.detail.complete();
 }
-
-const queueHeader = ref<HTMLElement | null>(null);
-useIntersectionObserver(
-	queueHeader,
-	([entry]) =>
-		queueHeader.value?.parentElement?.classList?.toggle?.("is-sticky", !entry?.isIntersecting),
-	{ rootMargin: "-24px 0px 0px 0px", threshold: [1] },
-);
 </script>
+
+<template>
+	<ion-modal
+		v-if="currentSong"
+		id="music-player"
+		:can-dismiss="canDismiss"
+		:initial-breakpoint="1"
+		:breakpoints="[0, 1]"
+		:class="{
+			'queue-view': queueOpen,
+		}"
+		:style="{
+			'--bg': currentSong.style.bgGradient,
+			'--bg-color': currentSong.style.bgColor,
+			'--fg-color': currentSong.style.fgColor,
+		}"
+	>
+		<div id="song-lols">
+			<SongImg :class="{ playing }" :src="currentSong?.artwork" />
+
+			<div id="song-info">
+				<div id="song-details">
+					<h1>
+						<WrappingMarquee :text="currentSong.title ?? 'Unknown title'" />
+					</h1>
+					<h2>
+						<WrappingMarquee :text="formattedArtists" />
+					</h2>
+				</div>
+
+				<div id="song-actions">
+					<ContextMenu
+						event="click"
+						:move="false"
+						:backdrop="false"
+						:haptics="false"
+						x="right"
+						y="center"
+					>
+						<ion-button id="song-menu" size="small" fill="clear">
+							<ion-icon :icon="ellipsisIcon" slot="icon-only" />
+						</ion-button>
+
+						<template #options>
+							<ion-item lines="full" button :detail="false">
+								Modify Metadata
+								<ion-icon aria-hidden="true" :icon="modifyMetadataIcon" slot="end" />
+							</ion-item>
+						</template>
+					</ContextMenu>
+				</div>
+			</div>
+		</div>
+
+		<div
+			v-if="queueOpen"
+			id="player-queue"
+			@pointercancel="canDismiss = true"
+			@pointermove="canDismiss = false"
+		>
+			<ion-list>
+				<ion-list-header>Queue</ion-list-header>
+				<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
+					<GenericSongItem
+						v-for="({ song, id }, i) in state.queue"
+						reorder
+						:key="id"
+						:class="{ 'current-song': i === state.queueIndex }"
+						:title="song.title"
+						:artists="song.artists"
+						:artwork="song.artwork"
+						:type="song.type"
+						@item-click="musicPlayer.setQueueIndex(i)"
+					>
+						<template #options>
+							<ion-item
+								aria-label="Play next"
+								lines="full"
+								button
+								:detail="false"
+								@click="state.moveQueueItem(i, state.queueIndex + 1)"
+							>
+								Play next
+								<ion-icon aria-hidden="true" :icon="playNextIcon" slot="end" />
+							</ion-item>
+							<ion-item
+								aria-label="Play last"
+								lines="full"
+								button
+								:detail="false"
+								@click="state.moveQueueItem(i, state.queue.length - 1)"
+							>
+								Play last
+								<ion-icon aria-hidden="true" :icon="playLastIcon" slot="end" />
+							</ion-item>
+
+							<ion-item-divider />
+
+							<!-- TODO: Modify metadata -->
+							<ion-item aria-label="Modify metadata" lines="full" button :detail="false">
+								Modify Metadata
+								<ion-icon aria-hidden="true" :icon="modifyMetadataIcon" slot="end" />
+							</ion-item>
+
+							<ion-item-divider />
+
+							<ion-item
+								@click="state.removeFromQueue(i)"
+								class="remove-song-item"
+								aria-label="Remove"
+								lines="full"
+								button
+								:detail="false"
+							>
+								Remove
+								<ion-icon aria-hidden="true" :icon="removeIcon" slot="end" />
+							</ion-item>
+						</template>
+					</GenericSongItem>
+				</ion-reorder-group>
+			</ion-list>
+		</div>
+
+		<div id="song-controls">
+			<div id="time-control">
+				<ion-range
+					aria-label="Volume"
+					:snaps="false"
+					:min="0"
+					:max="1"
+					:step="0.01"
+					:value="seekPreview ? seekPreviewValue : musicPlayer.progress"
+					@pointerdown="seekPreview = true"
+					@pointerup="seekPreview = false"
+					@ion-input="seekPreviewValue = <number>$event.detail.value"
+					@ion-change="musicPlayer.progress = <number>$event.detail.value"
+				/>
+
+				<div id="time-control-labels">
+					<p>{{ seekPreview ? seekPreviewTime : currentTime }}</p>
+					<p>{{ currentService }}</p>
+					<p>-{{ seekPreview ? seekPreviewRemainingTime : timeRemaining }}</p>
+				</div>
+			</div>
+
+			<div id="player-controls">
+				<ion-button
+					aria-label="Skip to previous song"
+					size="large"
+					fill="clear"
+					@click="musicPlayer.skipPrevious"
+					:disabled="!musicPlayer.hasPrevious || state.loading.queueChange"
+				>
+					<ion-icon aria-hidden="true" :icon="skipPreviousIcon" slot="icon-only" />
+				</ion-button>
+
+				<ion-button
+					:aria-label="playing ? 'Pause' : 'Play'"
+					size="large"
+					fill="clear"
+					@click="musicPlayer.togglePlay"
+					:data-loading="state.loading.playPause"
+					:disabled="state.loading.playPause"
+				>
+					<ion-icon aria-hidden="true" v-if="playing" :icon="pauseIcon" slot="icon-only" />
+					<ion-icon aria-hidden="true" v-else :icon="playIcon" slot="icon-only" />
+				</ion-button>
+
+				<ion-button
+					aria-label="Skip to next song"
+					size="large"
+					fill="clear"
+					@click="musicPlayer.skipNext"
+					:disabled="!musicPlayer.hasNext || state.loading.queueChange"
+				>
+					<ion-icon aria-hidden="true" :icon="skipNextIcon" slot="icon-only" />
+				</ion-button>
+			</div>
+
+			<div id="player-actions">
+				<ion-button aria-label="Show lyrics" fill="clear" size="default">
+					<ion-icon aria-hidden="true" :icon="lyricsIcon" slot="icon-only" />
+				</ion-button>
+
+				<ion-button
+					:aria-label="queueOpen ? 'Hide song queue' : 'Open song queue'"
+					id="queue-toggle"
+					fill="clear"
+					size="default"
+					:class="{ toggled: queueOpen }"
+					@pointerdown="toggleQueue"
+				>
+					<ion-icon :icon="queueIcon" slot="icon-only" />
+				</ion-button>
+			</div>
+		</div>
+	</ion-modal>
+</template>
+
+<style global>
+#music-player .context-menu.closed ion-item,
+#music-player .context-item-container > ion-item {
+	--background: transparent;
+	--border-color: transparent;
+	--color: white;
+
+	&.current-song {
+		--background: color-mix(in srgb, #fff2 70%, var(--bg-color));
+	}
+
+	& ion-note {
+		color: white;
+		opacity: 60%;
+	}
+}
+</style>
 
 <style scoped>
 @keyframes moving-background {
@@ -219,298 +318,359 @@ useIntersectionObserver(
 	}
 }
 
-@keyframes details-from-corner {
+@keyframes move-in {
 	from {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 128px;
+		opacity: 0%;
+		transform: scale(50%);
 	}
 
 	to {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, calc(-50% - 12px));
+		opacity: 100%;
+		transform: scale(100%);
 	}
 }
 
-@keyframes details-to-corner {
+@keyframes move-out {
 	from {
-		flex-direction: column;
-		position: absolute;
-		width: 512px;
-		left: 50%;
-		top: 50%;
-		transform: translate(-50%, -50%);
-		opacity: 1;
+		opacity: 50%;
+		transform: scale(50%);
 	}
 
-	15% {
-		opacity: 0;
+	to {
+		opacity: 100%;
+		transform: scale(100%);
+	}
+}
+
+@keyframes show-queue {
+	from {
+		opacity: 0%;
+		transform: scaleY(0%);
 	}
 
-	50% {
+	to {
+		opacity: 100%;
+		transform: scaleY(100%);
+	}
+}
+
+@keyframes button-loading-animation {
+	from {
+		opacity: 0%;
+		transform: scale(70%);
+	}
+
+	to {
+		opacity: 30%;
+		transform: scale(80%);
+	}
+}
+
+#music-player {
+	--background: linear-gradient(to top, #0009 2%, transparent 50%), var(--bg);
+	--height: 100%;
+	@media (prefers-color-scheme: dark) {
+		--background: linear-gradient(to top, #000b 2%, transparent), var(--bg);
+	}
+
+	color: white;
+
+	&::part(handle) {
+		background-color: white;
+		opacity: 80%;
+		box-shadow: 0 0 12px #0006;
+		top: calc(6px + var(--ion-safe-area-top));
+	}
+
+	&::part(content) {
+		background-size:
+			100% 100%,
+			500% 500% !important;
+		animation: moving-background 30s linear infinite alternate;
+	}
+
+	ion-button[size="large"] ion-icon {
+		font-size: 2.5rem;
+	}
+
+	ion-button[size="default"] ion-icon {
+		font-size: 1.75rem;
+	}
+
+	&:not(.queue-view) #song-lols > #song-info {
+		animation: move-out 450ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
+	}
+
+	&.queue-view #song-lols {
+		&::before {
+			opacity: 30%;
+		}
+
 		flex-direction: row;
+		align-items: center;
+		min-height: calc(var(--ion-safe-area-top) + 112px);
+		max-height: calc(var(--ion-safe-area-top) + 112px);
+
+		& > .song-img {
+			position: absolute;
+			z-index: 100;
+			top: calc(var(--ion-safe-area-top) + 24px);
+			left: 24px;
+
+			align-self: start;
+			justify-self: start;
+
+			transform: translate(0);
+
+			width: 64px !important;
+		}
+
+		& > #song-info {
+			position: absolute;
+			top: calc(var(--ion-safe-area-top) + 24px);
+			right: 0;
+			width: calc(100% - 128px);
+			height: 64px;
+			align-items: center;
+
+			animation: move-in 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
+
+			& > #song-details {
+				overflow: visible;
+				text-shadow: 0 0 12px #0004;
+				width: 100%;
+			}
+
+			& > #song-actions {
+				display: none;
+			}
+		}
 	}
 
-	65% {
-		opacity: 1;
+	& #player-queue {
+		overflow: auto;
+		mask-image: linear-gradient(to bottom, transparent, black 5% 95%, transparent);
+
+		height: 100%;
+		transform-origin: bottom center;
+		animation: show-queue 450ms cubic-bezier(0.175, 0.885, 0.32, 1.075);
+
+		& > ion-list {
+			background: transparent;
+			padding-bottom: 16px;
+
+			& > ion-list-header {
+				--background: transparent;
+				--color: white;
+				text-shadow: 0 0 6px #0002;
+			}
+
+			& .remove-song-item {
+				--color: var(--ion-color-danger);
+				&:hover {
+					--color: var(--ion-color-danger-tint);
+				}
+				&:active {
+					--color: var(--ion-color-danger-shade);
+				}
+			}
+		}
 	}
 
-	to {
-		opacity: 1;
-		position: absolute;
-		top: 0;
-		left: 0;
-	}
-}
+	& #song-lols {
+		&::before {
+			transition: opacity 500ms;
+			content: "";
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: black;
+			opacity: 0;
+			pointer-events: none;
+		}
 
-@keyframes queue-slide-out {
-	from {
-		margin-top: 256px;
-		opacity: 0;
-	}
-	to {
-		margin-top: calc(128px + 24px);
-		opacity: 1;
-	}
-}
+		display: flex;
+		flex-direction: column;
+		height: 100%;
 
-#music-player-modal {
-	user-select: none;
+		& > .song-img {
+			justify-self: center;
+			align-self: center;
+			margin-block: auto;
 
-	background: var(--bg-gradient);
-	background-size: 500% 500%;
-	color: var(--fg-color);
-	animation: moving-background 30s linear infinite alternate;
-
-	height: 100%;
-	width: 100%;
-
-	display: flex;
-	flex-direction: column;
-
-	justify-content: center;
-	align-items: center;
-
-	& > #song {
-		--background: transparent;
-		--color: var(--fg-color);
-
-		& > #song-details {
 			pointer-events: none;
 
-			width: 100%;
-			height: calc(100% - 24px);
-			padding: 12px;
+			/** Offset image by the halfe of safe area padding to make it look actually centered */
+			top: calc(var(--ion-safe-area-top) / 2);
 
+			transition: all 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
+			height: auto;
+			width: 60%;
+			&.playing {
+				width: 85%;
+			}
+
+			border-radius: 12px;
+			box-shadow: 0 0 32px #0006;
+		}
+
+		& > #song-info {
+			display: flex;
+			margin-inline: 24px;
+			margin-bottom: 8px;
+
+			& #song-details {
+				width: 80%;
+				overflow: hidden;
+				white-space: nowrap;
+
+				& > h1 {
+					--marquee-duration: 20s;
+					--marquee-gap: 12px;
+
+					.wrapping {
+						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+					}
+
+					font-size: 1.45rem;
+					font-weight: 700;
+					margin: 0;
+				}
+
+				& > h2 {
+					overflow: hidden;
+					.wrapping {
+						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+					}
+
+					font-size: 1.25rem;
+					font-weight: 550;
+					margin: 0;
+					opacity: 80%;
+				}
+			}
+
+			& #song-actions {
+				flex-grow: 1;
+
+				display: flex;
+				align-items: center;
+				justify-content: end;
+
+				ion-button {
+					--background: #fff2;
+					--border-radius: 9999px;
+
+					ion-icon {
+						color: white;
+					}
+				}
+			}
+		}
+	}
+
+	& #song-controls {
+		display: flex;
+		flex-direction: column;
+		margin-inline: 32px;
+		margin-bottom: calc(32px + var(--ion-safe-area-bottom));
+
+		& > #time-control {
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			justify-content: space-around;
+			justify-content: center;
+			opacity: 80%;
 
-			animation: details-from-corner 0.5s;
-			&.compact {
-				animation: details-to-corner 0.5s;
+			&:has(ion-range:active) {
+				opacity: 100%;
+			}
 
-				height: max-content;
-				flex-direction: row;
-				justify-content: space-between;
-				align-items: center;
+			& > ion-range {
+				width: 100%;
 
-				& > #song-info {
-					width: calc(100% - 128px);
+				transition: transform 350ms cubic-bezier(0.175, 0.885, 0.32, 1.075);
+				&:active {
+					transform: scaleX(102%) scaleY(110%);
 				}
 
-				& > #artwork {
-					width: 128px;
+				--bar-background: color-mix(in srgb, white 50%, transparent);
+				--bar-background-active: white;
+				--bar-border-radius: 8px;
+				--bar-height: 8px;
+				--knob-size: 0;
+
+				&::part(bar) {
+					top: 0;
+					transition: height 350ms cubic-bezier(0.175, 0.885, 0.32, 1.075);
+				}
+
+				&::part(bar-active) {
+					top: 0;
+				}
+
+				&:hover {
+					--bar-height: 10px;
+				}
+
+				&:active {
+					--bar-height: 12px;
 				}
 			}
 
-			& > #artwork {
-				width: 80%;
-				max-width: 512px;
-				border-radius: 12px;
-				box-shadow: 0 0 24px var(--bg-color);
-			}
-
-			& > #song-info {
+			& > #time-control-labels {
+				margin-top: 0;
 				width: 100%;
 				display: flex;
-				flex-direction: column;
 				align-items: center;
-				justify-content: center;
+				justify-content: space-between;
 
-				& > #title,
-				& > #artist {
-					margin: 0;
-					max-width: 90%;
-					text-overflow: ellipsis;
-					overflow: hidden;
-				}
-
-				& > #title {
-					font-weight: 800;
-					font-size: 2rem;
-				}
-
-				& > #artist {
-					font-weight: 400;
-					font-size: 1.4rem;
+				& > p {
+					margin-top: 0;
+					letter-spacing: 0px;
+					font-weight: bold;
+					font-size: 0.8rem;
+					font-feature-settings: "tnum";
+					font-variant-numeric: tabular-nums;
 				}
 			}
 		}
 
-		& > #queue {
+		& > #player-controls {
 			display: flex;
-			flex-direction: column;
-			width: 100%;
+			align-items: center;
+			justify-content: space-evenly;
+			margin-block: 16px;
 
-			animation: queue-slide-out 0.5s;
-
-			& ion-list {
-				background: transparent;
-
-				& ion-item-divider {
-					background: transparent;
-					padding: 12px 12px;
-					backdrop-filter: blur(12px);
-
-					@supports not (backdrop-filter: blur) {
-						&.is-sticky {
-							background: var(--bg-color);
-							box-shadow: 0 8px 12px var(--bg-color);
-						}
-					}
-
-					font-size: 1.3rem;
-					font-weight: 800;
-					color: var(--fg-color);
-				}
-
-				& ion-item {
-					--background: transparent;
-					&.current {
-						background-color: #fff2;
-					}
-
-					& h2 {
-						pointer-events: none;
-						color: var(--fg-color);
-						font-weight: bold;
-					}
-
-					& ion-label {
-						color: var(--fg-color);
-						pointer-events: none;
-					}
-
-					& ion-note {
-						pointer-events: none;
-						font-weight: 500;
-						color: color-mix(in srgb, var(--fg-color) 80%, transparent);
-					}
-
-					& > .song-img {
-						border-radius: 8px;
-						pointer-events: none;
-
-						--img-width: auto;
-						--img-height: 56px;
-					}
-
-					& > ion-button {
-						height: 48px;
-						width: 48px;
-						font-size: 1rem;
-						color: var(--fg-color);
-					}
-
-					&.reorder-selected {
-						backdrop-filter: blur(12px);
-					}
-
-					& > ion-reorder {
-						color: var(--fg-color);
-
-						&::part(icon) {
-							opacity: 1;
-						}
-					}
+			& > ion-button {
+				& > ion-icon {
+					color: white;
 				}
 			}
 		}
-	}
 
-	& > .time-controls,
-	& > .volume-controls {
-		display: flex;
-		flex-direction: column;
-		width: 100%;
-		padding-inline: 16px;
-		mix-blend-mode: hard-light;
+		& > #player-actions {
+			display: flex;
+			align-items: center;
+			justify-content: space-evenly;
 
-		& > .labels {
-			display: grid;
-			grid-template-columns: 1fr 1fr 1fr;
+			& > ion-button {
+				opacity: 70%;
 
-			& > #current-time {
-				text-align: left;
+				& > ion-icon {
+					color: white;
+				}
 			}
 
-			& > #source {
-				text-align: center;
-				font-weight: bold;
+			& > #queue-toggle.toggled {
+				--background: white;
+				--border-radius: 12px;
+				& > ion-icon {
+					color: black;
+				}
 			}
-
-			& > #time-remaining {
-				text-align: right;
-			}
-		}
-	}
-
-	ion-range {
-		--bar-background: color-mix(in srgb, var(--fg-color) 50%, transparent);
-		--bar-background-active: var(--fg-color);
-		--bar-height: 8px;
-		--bar-border-radius: 8px;
-		--knob-size: 0;
-	}
-
-	& > .media-controls {
-		mix-blend-mode: hard-light;
-
-		& > ion-button {
-			height: 72px;
-			width: 72px;
-			--color: var(--fg-color);
-			font-size: 1.5rem;
-		}
-	}
-
-	& > .actions {
-		display: flex;
-		width: 100%;
-		justify-content: space-evenly;
-		align-items: center;
-		margin-bottom: 32px;
-		mix-blend-mode: hard-light;
-
-		& > ion-button {
-			--background: transparent;
-			--background-hover: transparent;
-			--background-activated: transparent;
-			--background-focused: transparent;
-
-			--color: var(--fg-color);
-
-			&.active {
-				--background: var(--fg-color);
-				--color: var(--bg-color);
-			}
-
-			font-size: 1.5rem;
 		}
 	}
 }

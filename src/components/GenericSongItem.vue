@@ -9,13 +9,7 @@ import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons
 import { AnySong, SongImage } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 
-const {
-	title,
-	type,
-	artists,
-	artwork,
-	reorder = false,
-} = defineProps<{
+const { title, type, artists, artwork, reorder } = defineProps<{
 	title?: string;
 	type: AnySong["type"];
 	artists: string[];
