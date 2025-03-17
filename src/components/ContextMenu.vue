@@ -326,8 +326,9 @@ function closeImmediately(): void {
 		}
 
 		& > ion-item-divider {
-			min-height: 8px;
-			outline: 0.02px solid var(--ion-item-background);
+			min-height: 6px;
+			--background: var(--ion-background-color-step-200, #ddd);
+			outline: 0.02px solid var(--ion-background-color-step-200);
 		}
 	}
 
