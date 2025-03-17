@@ -379,7 +379,7 @@ export abstract class MusicService<
 	abstract handleResume(): Promise<void>;
 	// TODO: Support cancelling pending operations
 	async play(): Promise<void> {
-		this.state.loading = true;
+		this.state.loading.playPause = true;
 
 		try {
 			if (this.initialPlayed) {
@@ -402,27 +402,27 @@ export abstract class MusicService<
 				this.initialPlayed = true;
 			}
 		} catch (error) {
-			this.state.loading = false;
+			this.state.loading.playPause = false;
 			throw error;
 		}
 
-		this.state.loading = false;
+		this.state.loading.playPause = false;
 		this.state.playing = true;
 	}
 
 	abstract handlePause(): void | Promise<void>;
 	async pause(): Promise<void> {
 		this.log("pause");
-		this.state.loading = true;
+		this.state.loading.playPause = true;
 
 		try {
 			await this.withUnrecoverableErrorHandling(this.handlePause);
 		} catch (error) {
-			this.state.loading = false;
+			this.state.loading.playPause = false;
 			throw error;
 		}
 
-		this.state.loading = false;
+		this.state.loading.playPause = false;
 		this.state.playing = false;
 	}
 
@@ -433,16 +433,16 @@ export abstract class MusicService<
 		this.song = undefined;
 		this.initialPlayed = false;
 
-		this.state.loading = true;
+		this.state.loading.playPause = true;
 
 		try {
 			await this.withUnrecoverableErrorHandling(this.handleStop);
 		} catch (error) {
-			this.state.loading = false;
+			this.state.loading.playPause = false;
 			throw error;
 		}
 
-		this.state.loading = false;
+		this.state.loading.playPause = false;
 		this.state.playing = false;
 	}
 

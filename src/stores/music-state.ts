@@ -7,6 +7,7 @@ import type { AnySong, Playlist } from "@/stores/music-player";
 
 import { generateUUID } from "@/utils/crypto";
 import { Maybe } from "@/utils/types";
+import { useLoadingCounter } from "@/utils/vue";
 
 interface QueueSong {
 	id: string;
@@ -14,8 +15,6 @@ interface QueueSong {
 }
 
 export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
-	const loading = ref(false);
-
 	// #region Playlist
 	const $playlists = useIDBKeyval<Playlist[]>("playlists", []);
 	const playlists = computed(() => $playlists.data.value);
@@ -42,7 +41,7 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		get: () => $queue.data.value,
 		set: (value) => ($queue.data.value = value),
 	});
-	const queueIndex = ref(0);
+	const queueIndex = useLocalStorage("queueIndex", 0);
 	const currentQueueSong = computed<Maybe<QueueSong>>(() => queue.value[queueIndex.value]);
 	const currentSong = computed<Maybe<AnySong>>(() => currentQueueSong.value?.song);
 
@@ -55,7 +54,6 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 
 	function setQueue(songs: AnySong[]): void {
 		queue.value = songs.map(songToQueueSong);
-		queueIndex.value = 0;
 	}
 
 	function addToQueue(song: AnySong, index = queue.value.length): void {
@@ -67,16 +65,18 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		if (index < queueIndex.value) {
 			queueIndex.value -= 1;
 		}
+
+		if (queueIndex.value >= queue.value.length) {
+			queueIndex.value = queue.value.length - 1;
+		}
 	}
 
 	function moveQueueItem(from: number, to: number): void {
 		// Move item in the array
 		const [item] = queue.value.splice(from, 1);
-
 		if (!item) {
 			throw new Error("Tried to move inexisting queue item");
 		}
-
 		queue.value.splice(to, 0, item);
 
 		// Then make sure that currently playing song is still the one playing
@@ -96,15 +96,25 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 	const volume = useLocalStorage("volume", 1);
 	const time = ref(0);
 	const duration = ref(1);
+
+	const loadingCounters = {
+		playPause: useLoadingCounter(),
+		queueChange: useLoadingCounter(),
+	};
+	const loading = {
+		playPause: loadingCounters.playPause.loading,
+		queueChange: loadingCounters.queueChange.loading,
+	};
 	// #endregion
 
 	return {
-		loading,
-
 		playlists,
 		addPlaylist,
 		removePlaylist,
 		getPlaylist,
+
+		loading,
+		loadingCounters,
 
 		queue,
 		queueIndex,
