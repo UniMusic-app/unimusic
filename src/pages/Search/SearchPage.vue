@@ -143,6 +143,7 @@ async function updateSearchResults(): Promise<void> {
 async function playNow(searchResult: SongSearchResult<AnySong>): Promise<void> {
 	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
 	musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
+	await musicPlayer.setQueueIndex(musicPlayer.state.queueIndex);
 }
 
 async function playNext(searchResult: SongSearchResult<AnySong>): Promise<void> {
