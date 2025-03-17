@@ -3,17 +3,24 @@ import { computed, ref } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import SongImg from "@/components/SongImg.vue";
-import { IonIcon, IonItem, IonLabel, IonNote } from "@ionic/vue";
+import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
 import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
 
 import { AnySong, SongImage } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 
-const { title, type, artists, artwork } = defineProps<{
+const {
+	title,
+	type,
+	artists,
+	artwork,
+	reorder = false,
+} = defineProps<{
 	title?: string;
 	type: AnySong["type"];
 	artists: string[];
 	artwork?: SongImage;
+	reorder?: boolean;
 }>();
 
 const formattedArtists = computed(() => formatArtists(artists));
@@ -37,8 +44,8 @@ function emitClick(event: PointerEvent): void {
 </script>
 
 <template>
-	<ContextMenu @visibilitychange="contextMenuOpen = $event">
-		<ion-item button :detail="contextMenuOpen" @click="emitClick">
+	<ContextMenu :class="$props.class" ref="contextMenu" @visibilitychange="contextMenuOpen = $event">
+		<ion-item button :detail="contextMenuOpen" @click="emitClick" :class="$attrs.class">
 			<SongImg
 				v-if="artwork"
 				slot="start"
@@ -47,7 +54,7 @@ function emitClick(event: PointerEvent): void {
 			/>
 
 			<ion-label>
-				<h2>{{ title ?? "Unknown title" }}</h2>
+				<h1>{{ title ?? "Unknown title" }}</h1>
 				<ion-note>
 					<p>
 						<ion-icon :icon="compassIcon" />
@@ -59,6 +66,8 @@ function emitClick(event: PointerEvent): void {
 					</p>
 				</ion-note>
 			</ion-label>
+
+			<ion-reorder data-context-menu-ignore v-if="reorder" slot="end" />
 		</ion-item>
 
 		<template #options>
@@ -73,15 +82,13 @@ function emitClick(event: PointerEvent): void {
 
 	--background: var(--context-menu-item-background);
 
-	--border-radius: 16px;
+	border-radius: 24px;
 	--border-color: transparent;
-	--padding-top: 16px;
-	--padding-bottom: 16px;
 
-	&::part(native) {
-		display: flex;
-		flex-wrap: wrap;
-	}
+	--padding-top: 12px;
+	--padding-bottom: 12px;
+	--padding-start: 12px;
+	--padding-end: 12px;
 
 	& > .song-img {
 		transition: var(--context-menu-transition);
@@ -95,7 +102,7 @@ function emitClick(event: PointerEvent): void {
 		height: max-content;
 		white-space: normal;
 
-		& > h2 {
+		& > h1 {
 			font-size: 1.2rem;
 			line-height: 1;
 
@@ -121,6 +128,10 @@ function emitClick(event: PointerEvent): void {
 			}
 		}
 	}
+
+	& > ion-reorder {
+		display: none;
+	}
 }
 
 ion-item {
@@ -136,28 +147,36 @@ ion-item {
 		pointer-events: none;
 		white-space: nowrap;
 
-		& > h2 {
-			font-size: 1rem;
-			font-weight: bold;
+		& > h1 {
+			font-size: 0.9em;
+			font-weight: 550;
 			display: block;
 		}
 
 		& > ion-note {
 			display: flex;
 			gap: 0.5ch;
-			font-size: 0.8em;
 			align-items: center;
+			font-size: 0.75em;
 
 			& > p {
 				display: flex;
 				align-items: center;
 				gap: 4px;
+				font-size: inherit;
 
 				& > ion-icon {
 					min-width: 1em;
 				}
 			}
 		}
+	}
+
+	& > ion-reorder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
 	}
 }
 </style>
