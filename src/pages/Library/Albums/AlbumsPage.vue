@@ -13,13 +13,10 @@
 		<ion-content :fullscreen="true">
 			<!-- TODO -->
 		</ion-content>
-
-		<AppFooter />
 	</ion-page>
 </template>
 
 <script lang="ts" setup>
-import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import { IonBackButton, IonButtons, IonContent, IonPage, IonTitle } from "@ionic/vue";
 </script>

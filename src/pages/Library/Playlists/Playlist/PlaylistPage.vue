@@ -47,15 +47,12 @@
 
 			<!-- TODO: Maybe add a possibility to add songs from within this page -->
 		</ion-content>
-
-		<AppFooter />
 	</ion-page>
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
 
-import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import SongImg from "@/components/SongImg.vue";
 import SongItem from "@/components/SongItem.vue";

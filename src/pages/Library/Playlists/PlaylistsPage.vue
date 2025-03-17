@@ -41,13 +41,10 @@
 				</ion-item>
 			</ion-list>
 		</ion-content>
-
-		<AppFooter />
 	</ion-page>
 </template>
 
 <script lang="ts" setup>
-import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import SongImg from "@/components/SongImg.vue";
 

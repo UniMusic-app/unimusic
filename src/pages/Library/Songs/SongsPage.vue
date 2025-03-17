@@ -19,15 +19,12 @@
 
 			<SongItem v-for="(song, i) in librarySongs" :key="i" :song />
 		</ion-content>
-
-		<AppFooter />
 	</ion-page>
 </template>
 
 <script lang="ts" setup>
 import { onUpdated, ref } from "vue";
 
-import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import SongItem from "@/components/SongItem.vue";
 import {

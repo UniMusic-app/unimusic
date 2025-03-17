@@ -22,13 +22,10 @@
 				<ion-label>Songs</ion-label>
 			</ion-item>
 		</ion-content>
-
-		<AppFooter />
 	</ion-page>
 </template>
 
 <script setup lang="ts">
-import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 
 import { IonContent, IonIcon, IonItem, IonLabel, IonPage, IonTitle } from "@ionic/vue";

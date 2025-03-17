@@ -9,13 +9,10 @@
 		<ion-content :fullscreen="true" class="ion-padding">
 			<SongItem v-for="{ song, id } in musicPlayer.state.queue" :song :key="id" />
 		</ion-content>
-
-		<AppFooter />
 	</ion-page>
 </template>
 
 <script setup lang="ts">
-import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import { IonContent, IonPage, IonTitle } from "@ionic/vue";
 

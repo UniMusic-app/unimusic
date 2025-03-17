@@ -80,8 +80,6 @@
 				</ion-list>
 			</ion-list>
 		</ion-content>
-
-		<AppFooter />
 	</ion-page>
 </template>
 
@@ -110,7 +108,6 @@ import { ref } from "vue";
 import type { SongSearchResult } from "@/services/Music/MusicService";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
-import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 
 import GenericSongItem from "@/components/GenericSongItem.vue";
