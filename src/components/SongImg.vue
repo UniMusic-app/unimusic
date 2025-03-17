@@ -1,19 +1,12 @@
 <template>
-	<div class="song-img">
-		<div class="fallback">
-			<ion-icon :icon="imageIcon" />
-		</div>
-
-		<ion-img v-if="lazy" :src="url ?? EMPTY_IMAGE" :alt :class="$props.class" />
-		<img v-else :src="url ?? EMPTY_IMAGE" :alt :class="$props.class" />
-	</div>
+	<ion-img v-if="lazy" :src="url ?? EMPTY_IMAGE" :alt :class="`song-img ${$props.class ?? ''}`" />
+	<img v-else :src="url ?? EMPTY_IMAGE" :alt :class="`song-img ${$props.class ?? ''}`" />
 </template>
 
 <script setup lang="ts">
 import { ref, watchEffect } from "vue";
 
-import { IonIcon, IonImg } from "@ionic/vue";
-import { image as imageIcon } from "ionicons/icons";
+import { IonImg } from "@ionic/vue";
 
 import { useLocalImages } from "@/stores/local-images";
 import { SongImage } from "@/stores/music-player";
@@ -39,35 +32,8 @@ watchEffect(async () => {
 <style>
 .song-img {
 	position: relative;
-
-	display: inline-block;
+	border-radius: var(--img-border-radius, inherit);
 	width: var(--img-width, auto);
 	height: var(--img-height, auto);
-
-	& > .fallback {
-		--size: 16px;
-
-		position: absolute;
-
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-
-		& > ion-icon {
-			background-color: var(--ion-color-primary);
-			color: var(--ion-color-primary-contrast);
-			padding: calc(var(--size) / 2);
-			font-size: var(--size);
-			border-radius: 9999px;
-		}
-	}
-
-	& > img,
-	& > ion-img {
-		position: relative;
-		border-radius: var(--img-border-radius, inherit);
-		width: var(--img-width, auto);
-		height: var(--img-height, auto);
-	}
 }
 </style>
