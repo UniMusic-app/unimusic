@@ -140,6 +140,7 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 			v-if="queueOpen"
 			id="player-queue"
 			@pointercancel="canDismiss = true"
+			@pointerout="canDismiss = true"
 			@pointermove="canDismiss = false"
 		>
 			<ion-list>

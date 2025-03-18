@@ -4,7 +4,6 @@ import { computed, ref, useTemplateRef } from "vue";
 import { download as importIcon } from "ionicons/icons";
 
 import SongImg from "@/components/SongImg.vue";
-import SongItem from "@/components/SongItem.vue";
 import {
 	actionSheetController,
 	alertController,

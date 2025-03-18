@@ -11,6 +11,7 @@ import { IonImg } from "@ionic/vue";
 import { useLocalImages } from "@/stores/local-images";
 import { SongImage } from "@/stores/music-player";
 
+// FIXME: Better fallback
 const EMPTY_IMAGE =
 	"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 

@@ -1,50 +1,17 @@
-<template>
-	<ion-page>
-		<AppHeader>
-			<template #toolbar>
-				<ion-buttons slot="start">
-					<ion-back-button text="Library" />
-				</ion-buttons>
-
-				<ion-title>Songs</ion-title>
-
-				<ion-progress-bar v-if="isLoading" type="indeterminate" />
-			</template>
-		</AppHeader>
-
-		<ion-content :fullscreen="true">
-			<ion-refresher slot="fixed" @ion-refresh="refreshLocalLibrary($event)">
-				<ion-refresher-content />
-			</ion-refresher>
-
-			<SongItem v-for="(song, i) in librarySongs" :key="i" :song />
-		</ion-content>
-	</ion-page>
-</template>
-
 <script lang="ts" setup>
 import { onUpdated, ref } from "vue";
 
-import AppHeader from "@/components/AppHeader.vue";
 import SongItem from "@/components/SongItem.vue";
-import {
-	IonBackButton,
-	IonButtons,
-	IonContent,
-	IonPage,
-	IonProgressBar,
-	IonRefresher,
-	IonRefresherContent,
-	IonTitle,
-	RefresherCustomEvent,
-} from "@ionic/vue";
+import { IonList, IonRefresher, IonRefresherContent, RefresherCustomEvent } from "@ionic/vue";
 
+import AppPage from "@/components/AppPage.vue";
+import SkeletonItem from "@/components/SkeletonItem.vue";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
 const musicPlayer = useMusicPlayer();
 
 const librarySongs = ref<AnySong[]>([]);
-const isLoading = ref(false);
+const isLoading = ref(true);
 
 onUpdated(async () => {
 	isLoading.value = true;
@@ -58,3 +25,18 @@ async function refreshLocalLibrary(event: RefresherCustomEvent): Promise<void> {
 	await event.target.complete();
 }
 </script>
+
+<template>
+	<AppPage title="Songs" back-button="Library">
+		<ion-refresher slot="fixed" @ion-refresh="refreshLocalLibrary($event)">
+			<ion-refresher-content />
+		</ion-refresher>
+
+		<ion-list v-if="isLoading">
+			<SkeletonItem v-for="i in 10" :key="i" />
+		</ion-list>
+		<ion-list v-else>
+			<SongItem v-for="(song, i) in librarySongs" :key="i" :song />
+		</ion-list>
+	</AppPage>
+</template>

@@ -1,59 +1,6 @@
-<template>
-	<ion-page>
-		<AppHeader>
-			<template #toolbar>
-				<ion-buttons slot="start">
-					<ion-back-button text="Library" />
-				</ion-buttons>
-
-				<ion-title>Playlist</ion-title>
-
-				<ion-buttons slot="end">
-					<ion-button id="edit-playlist">
-						<ion-icon slot="icon-only" :icon="pencilIcon" />
-					</ion-button>
-					<ion-button id="delete-playlist">
-						<ion-icon slot="icon-only" :icon="deleteIcon" />
-					</ion-button>
-				</ion-buttons>
-			</template>
-		</AppHeader>
-
-		<ion-action-sheet
-			trigger="delete-playlist"
-			:header="`Are you sure you want to delete playlist ${playlist?.title}?`"
-			:buttons="deleteActionSheetButtons"
-			@didDismiss="onDeleteActionDismiss"
-		/>
-
-		<PlaylistEditModal v-if="playlist" :playlist trigger="edit-playlist" @change="editPlaylist" />
-
-		<ion-content id="playlist-content" v-if="playlist" :fullscreen="true">
-			<SongImg :src="playlist.artwork" />
-			<h1>{{ playlist?.title }}</h1>
-
-			<ion-note v-if="isEmpty">This playlist has no songs, fill it up!</ion-note>
-			<template v-else>
-				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
-				<ion-button strong @click="play">
-					<ion-icon slot="start" :icon="playIcon" />
-					Play
-				</ion-button>
-
-				<ion-list>
-					<SongItem :song v-for="song in playlist.songs" :key="song.id" />
-				</ion-list>
-			</template>
-
-			<!-- TODO: Maybe add a possibility to add songs from within this page -->
-		</ion-content>
-	</ion-page>
-</template>
-
 <script lang="ts" setup>
 import { computed } from "vue";
 
-import AppHeader from "@/components/AppHeader.vue";
 import SongImg from "@/components/SongImg.vue";
 import SongItem from "@/components/SongItem.vue";
 import PlaylistEditModal, { PlaylistEditEvent } from "../components/PlaylistEditModal.vue";
@@ -61,18 +8,15 @@ import PlaylistEditModal, { PlaylistEditEvent } from "../components/PlaylistEdit
 import {
 	ActionSheetButton,
 	IonActionSheet,
-	IonBackButton,
 	IonButton,
 	IonButtons,
-	IonContent,
 	IonIcon,
 	IonList,
 	IonNote,
-	IonPage,
-	IonTitle,
 } from "@ionic/vue";
 import { trashOutline as deleteIcon, pencil as pencilIcon, play as playIcon } from "ionicons/icons";
 
+import AppPage from "@/components/AppPage.vue";
 import router from "@/pages/router";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute } from "vue-router";
@@ -111,6 +55,50 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 	}
 }
 </script>
+
+<template>
+	<AppPage back-button="Playlists">
+		<template #toolbar-end>
+			<ion-buttons>
+				<ion-button id="edit-playlist">
+					<ion-icon slot="icon-only" :icon="pencilIcon" />
+				</ion-button>
+				<ion-button id="delete-playlist">
+					<ion-icon slot="icon-only" :icon="deleteIcon" />
+				</ion-button>
+			</ion-buttons>
+		</template>
+
+		<ion-action-sheet
+			trigger="delete-playlist"
+			:header="`Are you sure you want to delete playlist ${playlist?.title}?`"
+			:buttons="deleteActionSheetButtons"
+			@didDismiss="onDeleteActionDismiss"
+		/>
+
+		<PlaylistEditModal v-if="playlist" :playlist trigger="edit-playlist" @change="editPlaylist" />
+
+		<div id="playlist-content" v-if="playlist">
+			<SongImg :src="playlist.artwork" />
+			<h1>{{ playlist?.title }}</h1>
+
+			<ion-note v-if="isEmpty">This playlist has no songs, fill it up!</ion-note>
+			<template v-else>
+				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
+				<ion-button strong @click="play">
+					<ion-icon slot="start" :icon="playIcon" />
+					Play
+				</ion-button>
+
+				<ion-list>
+					<SongItem :song v-for="song in playlist.songs" :key="song.id" />
+				</ion-list>
+			</template>
+
+			<!-- TODO: Maybe add a possibility to add songs from within this page -->
+		</div>
+	</AppPage>
+</template>
 
 <style>
 #playlist-content {
