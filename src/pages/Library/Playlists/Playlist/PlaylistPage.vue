@@ -38,6 +38,7 @@ const deleteActionSheetButtons: ActionSheetButton[] = [
 
 function play(): void {
 	musicPlayer.state.setQueue(playlist.value!.songs);
+	musicPlayer.state.queueIndex = 0;
 }
 
 function editPlaylist(event: PlaylistEditEvent): void {
