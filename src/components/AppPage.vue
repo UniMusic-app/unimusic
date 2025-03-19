@@ -13,7 +13,7 @@ import {
 import { personCircle as personIcon } from "ionicons/icons";
 
 import { createSettingsModal } from "@/components/AppSettingsModal.vue";
-import { computed, onUpdated } from "vue";
+import { computed } from "vue";
 
 const { title, backButton } = defineProps<{
 	title?: string;
@@ -33,7 +33,13 @@ const slots = defineSlots<{
 	"header-trailing"(): any;
 }>();
 
-const inlineView = computed(() => !(slots["toolbar-start"] || backButton));
+const inlineView = computed(() => {
+	if (document.documentElement.classList.contains("md")) {
+		return false;
+	}
+
+	return !(slots["toolbar-start"] || backButton);
+});
 
 async function openSettings(): Promise<void> {
 	const modal = await createSettingsModal();
