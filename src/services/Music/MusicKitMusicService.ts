@@ -256,14 +256,27 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 
 	async handlePlay(): Promise<void> {
 		try {
-			const { music } = this;
-			await music?.setQueue({ song: this.song!.id });
-			await music?.play();
+			const { music, song } = this;
+			if (!music || !song) return;
+
+			await music.stop();
+			await music.setQueue({ song: song.id, startPlaying: true, startTime: 0 });
 		} catch (error) {
-			// Someone skipped or stopped the song while it was still trying to play it, let it slide
-			if (error instanceof Error && error.name === "AbortError") {
-				return;
+			console.log("err:", error);
+
+			if (error instanceof Error) {
+				// Someone skipped or stopped the song while it was still trying to play it, let it slide
+				if (
+					error.name === "AbortError" ||
+					error.message.includes(
+						"The play() method was called without a previous stop() or pause() call.",
+					)
+				) {
+					return;
+				}
 			}
+
+			throw error;
 		}
 	}
 

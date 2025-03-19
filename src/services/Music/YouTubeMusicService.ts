@@ -355,6 +355,7 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 			addAudioSource(url, format.mime_type);
 			urlToFormats[url] = format;
 		}
+
 		try {
 			await audio!.play();
 		} catch (error) {

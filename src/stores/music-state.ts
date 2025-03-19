@@ -56,11 +56,12 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		queue.value = songs.map(songToQueueSong);
 	}
 
-	function addToQueue(song: AnySong, index = queue.value.length): void {
+	async function addToQueue(song: AnySong, index = queue.value.length): Promise<void> {
 		queue.value.splice(index, 0, songToQueueSong(song));
+		await loadingCounters.queueChange.onLoaded();
 	}
 
-	function removeFromQueue(index: number): void {
+	async function removeFromQueue(index: number): Promise<void> {
 		queue.value.splice(index, 1);
 		if (index < queueIndex.value) {
 			queueIndex.value -= 1;
@@ -69,15 +70,28 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		if (queueIndex.value >= queue.value.length) {
 			queueIndex.value = queue.value.length - 1;
 		}
+
+		await loadingCounters.queueChange.onLoaded();
 	}
 
+	/**
+	 * Moves song in queue from {@linkcode from} to {@linkcode to} index.
+	 *
+	 * If moving the item would change the song – {@linkcode queueIndex} is adapted accordingly,
+	 * so this function doesn't cause song to change.
+	 *
+	 * @throws if either {@linkcode from} or {@linkcode to} is an invalid index
+	 */
 	function moveQueueItem(from: number, to: number): void {
-		// Move item in the array
-		const [item] = queue.value.splice(from, 1);
-		if (!item) {
-			throw new Error("Tried to move inexisting queue item");
+		if (from < 0 || from >= queue.value.length) {
+			throw new Error(`Tried to move inexisting queue item (from = ${from})`);
+		} else if (to < 0 || to >= queue.value.length) {
+			throw new Error(`Tried to move item outside of queue bounds (to = ${to})`);
 		}
-		queue.value.splice(to, 0, item);
+
+		const [item] = queue.value.splice(from, 1);
+
+		queue.value.splice(to, 0, item!);
 
 		// Then make sure that currently playing song is still the one playing
 		if (from > queueIndex.value && to <= queueIndex.value) {

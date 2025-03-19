@@ -388,14 +388,16 @@ export abstract class MusicService<
 			} else {
 				await this.initialize();
 
-				this.log("stopping other services");
-				for (const service of this.services.enabledServices) {
-					if (service === this) continue;
-					await service.stop();
-				}
-
 				await this.seekToTime(0);
 				await this.setVolume(this.state.volume);
+
+				this.log("stopping other services");
+				for (const service of this.services.enabledServices) {
+					if (service === this) {
+						continue;
+					}
+					await service.stop();
+				}
 
 				this.log("play");
 				await this.withUnrecoverableErrorHandling(this.handlePlay);

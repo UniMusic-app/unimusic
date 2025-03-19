@@ -9,12 +9,13 @@ import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons
 import { AnySong, SongImage } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 
-const { title, type, artists, artwork, reorder } = defineProps<{
+const { title, type, artists, artwork, reorder, disabled } = defineProps<{
 	title?: string;
 	type: AnySong["type"];
 	artists: string[];
 	artwork?: SongImage;
 	reorder?: boolean;
+	disabled?: boolean;
 }>();
 
 const formattedArtists = computed(() => formatArtists(artists));
@@ -39,7 +40,7 @@ function emitClick(event: PointerEvent): void {
 
 <template>
 	<ContextMenu :class="$props.class" ref="contextMenu" @visibilitychange="contextMenuOpen = $event">
-		<ion-item button :detail="contextMenuOpen" @click="emitClick" :class="$attrs.class">
+		<ion-item button :disabled :detail="contextMenuOpen" @click="emitClick" :class="$attrs.class">
 			<SongImg
 				v-if="artwork"
 				slot="start"

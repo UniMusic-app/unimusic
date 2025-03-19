@@ -54,18 +54,17 @@ async function searchFor(term: string): Promise<void> {
 
 async function playNow(searchResult: SongSearchResult<AnySong>): Promise<void> {
 	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
-	musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
-	await musicPlayer.setQueueIndex(musicPlayer.state.queueIndex);
+	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
 }
 
 async function playNext(searchResult: SongSearchResult<AnySong>): Promise<void> {
 	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
-	musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
+	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
 }
 
 async function addToQueue(searchResult: SongSearchResult<AnySong>): Promise<void> {
 	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
-	musicPlayer.state.addToQueue(song);
+	await musicPlayer.state.addToQueue(song);
 }
 </script>
 

@@ -1,4 +1,3 @@
-import { watchDebounced } from "@vueuse/core";
 import { defineStore, storeToRefs } from "pinia";
 import { computed, watch } from "vue";
 
@@ -57,7 +56,8 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
 	const state = useMusicPlayerState();
-	const { queueIndex, currentSong, autoplay, playing, time, volume } = storeToRefs(state);
+	const { queue, currentQueueSong, currentSong, autoplay, playing, time, volume } =
+		storeToRefs(state);
 
 	const services = useMusicServices();
 
@@ -72,10 +72,41 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		await services.withAllServices((service) => service.setVolume(volume));
 	});
 
-	// Prepare current song in queue after everything has loaded
-	watch([currentService], async () => await setQueueIndex(state.queueIndex), { once: true });
 	// Automatically change songs
-	watchDebounced([queueIndex], async () => await setQueueIndex(state.queueIndex), { debounce: 150 });
+
+	let abortController = new AbortController();
+	watch(currentQueueSong, async () => {
+		abortController.abort();
+		abortController = new AbortController();
+
+		await state.loadingCounters.queueChange.onLoaded();
+
+		state.loading.queueChange = true;
+
+		try {
+			const service = currentService.value;
+			if (service) {
+				await service.changeSong(currentSong.value!);
+
+				abortController.signal.throwIfAborted();
+
+				switch (autoplay.value) {
+					case true:
+						await play();
+						break;
+					case "auto":
+						autoplay.value = true;
+						break;
+					case false:
+						break;
+				}
+			} else {
+				await services.withAllServices((service) => service.stop());
+			}
+		} catch {}
+
+		state.loading.queueChange = false;
+	});
 	// #endregion
 
 	// #region Actions for managing MusicPlayer
@@ -83,47 +114,21 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const hasNext = computed(() => state.queue.length > state.queueIndex + 1);
 
 	async function setQueueIndex(index: number): Promise<void> {
-		if (
-			index === state.queueIndex &&
-			currentSong.value &&
-			currentSong.value === currentService.value?.song
-		) {
-			return;
+		if (index < 0 || index >= state.queue.length) {
+			throw new Error(`Tried to set queue index outside of queue bounds (index = ${index})`);
 		}
-
-		state.loading.queueChange = true;
-
 		state.queueIndex = index;
-		const service = currentService.value;
-		if (service) {
-			await service.changeSong(currentSong.value!);
-
-			switch (autoplay.value) {
-				case true:
-					await play();
-					break;
-				case "auto":
-					autoplay.value = true;
-					break;
-				case false:
-					break;
-			}
-		} else {
-			await services.withAllServices((service) => service.stop());
-		}
-
-		state.loading.queueChange = false;
+		await state.loadingCounters.queueChange.onLoaded();
 	}
-
 	async function skipPrevious(): Promise<void> {
 		if (!hasPrevious.value) return;
 		state.queueIndex -= 1;
-		await state.loadingCounters.queueChange.onLoad();
+		await state.loadingCounters.queueChange.onLoaded();
 	}
 	async function skipNext(): Promise<void> {
 		if (!hasNext.value) return;
 		state.queueIndex += 1;
-		await state.loadingCounters.queueChange.onLoad();
+		await state.loadingCounters.queueChange.onLoaded();
 	}
 
 	async function play(): Promise<void> {
@@ -278,11 +283,11 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		play,
 		pause,
 		togglePlay,
-		setQueueIndex,
 		hasPrevious,
 		skipPrevious,
 		hasNext,
 		skipNext,
+		setQueueIndex,
 
 		progress,
 		timeRemaining,

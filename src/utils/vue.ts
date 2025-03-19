@@ -67,35 +67,55 @@ export function useWillKeyboard(): UseWillKeyboard {
 }
 
 interface UseLoadingCounter {
-	loadingCounter: Ref<number>;
+	counter: Ref<number>;
 	loading: Ref<boolean>;
 	onLoad(): Promise<void>;
+	onLoaded(): Promise<void>;
 }
 
 export function useLoadingCounter(): UseLoadingCounter {
 	const loadPromises: PromiseWithResolvers<void>[] = [];
+	const loadedPromises: PromiseWithResolvers<void>[] = [];
 
-	const loadingCounter = ref(0);
+	const counter = ref(0);
 	const loading = computed({
 		get() {
-			return loadingCounter.value > 0;
+			return counter.value > 0;
 		},
 		set(value) {
 			if (value) {
-				loadingCounter.value += 1;
+				counter.value += 1;
 			} else {
-				loadingCounter.value = Math.max(0, loadingCounter.value - 1);
+				counter.value = Math.max(0, counter.value - 1);
 				loadPromises.pop()?.resolve();
+			}
+
+			if (counter.value === 0) {
+				for (const { resolve } of loadedPromises) {
+					resolve();
+				}
 			}
 		},
 	});
 
-	/** Returns a promise which resolves on most recent counter decrement */
+	/**
+	 *  Returns a promise which resolves on most recent counter decrement
+	 */
 	function onLoad(): Promise<void> {
 		const promise = Promise.withResolvers<void>();
 		loadPromises.push(promise);
 		return promise.promise;
 	}
 
-	return { loadingCounter, loading, onLoad };
+	/**
+	 * Returns a promise which resolves when loading counter hits 0
+	 */
+	async function onLoaded(): Promise<void> {
+		if (counter.value === 0) return;
+		const promise = Promise.withResolvers<void>();
+		loadedPromises.push(promise);
+		return promise.promise;
+	}
+
+	return { counter, loading, onLoad, onLoaded };
 }
