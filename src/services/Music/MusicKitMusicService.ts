@@ -1,21 +1,35 @@
-import { MusicKitSong, Playlist, SongImage } from "@/stores/music-player";
-
-import { MusicService, MusicServiceEvent, SilentError } from "@/services/Music/MusicService";
+import { alertController } from "@ionic/vue";
 
 import { useLocalImages } from "@/stores/local-images";
+import { MusicKitSong, Playlist, SongImage } from "@/stores/music-player";
+
+import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
+import { MusicService, MusicServiceEvent, SilentError } from "@/services/Music/MusicService";
+
 import { generateUUID } from "@/utils/crypto";
 import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
-import { alertController } from "@ionic/vue";
-import { MusicKitAuthorizationService } from "../Authorization/MusicKitAuthorizationService";
 
 export async function musicKitSong(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
 ): Promise<MusicKitSong> {
-	const attributes = song.attributes;
+	const { id, attributes } = song;
 
-	const artworkUrl = attributes?.artwork;
-	const artwork = artworkUrl && { url: MusicKit.formatArtworkURL(artworkUrl, 256, 256) };
+	const artworkAttribute = attributes?.artwork;
+
+	let artwork: Maybe<SongImage>;
+	if (artworkAttribute) {
+		const localImages = useLocalImages();
+		const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 512, 512);
+		try {
+			const artworkBlob = await (await fetch(artworkUrl)).blob();
+			await localImages.localImageManagementService.associateImage(id, artworkBlob);
+			artwork = { id };
+		} catch {
+			// TODO: Remove this after Apple fixes artwork CORS issues
+			artwork = { url: artworkUrl };
+		}
+	}
 
 	const artists = attributes?.artistName ? [attributes?.artistName] : [];
 	const genres = attributes?.genreNames ?? [];
@@ -23,7 +37,7 @@ export async function musicKitSong(
 	return {
 		type: "musickit",
 
-		id: song.id,
+		id,
 		artists,
 		genres,
 
@@ -114,12 +128,13 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 
 		const id = generateUUID();
 		const title = playlist.attributes?.name ?? "Unknown title";
-		const artworkUrl = playlist.attributes?.artwork;
+		const artworkAttribute = playlist.attributes?.artwork;
 
 		let artwork: Maybe<SongImage>;
-		if (artworkUrl) {
+		if (artworkAttribute) {
 			const localImages = useLocalImages();
-			const artworkBlob = await (await fetch(MusicKit.formatArtworkURL(artworkUrl))).blob();
+			const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 512, 512);
+			const artworkBlob = await (await fetch(artworkUrl)).blob();
 			await localImages.localImageManagementService.associateImage(id, artworkBlob);
 			artwork = { id };
 		}

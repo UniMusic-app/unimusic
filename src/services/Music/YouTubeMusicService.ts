@@ -36,7 +36,15 @@ export async function youtubeSong(
 		throw new Error("Cannot generate YouTubeSong from item that doesn't have id");
 	}
 
-	const artwork = thumbnail?.[0] && { url: createCapacitorProxyUrl(thumbnail[0].url) };
+	const thumbnailUrl = thumbnail?.[0]?.url;
+	let artwork: Maybe<SongImage>;
+	if (thumbnailUrl) {
+		const localImages = useLocalImages();
+		const artworkBlob = await (await fetch(thumbnailUrl)).blob();
+		await localImages.localImageManagementService.associateImage(id, artworkBlob);
+		artwork = { id };
+	}
+
 	const album = searchResult?.album ?? tags?.at(-2);
 	const artists = searchResult?.artists ?? (author ? [author] : []);
 
@@ -63,20 +71,6 @@ const USER_AGENT =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.1";
 const GOOG_API_KEY = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw";
 const REQUEST_KEY = "O43z0dpjhgX20SCx4KAo";
-
-const SERVER_URL = "WEBVIEW_SERVER_URL" in window ? (window.WEBVIEW_SERVER_URL as string) : "";
-
-/**
- * Create a proxied url which uses native layer to bypass CORS
- * @see https://github.com/ionic-team/capacitor/blob/90f95d1a829f3d87cb46af827b5bfaac319a9694/core/native-bridge.ts#L134
- */
-function createCapacitorProxyUrl(url: string): string {
-	if (!SERVER_URL) return url;
-	const bridgeUrl = new URL(SERVER_URL);
-	bridgeUrl.pathname = "/_capacitor_http_interceptor_";
-	bridgeUrl.searchParams.append("u", url);
-	return bridgeUrl.toString();
-}
 
 async function createWebPoMinter(): Promise<BG.WebPoMinter> {
 	const fetch = isElectron() ? window.fetch : window.capacitorFetch;

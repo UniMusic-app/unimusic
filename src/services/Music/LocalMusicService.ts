@@ -12,6 +12,7 @@ import { base64StringToBuffer } from "@/utils/buffer";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { generateSongStyle } from "@/utils/songs";
+import { Maybe } from "@/utils/types";
 import { useIDBKeyvalAsync } from "@/utils/vue";
 
 const localSongs = useIDBKeyvalAsync<LocalSong[]>("localMusicSongs", []);
@@ -106,15 +107,14 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
 	const duration = format.duration;
 	const genres = common.genre ?? [];
-	let artwork: SongImage | undefined;
+
 	const coverImage = selectCover(common.picture);
+	let artwork: Maybe<SongImage>;
 	if (coverImage) {
-		const { data, type } = coverImage;
 		const localImages = useLocalImages();
-		await localImages.localImageManagementService.associateImage(id, new Blob([data], { type }), {
-			width: 256,
-			height: 256,
-		});
+		const { data, type } = coverImage;
+		const artworkBlob = new Blob([data], { type });
+		await localImages.localImageManagementService.associateImage(id, artworkBlob);
 		artwork = { id };
 	}
 
