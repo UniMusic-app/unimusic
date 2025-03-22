@@ -38,7 +38,7 @@ const inlineView = computed(() => {
 		return false;
 	}
 
-	return !(slots["toolbar-start"] || backButton);
+	return !(slots["toolbar-start"] || backButton !== undefined);
 });
 
 async function openSettings(): Promise<void> {
@@ -57,7 +57,7 @@ async function openSettings(): Promise<void> {
 				<ion-toolbar>
 					<div slot="start">
 						<slot name="toolbar-start">
-							<ion-buttons v-if="backButton">
+							<ion-buttons v-if="backButton !== undefined">
 								<ion-back-button :text="backButton" />
 							</ion-buttons>
 						</slot>
