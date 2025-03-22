@@ -111,7 +111,7 @@ function closeImmediately(): void {
 			open
 		>
 			<div class="backdrop" @click.self="close" />
-			<div class="context-menu-item">
+			<div class="context-menu-item" @click="closeImmediately">
 				<slot />
 			</div>
 			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="closeImmediately">

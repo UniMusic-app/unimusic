@@ -213,8 +213,13 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 			);
 		}
 
+		const cached = this.getCached(searchResult.id);
+		if (cached) {
+			return cached;
+		}
+
 		const info = await this.innertube.music.getInfo(searchResult.id);
-		const song = await youtubeSong(info, searchResult);
+		const song = this.cacheSong(await youtubeSong(info, searchResult));
 		return song;
 	}
 
@@ -288,9 +293,18 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 		// TODO: Unimplemented
 	}
 
+	async handleGetSong(songId: string, cache = true): Promise<YouTubeSong> {
+		if (cache) {
+			const cachedSong = this.getCached(songId);
+			if (cachedSong) return cachedSong;
+		}
+
+		const trackInfo = await this.innertube!.music.getInfo(songId);
+		return this.cacheSong(await youtubeSong(trackInfo));
+	}
+
 	async handleRefreshSong(song: YouTubeSong): Promise<YouTubeSong> {
-		const trackInfo = await this.innertube!.music.getInfo(song.id);
-		return youtubeSong(trackInfo);
+		return await this.handleGetSong(song.id, false);
 	}
 
 	async handlePlay(): Promise<void> {

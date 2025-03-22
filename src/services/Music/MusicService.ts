@@ -2,7 +2,6 @@
 import { alertController } from "@ionic/vue";
 import { computed, ref } from "vue";
 
-import { useSongMetadata } from "@/stores/metadata";
 import { useMusicPlayer, type AnySong, type Playlist, type SongImage } from "@/stores/music-player";
 import { useMusicPlayerState } from "@/stores/music-state";
 
@@ -10,6 +9,7 @@ import { AuthorizationService } from "@/services/Authorization/AuthorizationServ
 import { Service } from "@/services/Service";
 import { useMusicServices } from "@/stores/music-services";
 
+import { useSongMetadata } from "@/stores/metadata";
 import { Maybe } from "@/utils/types";
 
 export interface MusicServiceState {
@@ -64,6 +64,8 @@ export abstract class MusicService<
 	initialized = false;
 	initialPlayed = false;
 	song?: Song;
+
+	#cache = new Map<string, Song>();
 
 	#enabled = ref(false);
 	enabled = computed({
@@ -128,6 +130,22 @@ export abstract class MusicService<
 		this.#enabled.value = false;
 		await this.deinitialize();
 		await this.saveState({ enabled: false });
+	}
+
+	cacheSong(song: Song): Song {
+		this.#cache.set(song.id, song);
+		return song;
+	}
+
+	cacheSongPromise(song: Promise<Song>): Promise<Song> {
+		return song.then((song) => {
+			this.#cache.set(song.id, song);
+			return song;
+		});
+	}
+
+	getCached(id: string): Maybe<Song> {
+		return this.#cache.get(id);
 	}
 
 	async restoreState(): Promise<void> {
@@ -248,14 +266,15 @@ export abstract class MusicService<
 	async librarySongs(offset = 0): Promise<Song[]> {
 		this.log("librarySongs");
 		await this.initialize();
-		const songs = await this.withUnrecoverableErrorHandling(async () => {
-			const songs = await this.handleLibrarySongs(offset);
-			for (const song of songs) {
-				await this.applyMetadata(song);
-			}
-			return songs;
-		});
+		const songs = await this.withErrorHandling([], this.handleLibrarySongs, offset);
+		songs.map((song) => this.metadata.applyMetadata(song));
 		return songs;
+	}
+
+	abstract handleRefreshLibrarySongs(): void | Promise<void>;
+	async refreshLibrarySongs(): Promise<void> {
+		this.log("refresh");
+		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
 	}
 
 	handleGetPlaylist?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
@@ -268,37 +287,37 @@ export abstract class MusicService<
 		return playlist;
 	}
 
-	async handleApplyMetadata(song: Song): Promise<void> {
-		const metadata = await this.metadata.getMetadata(song);
-		if (Object.keys(metadata).length > 0) {
-			this.log("Applied metadata override for", song.id);
-			Object.assign(song, metadata satisfies Partial<AnySong>);
+	abstract handleGetSong(songId: string): Maybe<Song> | Promise<Maybe<Song>>;
+	async getSong(songId: string): Promise<Maybe<Song>> {
+		this.log("getSong");
+		await this.initialize();
+
+		const song = await this.withErrorHandling(undefined, this.handleGetSong, songId);
+		if (song) {
+			this.metadata.applyMetadata(song);
+			return song;
 		}
 	}
-	async applyMetadata(song: Song): Promise<void> {
-		this.log("applyMetadata");
-		await this.withErrorHandling(undefined, this.handleApplyMetadata, song);
-	}
 
-	abstract handleRefreshLibrarySongs(): void | Promise<void>;
-	async refreshLibrarySongs(): Promise<void> {
-		this.log("refresh");
-		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
-	}
+	abstract handleRefreshSong(song: Song): Maybe<Song> | Promise<Maybe<Song>>;
+	async refreshSong(song: Song): Promise<Maybe<Song>> {
+		this.log("getSong");
+		await this.initialize();
 
-	abstract handleRefreshSong(song: Song): Song | Promise<Song>;
-	async refreshSong(song: Song): Promise<void> {
-		const refreshed = await this.handleRefreshSong(song);
-		if (song.id !== refreshed.id) {
-			throw new Error("Refreshing song unexpectedly changed its id");
+		const refreshed = await this.withErrorHandling(undefined, this.handleRefreshSong, song);
+		if (!refreshed) {
+			return;
 		}
-		await this.withErrorHandling(undefined, this.applyMetadata, refreshed);
 
-		for (const [i, song] of this.state.queue.entries()) {
+		this.metadata.applyMetadata(refreshed);
+		for (const { song } of this.state.queue) {
 			if (song.id === refreshed.id) {
-				this.state.queue[i]!.song = refreshed;
+				this.metadata.applyMetadata(song);
+				Object.assign(song, refreshed);
 			}
 		}
+
+		return refreshed;
 	}
 
 	async changeSong(song: Song): Promise<void> {

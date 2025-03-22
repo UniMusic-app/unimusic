@@ -14,7 +14,7 @@ import {
 	IonList,
 	IonNote,
 } from "@ionic/vue";
-import { trashOutline as deleteIcon, pencil as pencilIcon, play as playIcon } from "ionicons/icons";
+import { trashOutline as deleteIcon, pencil as editIcon, play as playIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
 import router from "@/pages/router";
@@ -62,7 +62,7 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button id="edit-playlist">
-					<ion-icon slot="icon-only" :icon="pencilIcon" />
+					<ion-icon slot="icon-only" :icon="editIcon" />
 				</ion-button>
 				<ion-button id="delete-playlist">
 					<ion-icon slot="icon-only" :icon="deleteIcon" />
@@ -107,6 +107,7 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 
 	& > h1 {
 		font-weight: bold;
+		margin-top: 0;
 		margin-bottom: 0.25rem;
 	}
 

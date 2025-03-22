@@ -9,6 +9,7 @@ import LibraryPage from "@/pages/Library/LibraryPage.vue";
 import PlaylistsPage from "@/pages/Library/Playlists/PlaylistsPage.vue";
 import SongsPage from "@/pages/Library/Songs/SongsPage.vue";
 import PlaylistPage from "./Library/Playlists/Playlist/PlaylistPage.vue";
+import SongPage from "./Library/Songs/Song/SongPage.vue";
 
 const routes: RouteRecordRaw[] = [
 	{ path: "/", redirect: "/home" },
@@ -17,6 +18,7 @@ const routes: RouteRecordRaw[] = [
 
 	{ path: "/library", name: "Library", component: LibraryPage },
 	{ path: "/library/songs", name: "Songs", component: SongsPage },
+	{ path: "/library/songs/:type/:id", name: "Song", component: SongPage },
 	{ path: "/library/albums", name: "Albums", component: AlbumsPage },
 	{ path: "/library/playlists", name: "Playlists", component: PlaylistsPage },
 	{ path: "/library/playlists/:id", name: "Playlist", component: PlaylistPage },

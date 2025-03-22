@@ -54,14 +54,18 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		await withAllServices((service) => service.refreshLibrarySongs());
 	}
 
-	async function refreshSong(song: AnySong): Promise<void> {
-		await getService(song.type)?.refreshSong(song);
+	async function refreshSong(song: AnySong): Promise<Maybe<AnySong>> {
+		return await getService(song.type)?.refreshSong(song);
 	}
 
 	async function getSongFromSearchResult(searchResult: SongSearchResult): Promise<AnySong> {
 		const service = getService(searchResult.type)!;
 		const song = await service.getSongFromSearchResult(searchResult);
 		return song;
+	}
+
+	async function getSong(type: AnySong["type"], id: string): Promise<Maybe<AnySong>> {
+		return await getService(type)?.getSong(id);
 	}
 	// #endregion
 
@@ -82,6 +86,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		librarySongs,
 		refreshLibrarySongs,
 		refreshSong,
+		getSong,
 		getSongFromSearchResult,
 	};
 });

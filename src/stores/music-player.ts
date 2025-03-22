@@ -56,8 +56,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
 
 	const state = useMusicPlayerState();
-	const { queue, currentQueueSong, currentSong, autoplay, playing, time, volume } =
-		storeToRefs(state);
+	const { currentQueueSong, currentSong, autoplay, playing, time, volume } = storeToRefs(state);
 
 	const services = useMusicServices();
 

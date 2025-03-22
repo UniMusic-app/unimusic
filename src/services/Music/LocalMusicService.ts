@@ -231,6 +231,12 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		await getLocalSongs(true);
 	}
 
+	async handleGetSong(filePath: string): Promise<LocalSong> {
+		const data = await readSongFile(filePath);
+		const song = await parseLocalSong(data, filePath, filePath);
+		return song;
+	}
+
 	async handleRefreshSong(song: LocalSong): Promise<LocalSong> {
 		const filePath = song.data.path;
 		const data = await readSongFile(filePath);

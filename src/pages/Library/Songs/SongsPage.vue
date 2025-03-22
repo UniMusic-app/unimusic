@@ -1,19 +1,22 @@
 <script lang="ts" setup>
 import { onUpdated, ref } from "vue";
 
-import SongItem from "@/components/SongItem.vue";
 import { IonList, IonRefresher, IonRefresherContent, RefresherCustomEvent } from "@ionic/vue";
 
 import AppPage from "@/components/AppPage.vue";
+import GenericSongItem from "@/components/GenericSongItem.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { useSessionStorage } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
 
-const librarySongs = ref<AnySong[]>([]);
-const isLoading = ref(true);
+const librarySongs = useSessionStorage<AnySong[]>("librarySongs", []);
+const isLoading = ref(false);
 
 onUpdated(async () => {
+	if (librarySongs.value.length) return;
+
 	isLoading.value = true;
 	librarySongs.value = await musicPlayer.services.librarySongs();
 	isLoading.value = false;
@@ -33,10 +36,18 @@ async function refreshLocalLibrary(event: RefresherCustomEvent): Promise<void> {
 		</ion-refresher>
 
 		<ion-list v-if="isLoading">
-			<SkeletonItem v-for="i in 10" :key="i" />
+			<SkeletonItem v-for="i in 25" :key="i" />
 		</ion-list>
 		<ion-list v-else>
-			<SongItem v-for="(song, i) in librarySongs" :key="i" :song />
+			<GenericSongItem
+				v-for="(song, i) in librarySongs"
+				:router-link="`/library/songs/${song.type}/${song.id}`"
+				:key="i"
+				:title="song.title"
+				:artists="song.artists"
+				:artwork="song.artwork"
+				:type="song.type"
+			/>
 		</ion-list>
 	</AppPage>
 </template>

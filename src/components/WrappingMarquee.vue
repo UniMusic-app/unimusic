@@ -53,6 +53,10 @@ const shouldWrap = computed(() => {
 	--duration: var(--marquee-duration, 10s);
 	--gap: var(--marquee-gap, 0.5rem);
 
+	&:not(.wrapping) {
+		justify-content: var(--marquee-align, start);
+	}
+
 	& > .initial,
 	& > .following {
 		font-size: inherit;

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { Haptics } from "@capacitor/haptics";
 import { storeToRefs } from "pinia";
-import { computed, ref, watch } from "vue";
+import { computed, ref, useTemplateRef, watch } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
@@ -18,11 +18,12 @@ import {
 	IonRange,
 	IonReorderGroup,
 	ItemReorderCustomEvent,
+	useIonRouter,
 } from "@ionic/vue";
 import {
+	pencilOutline as editIcon,
 	ellipsisHorizontal as ellipsisIcon,
 	musicalNotes as lyricsIcon,
-	pencilOutline as modifyMetadataIcon,
 	pause as pauseIcon,
 	play as playIcon,
 	listOutline as playLastIcon,
@@ -33,12 +34,13 @@ import {
 	playSkipBack as skipPreviousIcon,
 } from "ionicons/icons";
 
-import { useMusicPlayer } from "@/stores/music-player";
+import { AnySong, useMusicPlayer } from "@/stores/music-player";
 
 import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
 
+const router = useIonRouter();
 const musicPlayer = useMusicPlayer();
 const state = musicPlayer.state;
 const { currentSong, time, playing, duration } = storeToRefs(state);
@@ -52,6 +54,8 @@ const currentService = computed(
 
 const queueOpen = ref(false);
 const canDismiss = ref(true);
+
+const modal = useTemplateRef("music-player");
 
 function toggleQueue(): void {
 	queueOpen.value = !queueOpen.value;
@@ -81,11 +85,21 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 	musicPlayer.state.moveQueueItem(from, to);
 	event.detail.complete();
 }
+
+function goToSong(song: AnySong, hash?: string): void {
+	dismiss();
+	router.push(`/library/songs/${song.type}/${song.id}` + (hash ? `#${hash}` : ""));
+}
+
+function dismiss(): void {
+	modal.value?.$el?.dismiss();
+}
 </script>
 
 <template>
 	<ion-modal
 		v-if="currentSong"
+		ref="music-player"
 		id="music-player"
 		:can-dismiss="canDismiss"
 		:initial-breakpoint="1"
@@ -100,7 +114,7 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 		}"
 	>
 		<div id="song-lols">
-			<SongImg :class="{ playing }" :src="currentSong?.artwork" />
+			<SongImg :class="{ playing }" :src="currentSong.artwork" />
 
 			<div id="song-info">
 				<div id="song-details">
@@ -126,9 +140,15 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 						</ion-button>
 
 						<template #options>
-							<ion-item lines="full" button :detail="false">
-								Modify Metadata
-								<ion-icon aria-hidden="true" :icon="modifyMetadataIcon" slot="end" />
+							<ion-item
+								aria-label="Edit song"
+								lines="full"
+								button
+								:detail="false"
+								@click="goToSong(currentSong, 'edit')"
+							>
+								Edit song
+								<ion-icon aria-hidden="true" :icon="editIcon" slot="end" />
 							</ion-item>
 						</template>
 					</ContextMenu>
@@ -156,6 +176,7 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 						:artwork="song.artwork"
 						:type="song.type"
 						@item-click="musicPlayer.setQueueIndex(i)"
+						@context-menu-click="goToSong(song)"
 					>
 						<template #options>
 							<ion-item
@@ -177,14 +198,6 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 							>
 								Play last
 								<ion-icon aria-hidden="true" :icon="playLastIcon" slot="end" />
-							</ion-item>
-
-							<ion-item-divider />
-
-							<!-- TODO: Modify metadata -->
-							<ion-item aria-label="Modify metadata" lines="full" button :detail="false">
-								Modify Metadata
-								<ion-icon aria-hidden="true" :icon="modifyMetadataIcon" slot="end" />
 							</ion-item>
 
 							<ion-item-divider />

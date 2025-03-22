@@ -1,11 +1,6 @@
 <script lang="ts" setup>
-import { createMetadataModal } from "@/components/SongMetadataModal.vue";
-import { IonIcon, IonItem, IonItemDivider } from "@ionic/vue";
-import {
-	listOutline as addToQueueIcon,
-	documentOutline as modifyMetadataIcon,
-	hourglassOutline as playNextIcon,
-} from "ionicons/icons";
+import { IonIcon, IonItem, IonItemDivider, useIonRouter } from "@ionic/vue";
+import { listOutline as addToQueueIcon, hourglassOutline as playNextIcon } from "ionicons/icons";
 
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import GenericSongItem from "./GenericSongItem.vue";
@@ -13,6 +8,7 @@ import GenericSongItem from "./GenericSongItem.vue";
 const { song } = defineProps<{ song: AnySong }>();
 
 const musicPlayer = useMusicPlayer();
+const router = useIonRouter();
 
 async function play(): Promise<void> {
 	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
@@ -26,10 +22,8 @@ async function addToQueue(): Promise<void> {
 	await musicPlayer.state.addToQueue(song);
 }
 
-async function modifyMetadata(): Promise<void> {
-	const modal = await createMetadataModal(song);
-	await modal.present();
-	await modal.onDidDismiss();
+function goToSong(): void {
+	router.push(`/library/songs/${song.type}/${song.id}`);
 }
 </script>
 
@@ -41,6 +35,7 @@ async function modifyMetadata(): Promise<void> {
 		:artwork="song.artwork"
 		:type="song.type"
 		@item-click="play"
+		@context-menu-click="goToSong"
 	>
 		<template #options>
 			<ion-item lines="full" button :detail="false" @click="playNext">
@@ -52,10 +47,7 @@ async function modifyMetadata(): Promise<void> {
 				<ion-icon aria-hidden="true" :icon="addToQueueIcon" slot="end" />
 			</ion-item>
 			<ion-item-divider />
-			<ion-item lines="full" button :detail="false" @click="modifyMetadata">
-				Modify Metadata
-				<ion-icon aria-hidden="true" :icon="modifyMetadataIcon" slot="end" />
-			</ion-item>
 		</template>
 	</GenericSongItem>
 </template>
+q

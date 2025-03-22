@@ -1,7 +1,7 @@
 <template>
 	<ion-app>
 		<ion-tabs>
-			<ion-router-outlet></ion-router-outlet>
+			<ion-router-outlet />
 
 			<div slot="bottom">
 				<MusicPlayer />

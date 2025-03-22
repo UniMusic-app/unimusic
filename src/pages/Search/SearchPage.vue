@@ -7,11 +7,11 @@ import {
 	IonList,
 	IonSearchbar,
 	IonToolbar,
+	useIonRouter,
 } from "@ionic/vue";
 import { watchDebounced } from "@vueuse/core";
 import {
 	addOutline as addIcon,
-	documentOutline as documentIcon,
 	hourglassOutline as hourglassIcon,
 	playOutline as playIcon,
 	search as searchIcon,
@@ -66,6 +66,12 @@ async function addToQueue(searchResult: SongSearchResult<AnySong>): Promise<void
 	const song = await musicPlayer.services.getSongFromSearchResult(searchResult);
 	await musicPlayer.state.addToQueue(song);
 }
+
+const router = useIonRouter();
+function goToSong(searchResult: SongSearchResult): void {
+	if (!searchResult) return;
+	router.push(`/library/songs/${searchResult.type}/${searchResult.id}`);
+}
 </script>
 
 <template>
@@ -103,7 +109,7 @@ async function addToQueue(searchResult: SongSearchResult<AnySong>): Promise<void
 			</ion-list>
 
 			<ion-list v-if="isLoading">
-				<SkeletonItem v-for="i in 10" :key="i" />
+				<SkeletonItem v-for="i in 25" :key="i" />
 			</ion-list>
 			<ion-list v-else id="search-song-items">
 				<GenericSongItem
@@ -114,6 +120,7 @@ async function addToQueue(searchResult: SongSearchResult<AnySong>): Promise<void
 					:artwork="searchResult.artwork"
 					:type="searchResult.type"
 					@item-click="playNow(searchResult)"
+					@context-menu-click="goToSong(searchResult)"
 				>
 					<template #options>
 						<ion-item :button="true" :detail="false" @click="playNow(searchResult)">
@@ -130,11 +137,6 @@ async function addToQueue(searchResult: SongSearchResult<AnySong>): Promise<void
 							<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
 							Add to queue
 						</ion-item>
-						<!-- FIXME: Modify metadata
-						<ion-item :button="true" :detail="false" @click="modifyMetadata(searchResult)">
-							<ion-icon aria-hidden="true" :icon="documentIcon" slot="end" />
-							Modify metadata
-						</ion-item> -->
 					</template>
 				</GenericSongItem>
 			</ion-list>

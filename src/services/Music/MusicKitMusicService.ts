@@ -52,8 +52,8 @@ export async function musicKitSong(
 	};
 }
 
-export function musicKitSongIdType(song: MusicKitSong): "library" | "catalog" {
-	if (!isNaN(Number(song.id))) {
+export function musicKitSongIdType(id: string): "library" | "catalog" {
+	if (!isNaN(Number(id))) {
 		return "catalog";
 	}
 	return "library";
@@ -181,23 +181,32 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 		// TODO: Unimplemented
 	}
 
-	async handleRefreshSong(song: MusicKitSong): Promise<MusicKitSong> {
-		const idType = musicKitSongIdType(song);
+	async handleGetSong(songId: string, cache = true): Promise<MusicKitSong> {
+		if (cache) {
+			const cachedSong = this.getCached(songId);
+			if (cachedSong) return cachedSong;
+		}
+
+		const idType = musicKitSongIdType(songId);
 
 		const response = await this.music!.api.music<
 			MusicKit.SongsResponse | MusicKit.LibrarySongsResponse
 		>(
 			idType === "catalog"
-				? `/v1/catalog/{{storefrontId}}/songs/${song.id}`
-				: `/v1/me/library/songs/${song.id}`,
+				? `/v1/catalog/{{storefrontId}}/songs/${songId}`
+				: `/v1/me/library/songs/${songId}`,
 		);
 
-		const [refreshed] = response.data.data;
-		if (!refreshed) {
-			throw new Error(`Failed to find a song with id: ${song.id}`);
+		const [responseSong] = response.data.data;
+		if (!responseSong) {
+			throw new Error(`Failed to find a song with id: ${songId}`);
 		}
 
-		return musicKitSong(refreshed);
+		return this.cacheSong(await musicKitSong(responseSong));
+	}
+
+	async handleRefreshSong(song: MusicKitSong): Promise<MusicKitSong> {
+		return await this.handleGetSong(song.id, false);
 	}
 
 	async handleLibrarySongs(offset: number): Promise<MusicKitSong[]> {
@@ -206,12 +215,14 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 			MusicKit.LibrarySongsQuery
 		>("/v1/me/library/songs", { limit: 25, offset });
 
-		const songs = response.data.data.filter((song) => {
-			// Filter out songs that cannot be played
-			return !!song.attributes?.playParams;
-		});
-		const promises = songs.map((song) => musicKitSong(song));
-		return await Promise.all(promises);
+		const songs = response.data.data
+			.filter((song) => {
+				// Filter out songs that cannot be played
+				return !!song.attributes?.playParams;
+			})
+			.map((song) => this.getCached(song.id) ?? this.cacheSongPromise(musicKitSong(song)));
+
+		return await Promise.all(songs);
 	}
 
 	async handleInitialization(): Promise<void> {

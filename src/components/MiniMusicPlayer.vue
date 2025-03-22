@@ -2,9 +2,16 @@
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 
-import { IonButton, IonButtons, IonIcon, IonItem, IonLabel, IonNote } from "@ionic/vue";
 import {
-	pencilOutline as modifyMetadataIcon,
+	IonButton,
+	IonButtons,
+	IonIcon,
+	IonItem,
+	IonLabel,
+	IonNote,
+	useIonRouter,
+} from "@ionic/vue";
+import {
 	pause as pauseIcon,
 	play as playIcon,
 	playSkipForward as skipNextIcon,
@@ -21,6 +28,8 @@ import { useWillKeyboard } from "@/utils/vue";
 
 const { willBeOpen: keyboardOpen } = useWillKeyboard();
 
+const router = useIonRouter();
+
 const musicPlayer = useMusicPlayer();
 const state = musicPlayer.state;
 const { currentSong, playing } = storeToRefs(state);
@@ -33,6 +42,12 @@ async function openModal(): Promise<void> {
 	const modal = document.querySelector<HTMLIonModalElement>("#music-player");
 	await modal?.present();
 }
+
+function goToSong(): void {
+	const song = currentSong.value;
+	if (!song) return;
+	router.push(`/library/songs/${song.type}/${song.id}`);
+}
 </script>
 
 <template>
@@ -44,7 +59,7 @@ async function openModal(): Promise<void> {
 			id="mini-music-player"
 			:class="{ hidden: keyboardOpen }"
 			:aria-hidden="keyboardOpen"
-			@click="openModal"
+			@click="contextMenuOpen ? goToSong() : openModal()"
 		>
 			<SongImg
 				:src="currentSong.artwork"
@@ -85,13 +100,6 @@ async function openModal(): Promise<void> {
 				</ion-button>
 			</ion-buttons>
 		</ion-item>
-
-		<template #options>
-			<ion-item lines="full" button :detail="false">
-				Modify Metadata
-				<ion-icon aria-hidden="true" :icon="modifyMetadataIcon" slot="end" />
-			</ion-item>
-		</template>
 	</ContextMenu>
 </template>
 

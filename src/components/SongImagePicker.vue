@@ -8,7 +8,7 @@ import { SongImage } from "@/stores/music-player";
 
 const localImages = useLocalImages();
 
-const { id } = defineProps<{ id: string }>();
+const { id, idOut = id } = defineProps<{ id: string; idOut?: string }>();
 const emit = defineEmits<{ input: [{ value: SongImage }] }>();
 
 const image = ref<SongImage>({ id });
@@ -22,12 +22,12 @@ async function changeArtwork(): Promise<void> {
 	}
 
 	const artwork = files[0]!;
-	await localImages.localImageManagementService.associateImage(id, artwork, {
+	await localImages.localImageManagementService.associateImage(idOut, artwork, {
 		width: 256,
 		height: 256,
 	});
 
-	image.value = { id };
+	image.value = { id: idOut };
 	emit("input", { value: image.value });
 }
 </script>
