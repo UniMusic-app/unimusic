@@ -9,7 +9,7 @@ export async function useIDBKeyvalAsync<T>(
 ): Promise<Ref<T>> {
 	const idbKeyval = useIDBKeyval<T>(key, initialValue, options);
 
-	if (!idbKeyval.isFinished) {
+	if (!idbKeyval.isFinished.value) {
 		await new Promise<void>((resolve) => {
 			const unwatch = watch(idbKeyval.isFinished, (isFinished) => {
 				if (isFinished) {
