@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 
+import AppPage from "@/components/AppPage.vue";
+import GenericSongItem from "@/components/GenericSongItem.vue";
 import SongImg from "@/components/SongImg.vue";
-import SongItem from "@/components/SongItem.vue";
 import PlaylistEditModal, { PlaylistEditEvent } from "../components/PlaylistEditModal.vue";
 
 import {
@@ -11,14 +12,20 @@ import {
 	IonButton,
 	IonButtons,
 	IonIcon,
+	IonItem,
 	IonList,
 	IonNote,
+	useIonRouter,
 } from "@ionic/vue";
-import { trashOutline as deleteIcon, pencil as editIcon, play as playIcon } from "ionicons/icons";
+import {
+	listOutline as addSongToQueueIcon,
+	trashOutline as deleteIcon,
+	pencil as editIcon,
+	play as playIcon,
+	playOutline as playSongNextIcon,
+} from "ionicons/icons";
 
-import AppPage from "@/components/AppPage.vue";
-import router from "@/pages/router";
-import { useMusicPlayer } from "@/stores/music-player";
+import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import { useRoute } from "vue-router";
 
 const musicPlayer = useMusicPlayer();
@@ -54,6 +61,24 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 		musicPlayer.state.removePlaylist(playlist.value.id);
 		router.back();
 	}
+}
+
+const router = useIonRouter();
+
+async function playSong(song: AnySong): Promise<void> {
+	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
+}
+
+async function playSongNext(song: AnySong): Promise<void> {
+	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
+}
+
+async function addSongToQueue(song: AnySong): Promise<void> {
+	await musicPlayer.state.addToQueue(song);
+}
+
+function goToSong(song: AnySong): void {
+	router.push(`/library/songs/${song.type}/${song.id}`);
 }
 </script>
 
@@ -92,7 +117,27 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 				</ion-button>
 
 				<ion-list>
-					<SongItem :song v-for="song in playlist.songs" :key="song.id" />
+					<GenericSongItem
+						v-for="song in playlist.songs"
+						:key="song.id"
+						:title="song.title"
+						:artists="song.artists"
+						:artwork="song.artwork"
+						:type="song.type"
+						@item-click="playSong(song)"
+						@context-menu-click="goToSong(song)"
+					>
+						<template #options>
+							<ion-item lines="full" button :detail="false" @click="playSongNext(song)">
+								Play Next
+								<ion-icon aria-hidden="true" :icon="playSongNextIcon" slot="end" />
+							</ion-item>
+							<ion-item lines="full" button :detail="false" @click="addSongToQueue(song)">
+								Add to Queue
+								<ion-icon aria-hidden="true" :icon="addSongToQueueIcon" slot="end" />
+							</ion-item>
+						</template>
+					</GenericSongItem>
 				</ion-list>
 			</template>
 

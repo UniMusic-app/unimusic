@@ -165,6 +165,7 @@ function dismiss(): void {
 		>
 			<ion-list>
 				<ion-list-header>Queue</ion-list-header>
+				<!-- FIXME: Reorder does not work on desktop -->
 				<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
 					<GenericSongItem
 						v-for="({ song, id }, i) in state.queue"
