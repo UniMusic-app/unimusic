@@ -111,7 +111,7 @@ function closeImmediately(): void {
 			open
 		>
 			<div class="backdrop" @click.self="close" />
-			<div class="context-menu-item" @click="closeImmediately">
+			<div class="context-menu-item" @click="move ? closeImmediately : close">
 				<slot />
 			</div>
 			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="closeImmediately">
@@ -146,14 +146,12 @@ function closeImmediately(): void {
 		top: var(--context-menu-top);
 		left: var(--context-menu-left);
 		width: var(--context-menu-width);
-		height: var(--context-menu-height);
 	}
 
 	to {
 		top: var(--context-menu-item-top);
 		left: var(--context-menu-item-left);
 		width: var(--context-menu-item-width);
-		height: var(--context-menu-item-height);
 
 		&:not(.move) {
 			top: var(--context-menu-top);
@@ -218,11 +216,7 @@ function closeImmediately(): void {
 	--context-menu-transition-easing: cubic-bezier(0.175, 0.885, 0.32, 1.075);
 	--context-menu-transition-easing-out: cubic-bezier(0.32, 0.885, 0.55, 1.175);
 	--context-menu-transition: all var(--context-menu-transition-duration)
-		var(--context-menu-transition-easing) inset: unset;
-
-	@media screen and (min-width: 576px) {
-		--context-menu-width: 50%;
-	}
+		var(--context-menu-transition-easing);
 
 	position: fixed;
 
@@ -240,13 +234,15 @@ function closeImmediately(): void {
 		calc(var(--context-menu-item-top) - 64px),
 		calc(90vh - 64px - var(--context-menu-item-height) - var(--context-menu-options-height))
 	);
-	--context-menu-left: clamp(0, var(--context-menu-item-left), 100vw);
-	--context-menu-width: 90%;
-	--context-menu-height: max-content;
+	--context-menu-width: min(400px, 70%);
+	--context-menu-left: calc(
+		var(--context-menu-item-left) - var(--context-menu-width) * 0.9 + var(--context-menu-item-width)
+	);
+	--context-menu-height: 100%;
 
 	&.move {
-		--context-menu-width: 90%;
-		--context-menu-height: calc-size(max-content, size);
+		--context-menu-width: min(500px, 90%);
+		--context-menu-height: 100%;
 		--context-menu-top: clamp(
 			calc(var(--ion-safe-area-top) + 64px),
 			calc(var(--context-menu-item-top) - 64px),
@@ -316,9 +312,13 @@ function closeImmediately(): void {
 		background-color: transparent;
 
 		& > ion-item {
-			opacity: 95%;
-			backdrop-filter: blur(1px);
+			opacity: 90%;
+			backdrop-filter: blur(2px);
 			--background: var(--ion-background-color-step-150, #eee);
+			&:hover,
+			&:focus {
+				--background: var(--ion-background-color-step-250, #ddd);
+			}
 
 			ion-icon[slot="end"] {
 				margin-left: 1rem;
@@ -327,7 +327,7 @@ function closeImmediately(): void {
 
 		& > ion-item-divider {
 			min-height: 6px;
-			--background: var(--ion-background-color-step-200, #ddd);
+			--background: var(--ion-background-color-step-200, #ccc);
 			outline: 0.02px solid var(--ion-background-color-step-200);
 		}
 	}
