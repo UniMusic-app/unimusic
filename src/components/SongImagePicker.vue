@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 import SongImg from "@/components/SongImg.vue";
 
@@ -8,7 +8,11 @@ import { SongImage } from "@/stores/music-player";
 
 const localImages = useLocalImages();
 
-const { id, idOut = id } = defineProps<{ id: string; idOut?: string }>();
+const props = defineProps<{ id: string; idOut?: string }>();
+
+const id = props.id;
+const idOut = computed(() => props.idOut ?? props.id);
+
 const emit = defineEmits<{ input: [{ value: SongImage }] }>();
 
 const image = ref<SongImage>({ id });
@@ -22,12 +26,12 @@ async function changeArtwork(): Promise<void> {
 	}
 
 	const artwork = files[0]!;
-	await localImages.localImageManagementService.associateImage(idOut, artwork, {
+	await localImages.localImageManagementService.associateImage(idOut.value, artwork, {
 		width: 256,
 		height: 256,
 	});
 
-	image.value = { id: idOut };
+	image.value = { id: idOut.value };
 	emit("input", { value: image.value });
 }
 </script>
