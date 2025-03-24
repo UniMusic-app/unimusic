@@ -521,9 +521,10 @@ function dismiss(): void {
 
 			transition: all 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
 			height: auto;
+
 			width: 60%;
 			&.playing {
-				width: 85%;
+				width: min(50vh, 85%);
 			}
 
 			border-radius: 12px;
