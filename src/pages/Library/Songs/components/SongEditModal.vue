@@ -163,7 +163,7 @@ async function canDismiss(reason?: "editedSong" | "resetSong"): Promise<boolean>
 				/>
 
 				<ion-item>
-					<ion-input label="Album" placeholder="Album" v-model="album" />
+					<ion-input label="Album" placeholder="Album" v-model="album" @ion-change="modified = true" />
 				</ion-item>
 
 				<MultiValueInput
