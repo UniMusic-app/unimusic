@@ -244,13 +244,10 @@ ion-tab-bar {
 	}
 
 	&::part(native) {
+		--background: var(--ion-background-color-step-100, #fff);
 		@supports (backdrop-filter: blur(12px)) {
 			--background: color-mix(in srgb, var(--ion-background-color-step-100, #fff) 80%, transparent);
 			backdrop-filter: blur(12px);
-		}
-
-		@supports not (backdrop-filter: blur(12px)) {
-			--background: var(--ion-background-color-step-100, #fff);
 		}
 	}
 }
