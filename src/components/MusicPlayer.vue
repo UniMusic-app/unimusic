@@ -98,28 +98,27 @@ function dismiss(): void {
 
 <template>
 	<ion-modal
-		v-if="currentSong"
+		v-show="currentSong"
 		ref="music-player"
 		id="music-player"
+		:keep-contents-mounted="true"
 		:can-dismiss="canDismiss"
 		:initial-breakpoint="1"
 		:breakpoints="[0, 1]"
-		:class="{
-			'queue-view': queueOpen,
-		}"
+		:class="{ 'queue-view': queueOpen }"
 		:style="{
-			'--bg': currentSong.style.bgGradient,
-			'--bg-color': currentSong.style.bgColor,
-			'--fg-color': currentSong.style.fgColor,
+			'--bg': currentSong?.style.bgGradient,
+			'--bg-color': currentSong?.style.bgColor,
+			'--fg-color': currentSong?.style.fgColor,
 		}"
 	>
 		<div id="song-lols">
-			<SongImg :class="{ playing }" :src="currentSong.artwork" />
+			<LocalImg :class="{ playing }" :src="currentSong?.artwork" />
 
 			<div id="song-info">
 				<div id="song-details">
 					<h1>
-						<WrappingMarquee :text="currentSong.title ?? 'Unknown title'" />
+						<WrappingMarquee :text="currentSong?.title ?? 'Unknown title'" />
 					</h1>
 					<h2>
 						<WrappingMarquee :text="formattedArtists" />
@@ -145,7 +144,7 @@ function dismiss(): void {
 								lines="full"
 								button
 								:detail="false"
-								@click="goToSong(currentSong, 'edit')"
+								@click="goToSong(currentSong!, 'edit')"
 							>
 								Edit song
 								<ion-icon aria-hidden="true" :icon="editIcon" slot="end" />
@@ -157,7 +156,7 @@ function dismiss(): void {
 		</div>
 
 		<div
-			v-if="queueOpen"
+			v-show="queueOpen"
 			id="player-queue"
 			@pointercancel="canDismiss = true"
 			@pointerout="canDismiss = true"
