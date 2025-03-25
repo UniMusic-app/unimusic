@@ -1,3 +1,18 @@
+<script lang="ts" setup>
+import MiniMusicPlayer from "@/components/MiniMusicPlayer.vue";
+import MusicPlayer from "@/components/MusicPlayer.vue";
+import {
+	IonApp,
+	IonIcon,
+	IonLabel,
+	IonRouterOutlet,
+	IonTabBar,
+	IonTabButton,
+	IonTabs,
+} from "@ionic/vue";
+import { home as homeIcon, library as libraryIcon, search as searchIcon } from "ionicons/icons";
+</script>
+
 <template>
 	<ion-app>
 		<ion-tabs>
@@ -28,17 +43,11 @@
 	</ion-app>
 </template>
 
-<script setup lang="ts">
-import MiniMusicPlayer from "@/components/MiniMusicPlayer.vue";
-import MusicPlayer from "@/components/MusicPlayer.vue";
-import {
-	IonApp,
-	IonIcon,
-	IonLabel,
-	IonRouterOutlet,
-	IonTabBar,
-	IonTabButton,
-	IonTabs,
-} from "@ionic/vue";
-import { home as homeIcon, library as libraryIcon, search as searchIcon } from "ionicons/icons";
-</script>
+<style scoped>
+/** Fix for ion-router-outlet becoming too short while modal with presenting-element is opened */
+ion-tabs:has(~ ion-modal[id^="ion-overlay"]) {
+	& > ion-router-outlet {
+		height: 100vh;
+	}
+}
+</style>

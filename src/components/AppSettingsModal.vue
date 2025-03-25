@@ -43,6 +43,7 @@ import AppSettingsModal from "./AppSettingsModal.vue";
 export async function createSettingsModal(): Promise<HTMLIonModalElement> {
 	const modal = await modalController.create({
 		component: AppSettingsModal,
+		presentingElement: document.querySelector("ion-router-outlet") ?? undefined,
 	});
 	return modal;
 }
