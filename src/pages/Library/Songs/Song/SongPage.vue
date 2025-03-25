@@ -7,7 +7,7 @@ import { IonButton, IonButtons, IonIcon, IonSkeletonText, IonThumbnail } from "@
 import { pencil as editIcon, play as playIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 import SongEditModal, { SongEditEvent } from "../components/SongEditModal.vue";
 
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
@@ -79,7 +79,7 @@ async function playNow(): Promise<void> {
 		<SongEditModal v-if="song" :song trigger="edit-song" @change="editSong" />
 
 		<div id="song-content" v-if="song">
-			<SongImg :src="song.artwork" />
+			<LocalImg :src="song.artwork" />
 			<h1 class="ion-text-nowrap">
 				<WrappingMarquee :text="song.title ?? 'Unknown title'" />
 			</h1>

@@ -16,7 +16,9 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { SongImage, useMusicPlayer } from "@/stores/music-player";
+import { LocalImage } from "@/stores/local-images";
+import { useMusicPlayer } from "@/stores/music-player";
+
 import { generateUUID } from "@/utils/crypto";
 import { usePresentingElement } from "@/utils/vue";
 
@@ -28,7 +30,7 @@ const presentingElement = usePresentingElement();
 
 const playlistId = ref(generateUUID());
 const playlistTitle = ref("");
-const artwork = ref<SongImage>();
+const artwork = ref<LocalImage>();
 const modified = computed(() => !!(playlistTitle.value || artwork.value));
 const canCreate = computed(() => !!playlistTitle.value);
 

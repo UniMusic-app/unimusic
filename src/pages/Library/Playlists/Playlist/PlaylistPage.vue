@@ -3,7 +3,7 @@ import { computed } from "vue";
 
 import AppPage from "@/components/AppPage.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 import PlaylistEditModal, { PlaylistEditEvent } from "../components/PlaylistEditModal.vue";
 
 import {
@@ -105,7 +105,7 @@ function goToSong(song: AnySong): void {
 		<PlaylistEditModal v-if="playlist" :playlist trigger="edit-playlist" @change="editPlaylist" />
 
 		<div id="playlist-content" v-if="playlist">
-			<SongImg :src="playlist.artwork" />
+			<LocalImg :src="playlist.artwork" />
 			<h1>{{ playlist?.title }}</h1>
 
 			<ion-note v-if="isEmpty">This playlist has no songs, fill it up!</ion-note>

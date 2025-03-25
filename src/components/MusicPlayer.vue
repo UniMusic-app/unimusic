@@ -5,7 +5,7 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import {
 	IonButton,

@@ -1,11 +1,12 @@
 <script lang="ts">
+import { LocalImage } from "@/stores/local-images";
 import { Maybe } from "@/utils/types";
 
 export type SongEditEvent = Maybe<{
 	title?: string;
 	artists: string[];
 	album?: string;
-	artwork?: SongImage;
+	artwork?: LocalImage;
 	genres: string[];
 }>;
 </script>
@@ -29,7 +30,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { AnySong, SongImage } from "@/stores/music-player";
+import { AnySong } from "@/stores/music-player";
 
 import { formatArtists, formatGenres } from "@/utils/songs";
 import { usePresentingElement } from "@/utils/vue";

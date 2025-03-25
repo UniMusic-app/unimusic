@@ -19,7 +19,7 @@ import {
 } from "ionicons/icons";
 
 import ContextMenu from "@/components/ContextMenu.vue";
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
@@ -61,7 +61,7 @@ function goToSong(): void {
 			:aria-hidden="keyboardOpen"
 			@click="contextMenuOpen ? goToSong() : openModal()"
 		>
-			<SongImg
+			<LocalImg
 				:src="currentSong.artwork"
 				slot="start"
 				:alt="`Artwork for song '${currentSong.title}' by ${formattedArtists}`"

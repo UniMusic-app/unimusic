@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 
 import {
 	IonButton,
@@ -44,7 +44,7 @@ const musicPlayer = useMusicPlayer();
 				:router-link="`/library/playlists/${playlist.id}`"
 			>
 				<ion-thumbnail slot="start">
-					<SongImg :src="playlist.artwork" :alt="`Artwork for playlist '${playlist.title}'`" />
+					<LocalImg :src="playlist.artwork" :alt="`Artwork for playlist '${playlist.title}'`" />
 				</ion-thumbnail>
 
 				<ion-label class="ion-text-nowrap">

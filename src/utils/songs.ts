@@ -1,5 +1,5 @@
-import { useLocalImages } from "@/stores/local-images";
-import { AnySong, SongImage } from "@/stores/music-player";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { AnySong } from "@/stores/music-player";
 
 export function formatArtists(artists?: string[]): string {
 	return artists?.join?.(" & ") || "Unknown artist(s)";
@@ -29,7 +29,7 @@ const intensity = ([r, g, b]: Uint8ClampedArray): number => {
  * @param artworkUrl
  * @returns
  */
-export async function generateSongStyle(artwork?: SongImage): Promise<AnySong["style"]> {
+export async function generateSongStyle(artwork?: LocalImage): Promise<AnySong["style"]> {
 	if (!artwork) {
 		return {
 			fgColor: "#ffffff",
@@ -43,7 +43,7 @@ export async function generateSongStyle(artwork?: SongImage): Promise<AnySong["s
 	const RESOLUTION = 256;
 	const image = new Image(RESOLUTION, RESOLUTION);
 	image.crossOrigin = "anonymous";
-	image.src = (await localImages.getSongImageUrl(artwork))!;
+	image.src = localImages.getUrl(artwork)!;
 	const loadedImage = await new Promise<boolean>((r) => {
 		image.onload = (): void => r(true);
 		image.onerror = (): void => {

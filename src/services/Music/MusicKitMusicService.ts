@@ -1,7 +1,7 @@
 import { alertController } from "@ionic/vue";
 
-import { useLocalImages } from "@/stores/local-images";
-import { MusicKitSong, Playlist, SongImage } from "@/stores/music-player";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { MusicKitSong, Playlist } from "@/stores/music-player";
 
 import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
 import { MusicService, MusicServiceEvent, SilentError } from "@/services/Music/MusicService";
@@ -17,13 +17,13 @@ export async function musicKitSong(
 
 	const artworkAttribute = attributes?.artwork;
 
-	let artwork: Maybe<SongImage>;
+	let artwork: Maybe<LocalImage>;
 	if (artworkAttribute) {
 		const localImages = useLocalImages();
-		const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 512, 512);
+		const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 256, 256);
 		try {
 			const artworkBlob = await (await fetch(artworkUrl)).blob();
-			await localImages.localImageManagementService.associateImage(id, artworkBlob);
+			await localImages.associateImage(id, artworkBlob);
 			artwork = { id };
 		} catch {
 			// TODO: Remove this after Apple fixes artwork CORS issues
@@ -130,12 +130,12 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 		const title = playlist.attributes?.name ?? "Unknown title";
 		const artworkAttribute = playlist.attributes?.artwork;
 
-		let artwork: Maybe<SongImage>;
+		let artwork: Maybe<LocalImage>;
 		if (artworkAttribute) {
 			const localImages = useLocalImages();
-			const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 512, 512);
+			const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 256, 256);
 			const artworkBlob = await (await fetch(artworkUrl)).blob();
-			await localImages.localImageManagementService.associateImage(id, artworkBlob);
+			await localImages.associateImage(id, artworkBlob);
 			artwork = { id };
 		}
 

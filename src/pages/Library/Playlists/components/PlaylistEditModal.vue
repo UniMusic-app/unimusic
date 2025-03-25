@@ -1,7 +1,9 @@
 <script lang="ts">
+import { LocalImage } from "@/stores/local-images";
+
 export interface PlaylistEditEvent {
 	title: string;
-	artwork?: SongImage;
+	artwork?: LocalImage;
 }
 </script>
 
@@ -23,7 +25,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { Playlist, SongImage } from "@/stores/music-player";
+import { Playlist } from "@/stores/music-player";
 import { usePresentingElement } from "@/utils/vue";
 
 const { trigger, playlist } = defineProps<{

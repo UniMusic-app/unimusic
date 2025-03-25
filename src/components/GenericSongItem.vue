@@ -2,11 +2,12 @@
 import { computed, ref } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
 import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
 
-import { AnySong, SongImage } from "@/stores/music-player";
+import { LocalImage } from "@/stores/local-images";
+import { AnySong } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 
 const {
@@ -22,7 +23,7 @@ const {
 	title?: string;
 	type: AnySong["type"];
 	artists: string[];
-	artwork?: SongImage;
+	artwork?: LocalImage;
 	reorder?: boolean;
 	button?: boolean;
 	disabled?: boolean;
@@ -59,7 +60,7 @@ function emitClick(event: PointerEvent): void {
 			@click="emitClick"
 			:class="$attrs.class"
 		>
-			<SongImg
+			<LocalImg
 				v-if="artwork"
 				slot="start"
 				:src="artwork"

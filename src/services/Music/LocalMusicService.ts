@@ -3,8 +3,8 @@ import { parseBuffer, selectCover } from "music-metadata";
 
 import LocalMusic from "@/plugins/LocalMusicPlugin";
 
-import { useLocalImages } from "@/stores/local-images";
-import { LocalSong, SongImage } from "@/stores/music-player";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { LocalSong } from "@/stores/music-player";
 
 import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
 
@@ -109,12 +109,15 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 	const genres = common.genre ?? [];
 
 	const coverImage = selectCover(common.picture);
-	let artwork: Maybe<SongImage>;
+	let artwork: Maybe<LocalImage>;
 	if (coverImage) {
 		const localImages = useLocalImages();
 		const { data, type } = coverImage;
 		const artworkBlob = new Blob([data], { type });
-		await localImages.localImageManagementService.associateImage(id, artworkBlob);
+		await localImages.associateImage(id, artworkBlob, {
+			maxHeight: 512,
+			maxWidth: 512,
+		});
 		artwork = { id };
 	}
 

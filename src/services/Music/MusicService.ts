@@ -2,13 +2,14 @@
 import { alertController } from "@ionic/vue";
 import { computed, ref } from "vue";
 
-import { useMusicPlayer, type AnySong, type Playlist, type SongImage } from "@/stores/music-player";
+import { useMusicPlayer, type AnySong, type Playlist } from "@/stores/music-player";
 import { useMusicPlayerState } from "@/stores/music-state";
 
 import { AuthorizationService } from "@/services/Authorization/AuthorizationService";
 import { Service } from "@/services/Service";
 import { useMusicServices } from "@/stores/music-services";
 
+import { LocalImage } from "@/stores/local-images";
 import { useSongMetadata } from "@/stores/metadata";
 import { Maybe } from "@/utils/types";
 
@@ -38,7 +39,7 @@ export interface SongSearchResult<Song extends AnySong = AnySong> {
 	artists: string[];
 	title?: string;
 	album?: string;
-	artwork?: SongImage;
+	artwork?: LocalImage;
 }
 
 export class SilentError extends Error {

@@ -1,7 +1,7 @@
 import { defineStore, storeToRefs } from "pinia";
 import { computed, watch } from "vue";
 
-import { useLocalImages } from "@/stores/local-images";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { useMusicServices } from "@/stores/music-services";
 import { useMusicPlayerState } from "@/stores/music-state";
 
@@ -11,7 +11,6 @@ import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
 
-export type SongImage = { id: string; url?: never } | { id?: never; url: string };
 export interface Song<Type extends string, Data = unknown> {
 	type: Type;
 
@@ -24,7 +23,7 @@ export interface Song<Type extends string, Data = unknown> {
 	album?: string;
 	duration?: number;
 
-	artwork?: SongImage;
+	artwork?: LocalImage;
 	style: {
 		fgColor: string;
 		bgColor: string;
@@ -48,7 +47,7 @@ export interface Playlist {
 		info?: string;
 	};
 	title: string;
-	artwork?: SongImage;
+	artwork?: LocalImage;
 	songs: AnySong[];
 }
 
@@ -167,7 +166,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 						album: currentSong?.album ?? "",
 
 						// FIXME: Local artworks
-						cover: (await localImages.getSongImageUrl(currentSong?.artwork)) ?? "",
+						cover: localImages.getUrl(currentSong?.artwork) ?? "",
 
 						hasClose: false,
 						dismissable: false,
@@ -218,7 +217,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	if (getPlatform() !== "android" && "mediaSession" in navigator) {
 		addMusicSessionActionHandlers();
 
-		watch(currentSong, async (song) => {
+		watch(currentSong, (song) => {
 			if (!song) {
 				navigator.mediaSession.metadata = null;
 				navigator.mediaSession.playbackState = "none";
@@ -233,11 +232,13 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 				(navigator.audioSession as { type: string }).type = "playback";
 			}
 
+			const artworkUrl = localImages.getUrl(song.artwork);
+
 			navigator.mediaSession.metadata = new window.MediaMetadata({
 				title: song.title,
 				artist: formatArtists(song.artists),
 				album: song.album,
-				artwork: song.artwork && [{ src: (await localImages.getSongImageUrl(song.artwork))! }],
+				artwork: typeof artworkUrl === "string" ? [{ src: artworkUrl }] : undefined,
 			});
 		});
 	}

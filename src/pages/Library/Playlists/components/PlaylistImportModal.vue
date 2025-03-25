@@ -3,7 +3,7 @@ import { computed, ref, useTemplateRef } from "vue";
 
 import { download as importIcon } from "ionicons/icons";
 
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 import {
 	actionSheetController,
 	alertController,
@@ -173,7 +173,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 			<div id="playlist-preview" v-if="playlist">
 				<h1 id="preview-headline">Preview</h1>
 
-				<SongImg :src="playlist.artwork" />
+				<LocalImg :src="playlist.artwork" />
 				<h1>{{ playlist.title }}</h1>
 
 				<ion-note v-if="playlist.songs.length === 0">This playlist has no songs!</ion-note>

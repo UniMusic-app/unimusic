@@ -2,9 +2,9 @@ import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
 import { MusicService, MusicServiceEvent, SongSearchResult } from "@/services/Music/MusicService";
-import type { Playlist, SongImage, YouTubeSong } from "@/stores/music-player";
+import type { Playlist, YouTubeSong } from "@/stores/music-player";
 
-import { useLocalImages } from "@/stores/local-images";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { generateSongStyle } from "@/utils/songs";
@@ -37,11 +37,14 @@ export async function youtubeSong(
 	}
 
 	const thumbnailUrl = thumbnail?.[0]?.url;
-	let artwork: Maybe<SongImage>;
+	let artwork: Maybe<LocalImage>;
 	if (thumbnailUrl) {
 		const localImages = useLocalImages();
 		const artworkBlob = await (await fetch(thumbnailUrl)).blob();
-		await localImages.localImageManagementService.associateImage(id, artworkBlob);
+		await localImages.associateImage(id, artworkBlob, {
+			maxWidth: 512,
+			maxHeight: 512,
+		});
 		artwork = { id };
 	}
 
@@ -251,11 +254,14 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 		const title = header?.title?.toString() ?? "Unknown title";
 		const thumbnail = header?.thumbnail?.contents?.[0];
 
-		let artwork: Maybe<SongImage>;
+		let artwork: Maybe<LocalImage>;
 		if (thumbnail) {
 			const localImages = useLocalImages();
 			const artworkBlob = await (await fetch(thumbnail.url)).blob();
-			await localImages.localImageManagementService.associateImage(id, artworkBlob);
+			await localImages.associateImage(id, artworkBlob, {
+				maxWidth: 512,
+				maxHeight: 512,
+			});
 			artwork = { id };
 		}
 
