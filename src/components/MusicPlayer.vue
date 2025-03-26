@@ -381,19 +381,26 @@ function dismiss(): void {
 }
 
 #music-player {
-	--background: linear-gradient(to top, #0009 2%, transparent 50%), var(--bg);
+	--width: 100%;
 	--height: 100%;
+	--player-max-width: 640px;
+
+	--background: linear-gradient(to top, #0009 2%, transparent 50%), var(--bg);
 	@media (prefers-color-scheme: dark) {
 		--background: linear-gradient(to top, #000b 2%, transparent), var(--bg);
 	}
 
 	color: white;
 
+	--modal-handle-top: calc(var(--ion-safe-area-top) + 6px);
+	@media screen and (min-width: 640px) {
+		--modal-handle-top: calc(var(--ion-safe-area-top) + 24px);
+	}
 	&::part(handle) {
 		background-color: white;
 		opacity: 80%;
 		box-shadow: 0 0 12px #0006;
-		top: calc(6px + var(--ion-safe-area-top));
+		top: var(--modal-handle-top);
 	}
 
 	&::part(content) {
@@ -422,13 +429,17 @@ function dismiss(): void {
 
 		flex-direction: row;
 		align-items: center;
-		min-height: calc(var(--ion-safe-area-top) + 112px);
-		max-height: calc(var(--ion-safe-area-top) + 112px);
+		min-height: calc(var(--modal-handle-top) + 80px);
+		max-height: calc(var(--modal-handle-top) + 80px);
+
+		& > .song-img,
+		& > #song-info {
+			top: calc(var(--modal-handle-top) + 6px);
+		}
 
 		& > .song-img {
 			position: absolute;
 			z-index: 100;
-			top: calc(var(--ion-safe-area-top) + 24px);
 			left: 24px;
 
 			align-self: start;
@@ -441,7 +452,6 @@ function dismiss(): void {
 
 		& > #song-info {
 			position: absolute;
-			top: calc(var(--ion-safe-area-top) + 24px);
 			right: 0;
 			width: calc(100% - 128px);
 			height: 64px;
@@ -462,10 +472,14 @@ function dismiss(): void {
 	}
 
 	& #player-queue {
+		margin-inline: auto;
+		max-width: var(--player-max-width);
+		width: 100%;
+		height: 100%;
+
 		overflow: auto;
 		mask-image: linear-gradient(to bottom, transparent, black 5% 95%, transparent);
 
-		height: 100%;
 		transform-origin: bottom center;
 		animation: show-queue 450ms cubic-bezier(0.175, 0.885, 0.32, 1.075);
 
@@ -492,10 +506,16 @@ function dismiss(): void {
 	}
 
 	& #song-lols {
+		position: relative;
+		margin-inline: auto;
+		max-width: var(--player-max-width);
+		width: 100%;
+		padding-top: 24px;
+
 		&::before {
 			transition: opacity 500ms;
 			content: "";
-			position: absolute;
+			position: fixed;
 			top: 0;
 			left: 0;
 			width: 100%;
@@ -522,7 +542,7 @@ function dismiss(): void {
 			transition: all 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
 			height: auto;
 
-			width: 60%;
+			width: min(40vh, 60%);
 			&.playing {
 				width: min(50vh, 85%);
 			}
@@ -587,9 +607,12 @@ function dismiss(): void {
 	}
 
 	& #song-controls {
+		margin-inline: auto;
+		max-width: min(calc(100% - 64px), var(--player-max-width));
+		width: 100%;
+
 		display: flex;
 		flex-direction: column;
-		margin-inline: 32px;
 		margin-bottom: calc(32px + var(--ion-safe-area-bottom));
 
 		& > #time-control {
@@ -599,16 +622,23 @@ function dismiss(): void {
 			justify-content: center;
 			opacity: 80%;
 
-			&:has(ion-range:active) {
+			transition:
+				transform,
+				opacity,
+				550ms cubic-bezier(0.175, 0.885, 0.32, 1.075);
+			transform-origin: bottom center;
+			&:has(> ion-range:active) {
+				transform: scaleX(102%);
 				opacity: 100%;
 			}
 
 			& > ion-range {
 				width: 100%;
 
-				transition: transform 350ms cubic-bezier(0.175, 0.885, 0.32, 1.075);
+				transition: transform 550ms cubic-bezier(0.175, 0.885, 0.32, 1.075);
+				transform-origin: bottom center;
 				&:active {
-					transform: scaleX(102%) scaleY(110%);
+					transform: scaleY(115%);
 				}
 
 				--bar-background: color-mix(in srgb, white 50%, transparent);
@@ -624,6 +654,7 @@ function dismiss(): void {
 
 				&::part(bar-active) {
 					top: 0;
+					z-index: -1;
 				}
 
 				&:hover {
@@ -670,6 +701,7 @@ function dismiss(): void {
 			display: flex;
 			align-items: center;
 			justify-content: space-evenly;
+			padding-block: 16px;
 
 			& > ion-button {
 				opacity: 70%;
