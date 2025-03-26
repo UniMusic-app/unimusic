@@ -396,6 +396,7 @@ function dismiss(): void {
 	@media screen and (min-width: 640px) {
 		--modal-handle-top: calc(var(--ion-safe-area-top) + 24px);
 	}
+
 	&::part(handle) {
 		background-color: white;
 		opacity: 80%;

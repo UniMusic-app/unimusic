@@ -200,10 +200,14 @@ export class LocalMusicService extends MusicService<LocalSong> {
 	}
 
 	#fuse?: Fuse<LocalSong>;
-	async handleSearchSongs(term: string, offset: number): Promise<LocalSong[]> {
+	async *handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<LocalSong> {
 		// TODO: Maybe split results in smaller chunks and actually paginate it?
 		if (offset > 0) {
-			return [];
+			return;
 		}
 
 		if (!this.#fuse) {
@@ -216,8 +220,13 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		}
 
 		const results = this.#fuse.search(term);
-		const songs = results.map((value) => value.item);
-		return songs;
+		for (const { item } of results) {
+			if (options?.signal?.aborted) {
+				return;
+			}
+
+			yield item;
+		}
 	}
 
 	handleGetSongFromSearchResult(searchResult: LocalSong): LocalSong {

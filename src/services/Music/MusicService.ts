@@ -37,9 +37,11 @@ export interface SongSearchResult<Song extends AnySong = AnySong> {
 
 	id: string;
 	artists: string[];
+	genres: string[];
 	title?: string;
 	album?: string;
 	artwork?: LocalImage;
+	duration?: number;
 }
 
 export class SilentError extends Error {
@@ -239,12 +241,31 @@ export abstract class MusicService<
 		}
 	}
 
-	// TODO: make search and library return reactive arrays
-	abstract handleSearchSongs(term: string, offset: number): Promise<SearchResult[]>;
-	async searchSongs(term: string, offset = 0): Promise<SearchResult[]> {
+	abstract handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SearchResult>;
+	async *searchSongs(
+		term: string,
+		offset = 0,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SearchResult> {
 		this.log("searchSongs");
 		await this.initialize();
-		return await this.withErrorHandling([], this.handleSearchSongs, term, offset);
+
+		const results = await this.withErrorHandling(
+			undefined!,
+			this.handleSearchSongs,
+			term,
+			offset,
+			options,
+		);
+		if (!results) return;
+
+		for await (const result of results) {
+			yield result;
+		}
 	}
 
 	abstract handleGetSongFromSearchResult(searchResult: SearchResult): Song | Promise<Song>;

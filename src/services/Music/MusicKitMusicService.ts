@@ -4,11 +4,81 @@ import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { MusicKitSong, Playlist } from "@/stores/music-player";
 
 import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
-import { MusicService, MusicServiceEvent, SilentError } from "@/services/Music/MusicService";
+import {
+	MusicService,
+	MusicServiceEvent,
+	SilentError,
+	SongSearchResult,
+} from "@/services/Music/MusicService";
 
 import { generateUUID } from "@/utils/crypto";
 import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
+
+export function musicKitSearchResult(
+	song: MusicKit.Songs | MusicKit.LibrarySongs,
+): SongSearchResult<MusicKitSong> {
+	const { id, attributes } = song;
+
+	const artworkAttribute = attributes?.artwork;
+
+	let artwork: Maybe<LocalImage>;
+	if (artworkAttribute) {
+		const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 256, 256);
+		artwork = { url: artworkUrl };
+	}
+
+	const artists = attributes?.artistName ? [attributes?.artistName] : [];
+	const genres = attributes?.genreNames ?? [];
+
+	return {
+		type: "musickit",
+
+		id,
+		artists,
+		title: attributes?.name,
+		album: attributes?.albumName,
+		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
+		genres,
+
+		artwork,
+	};
+}
+
+export async function musicKitSearchResultToSong(
+	searchResult: SongSearchResult<MusicKitSong>,
+): Promise<MusicKitSong> {
+	const { id, artists, genres, title, album, duration } = searchResult;
+
+	let artwork: Maybe<LocalImage>;
+	if (searchResult.artwork) {
+		const localImages = useLocalImages();
+		try {
+			const artworkBlob = await (await fetch(searchResult.artwork.url!)).blob();
+			await localImages.associateImage(id, artworkBlob);
+			artwork = { id };
+		} catch {
+			artwork = searchResult.artwork;
+		}
+	}
+
+	return {
+		type: "musickit",
+
+		id,
+		artists,
+		genres,
+
+		title,
+		album,
+		duration,
+
+		artwork,
+		style: await generateSongStyle(artwork),
+
+		data: {},
+	};
+}
 
 export async function musicKitSong(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
@@ -16,6 +86,8 @@ export async function musicKitSong(
 	const { id, attributes } = song;
 
 	const artworkAttribute = attributes?.artwork;
+	const artists = attributes?.artistName ? [attributes?.artistName] : [];
+	const genres = attributes?.genreNames ?? [];
 
 	let artwork: Maybe<LocalImage>;
 	if (artworkAttribute) {
@@ -30,9 +102,6 @@ export async function musicKitSong(
 			artwork = { url: artworkUrl };
 		}
 	}
-
-	const artists = attributes?.artistName ? [attributes?.artistName] : [];
-	const genres = attributes?.genreNames ?? [];
 
 	return {
 		type: "musickit",
@@ -155,7 +224,11 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 		};
 	}
 
-	async handleSearchSongs(term: string, offset: number): Promise<MusicKitSong[]> {
+	async *handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SongSearchResult<MusicKitSong>> {
 		const response = await this.music!.api.music<
 			MusicKit.SearchResponse,
 			MusicKit.CatalogSearchQuery
@@ -167,14 +240,20 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 		});
 
 		const songs = response?.data?.results?.songs?.data;
-		if (songs) {
-			return await Promise.all(songs.map(musicKitSong));
+		if (!songs) return;
+
+		for (const song of songs) {
+			if (options?.signal?.aborted) {
+				return;
+			}
+			yield musicKitSearchResult(song);
 		}
-		return [];
 	}
 
-	handleGetSongFromSearchResult(searchResult: MusicKitSong): MusicKitSong {
-		return searchResult;
+	async handleGetSongFromSearchResult(
+		searchResult: SongSearchResult<MusicKitSong>,
+	): Promise<MusicKitSong> {
+		return await musicKitSearchResultToSong(searchResult);
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {

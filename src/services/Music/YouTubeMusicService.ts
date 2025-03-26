@@ -22,6 +22,7 @@ export function youtubeSongSearchResult(
 		title: node.title,
 		album: node.album?.name,
 		artists,
+		genres: [],
 		artwork,
 	};
 }
@@ -190,21 +191,44 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 
 	handleDeinitialization(): void {}
 
-	async handleSearchSongs(term: string, _offset: number): Promise<SongSearchResult<YouTubeSong>[]> {
-		// TODO: Handle continuation
-		const results = await this.innertube!.music.search(term, { type: "song" });
-		if (!results.contents) return [];
-
-		const songs: SongSearchResult<YouTubeSong>[] = [];
-		for (const result of results.contents) {
-			if (!result.is(YTNodes.MusicShelf)) continue;
-
-			for (const item of result.contents) {
-				if (!item.id) continue;
-				songs.push(youtubeSongSearchResult(item));
+	#search = {
+		term: "",
+		pages: [] as (YTMusic.Search | Awaited<ReturnType<YTMusic.Search["getContinuation"]>>)[],
+	};
+	async *handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SongSearchResult<YouTubeSong>> {
+		let contents;
+		if (this.#search.term === term && offset !== 0) {
+			const lastPage = this.#search.pages.at(-1);
+			console.log("last page:", lastPage, "has_cont:", lastPage?.has_continuation);
+			if (lastPage?.has_continuation) {
+				const continuation = await lastPage.getContinuation();
+				this.#search.pages.push(continuation);
+				contents = continuation.contents?.contents?.filter((node) =>
+					node.is(YTNodes.MusicResponsiveListItem),
+				);
 			}
+		} else {
+			const results = await this.innertube!.music.search(term, { type: "song" });
+			this.#search = { term, pages: [results] };
+			contents = results.contents
+				?.filter((node) => node.is(YTNodes.MusicShelf))
+				?.flatMap((shelf) => shelf.contents);
 		}
-		return songs;
+
+		if (!contents) return;
+
+		for (const result of contents) {
+			if (options?.signal?.aborted) {
+				return;
+			}
+
+			if (!result.id) continue;
+			yield youtubeSongSearchResult(result);
+		}
 	}
 
 	async handleGetSongFromSearchResult(

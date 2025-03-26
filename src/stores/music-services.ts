@@ -40,9 +40,14 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return allHints.flat();
 	}
 
-	async function searchSongs(term: string, offset = 0): Promise<SongSearchResult[]> {
-		const allResults = await withAllServices((service) => service.searchSongs(term, offset));
-		return allResults.flat();
+	async function* searchSongs(
+		term: string,
+		offset = 0,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SongSearchResult> {
+		for (const service of enabledServices.value) {
+			yield* service.searchSongs(term, offset, options);
+		}
 	}
 
 	async function librarySongs(offset = 0): Promise<AnySong[]> {
