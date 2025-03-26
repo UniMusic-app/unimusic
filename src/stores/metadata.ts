@@ -1,59 +1,36 @@
-import { AnySong, SongImage } from "@/stores/music-player";
-import { useIDBKeyvalAsync } from "@/utils/vue";
+import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval";
 import { defineStore } from "pinia";
-import { reactive, Reactive, toRaw } from "vue";
+import { toRaw } from "vue";
 
-export interface MetadataOverride {
-	artists?: string[];
-	album?: string;
-	title?: string;
-	duration?: number;
-	artwork?: SongImage;
-	genres?: string[];
-}
+import { AnySong, Song } from "@/stores/music-player";
 
-interface MetadataOverrides {
-	[id: string]: MetadataOverride | undefined;
-}
+import { Maybe } from "@/utils/types";
+
+type MetadataOverride = {
+	[key in Exclude<keyof AnySong, "id" | "type">]?: AnySong[key];
+};
 
 export const useSongMetadata = defineStore("SongMetadata", () => {
-	const metadataOverridesPromise = useIDBKeyvalAsync<MetadataOverrides>("metadataOverrides", {});
+	const overrides = useIDBKeyval<Record<string, Maybe<MetadataOverride>>>("metadataOverrides", {});
 
-	function getReactiveMetadata(song: AnySong): Reactive<MetadataOverride> {
-		const metadata = reactive<MetadataOverride>({});
-		void metadataOverridesPromise.then((metadataOverrides) => {
-			Object.assign(metadata, metadataOverrides.value[song.id]);
-		});
-		return metadata;
+	function getSongMetadata(id: string): Maybe<MetadataOverride> {
+		return overrides.data.value[id];
 	}
 
-	async function getMetadata(song: AnySong): Promise<MetadataOverride> {
-		const metadataOverrides = await metadataOverridesPromise;
-		const metadata = (metadataOverrides.value[song.id] ??= {});
-		return toRaw(metadata);
+	function setMetadata(id: string, metadata?: MetadataOverride): void {
+		overrides.data.value[id] = toRaw(metadata);
 	}
 
-	async function setMetadata(song: AnySong, metadata: MetadataOverride): Promise<void> {
-		const metadataOverrides = await metadataOverridesPromise;
-		metadataOverrides.value[song.id] = toRaw(metadata);
-	}
-
-	async function assignMetadata(song: AnySong, metadata: MetadataOverride): Promise<void> {
-		const metadataOverrides = await metadataOverridesPromise;
-		const metadataOverride = (metadataOverrides.value[song.id] ??= {});
-		Object.assign(metadataOverride, toRaw(metadata));
-	}
-
-	async function resetMetadata(song: AnySong): Promise<void> {
-		const metadataOverrides = await metadataOverridesPromise;
-		delete metadataOverrides.value[song.id];
+	function applyMetadata<T extends Song<string> = AnySong>(
+		song: T,
+		metadata = getSongMetadata(song.id),
+	): T {
+		return Object.assign(song, metadata satisfies Maybe<Partial<AnySong>>);
 	}
 
 	return {
-		getReactiveMetadata,
-		getMetadata,
+		getSongMetadata,
 		setMetadata,
-		assignMetadata,
-		resetMetadata,
+		applyMetadata,
 	};
 });

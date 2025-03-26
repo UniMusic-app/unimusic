@@ -1,10 +1,10 @@
 import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
-import { MusicPlayerService, SongSearchResult } from "@/services/MusicPlayer/MusicPlayerService";
-import type { Playlist, SongImage, YouTubeSong } from "@/stores/music-player";
+import { MusicService, MusicServiceEvent, SongSearchResult } from "@/services/Music/MusicService";
+import type { Playlist, YouTubeSong } from "@/stores/music-player";
 
-import { useLocalImages } from "@/stores/local-images";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { generateSongStyle } from "@/utils/songs";
@@ -22,6 +22,7 @@ export function youtubeSongSearchResult(
 		title: node.title,
 		album: node.album?.name,
 		artists,
+		genres: [],
 		artwork,
 	};
 }
@@ -36,7 +37,18 @@ export async function youtubeSong(
 		throw new Error("Cannot generate YouTubeSong from item that doesn't have id");
 	}
 
-	const artwork = thumbnail?.[0] && { url: createCapacitorProxyUrl(thumbnail[0].url) };
+	const thumbnailUrl = thumbnail?.[0]?.url;
+	let artwork: Maybe<LocalImage>;
+	if (thumbnailUrl) {
+		const localImages = useLocalImages();
+		const artworkBlob = await (await fetch(thumbnailUrl)).blob();
+		await localImages.associateImage(id, artworkBlob, {
+			maxWidth: 512,
+			maxHeight: 512,
+		});
+		artwork = { id };
+	}
+
 	const album = searchResult?.album ?? tags?.at(-2);
 	const artists = searchResult?.artists ?? (author ? [author] : []);
 
@@ -63,20 +75,6 @@ const USER_AGENT =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.1";
 const GOOG_API_KEY = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw";
 const REQUEST_KEY = "O43z0dpjhgX20SCx4KAo";
-
-const SERVER_URL = "WEBVIEW_SERVER_URL" in window ? (window.WEBVIEW_SERVER_URL as string) : "";
-
-/**
- * Create a proxied url which uses native layer to bypass CORS
- * @see https://github.com/ionic-team/capacitor/blob/90f95d1a829f3d87cb46af827b5bfaac319a9694/core/native-bridge.ts#L134
- */
-function createCapacitorProxyUrl(url: string): string {
-	if (!SERVER_URL) return url;
-	const bridgeUrl = new URL(SERVER_URL);
-	bridgeUrl.pathname = "/_capacitor_http_interceptor_";
-	bridgeUrl.searchParams.append("u", url);
-	return bridgeUrl.toString();
-}
 
 async function createWebPoMinter(): Promise<BG.WebPoMinter> {
 	const fetch = isElectron() ? window.fetch : window.capacitorFetch;
@@ -139,8 +137,8 @@ async function createWebPoMinter(): Promise<BG.WebPoMinter> {
 	return integrityTokenBasedMinter;
 }
 
-export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
-	logName = "YouTubeMusicPlayerService";
+export class YouTubeMusicService extends MusicService<YouTubeSong> {
+	logName = "YouTubeMusicService";
 	logColor = "#ff0000";
 	type = "youtube" as const;
 	available = getPlatform() !== "web";
@@ -152,13 +150,13 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const audio = new Audio();
 		document.body.appendChild(audio);
 		audio.addEventListener("timeupdate", () => {
-			this.store.time = audio.currentTime;
+			this.dispatchEvent(new MusicServiceEvent("timeupdate", audio.currentTime));
 		});
 		audio.addEventListener("playing", () => {
-			this.store.addMusicSessionActionHandlers();
+			this.dispatchEvent(new MusicServiceEvent("playing"));
 		});
 		audio.addEventListener("ended", () => {
-			this.store.skipNext();
+			this.dispatchEvent(new MusicServiceEvent("ended"));
 		});
 		this.audio = audio;
 
@@ -193,21 +191,44 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 
 	handleDeinitialization(): void {}
 
-	async handleSearchSongs(term: string, _offset: number): Promise<SongSearchResult<YouTubeSong>[]> {
-		// TODO: Handle continuation
-		const results = await this.innertube!.music.search(term, { type: "song" });
-		if (!results.contents) return [];
-
-		const songs: SongSearchResult<YouTubeSong>[] = [];
-		for (const result of results.contents) {
-			if (!result.is(YTNodes.MusicShelf)) continue;
-
-			for (const item of result.contents) {
-				if (!item.id) continue;
-				songs.push(youtubeSongSearchResult(item));
+	#search = {
+		term: "",
+		pages: [] as (YTMusic.Search | Awaited<ReturnType<YTMusic.Search["getContinuation"]>>)[],
+	};
+	async *handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SongSearchResult<YouTubeSong>> {
+		let contents;
+		if (this.#search.term === term && offset !== 0) {
+			const lastPage = this.#search.pages.at(-1);
+			console.log("last page:", lastPage, "has_cont:", lastPage?.has_continuation);
+			if (lastPage?.has_continuation) {
+				const continuation = await lastPage.getContinuation();
+				this.#search.pages.push(continuation);
+				contents = continuation.contents?.contents?.filter((node) =>
+					node.is(YTNodes.MusicResponsiveListItem),
+				);
 			}
+		} else {
+			const results = await this.innertube!.music.search(term, { type: "song" });
+			this.#search = { term, pages: [results] };
+			contents = results.contents
+				?.filter((node) => node.is(YTNodes.MusicShelf))
+				?.flatMap((shelf) => shelf.contents);
 		}
-		return songs;
+
+		if (!contents) return;
+
+		for (const result of contents) {
+			if (options?.signal?.aborted) {
+				return;
+			}
+
+			if (!result.id) continue;
+			yield youtubeSongSearchResult(result);
+		}
 	}
 
 	async handleGetSongFromSearchResult(
@@ -215,12 +236,17 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 	): Promise<YouTubeSong> {
 		if (!this.innertube) {
 			throw new Error(
-				"Tried to call handleGetSongFromSearchResult() while YouTubeMusicPlayerService is not initialized",
+				"Tried to call handleGetSongFromSearchResult() while YouTubeMusicService is not initialized",
 			);
 		}
 
+		const cached = this.getCached(searchResult.id);
+		if (cached) {
+			return cached;
+		}
+
 		const info = await this.innertube.music.getInfo(searchResult.id);
-		const song = await youtubeSong(info, searchResult);
+		const song = this.cacheSong(await youtubeSong(info, searchResult));
 		return song;
 	}
 
@@ -252,11 +278,14 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		const title = header?.title?.toString() ?? "Unknown title";
 		const thumbnail = header?.thumbnail?.contents?.[0];
 
-		let artwork: Maybe<SongImage>;
+		let artwork: Maybe<LocalImage>;
 		if (thumbnail) {
 			const localImages = useLocalImages();
 			const artworkBlob = await (await fetch(thumbnail.url)).blob();
-			await localImages.localImageManagementService.associateImage(id, artworkBlob);
+			await localImages.associateImage(id, artworkBlob, {
+				maxWidth: 512,
+				maxHeight: 512,
+			});
 			artwork = { id };
 		}
 
@@ -294,9 +323,18 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 		// TODO: Unimplemented
 	}
 
+	async handleGetSong(songId: string, cache = true): Promise<YouTubeSong> {
+		if (cache) {
+			const cachedSong = this.getCached(songId);
+			if (cachedSong) return cachedSong;
+		}
+
+		const trackInfo = await this.innertube!.music.getInfo(songId);
+		return this.cacheSong(await youtubeSong(trackInfo));
+	}
+
 	async handleRefreshSong(song: YouTubeSong): Promise<YouTubeSong> {
-		const trackInfo = await this.innertube!.music.getInfo(song.id);
-		return youtubeSong(trackInfo);
+		return await this.handleGetSong(song.id, false);
 	}
 
 	async handlePlay(): Promise<void> {
@@ -355,6 +393,7 @@ export class YouTubeMusicPlayerService extends MusicPlayerService<YouTubeSong> {
 			addAudioSource(url, format.mime_type);
 			urlToFormats[url] = format;
 		}
+
 		try {
 			await audio!.play();
 		} catch (error) {

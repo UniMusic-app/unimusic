@@ -1,17 +1,20 @@
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
-import SongImg from "@/components/SongImg.vue";
+import LocalImg from "@/components/LocalImg.vue";
 
-import { useLocalImages } from "@/stores/local-images";
-import { SongImage } from "@/stores/music-player";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
 
 const localImages = useLocalImages();
 
-const { id } = defineProps<{ id: string }>();
-const emit = defineEmits<{ input: [{ value: SongImage }] }>();
+const props = defineProps<{ id: string; idOut?: string }>();
 
-const image = ref<SongImage>({ id });
+const id = props.id;
+const idOut = computed(() => props.idOut ?? props.id);
+
+const emit = defineEmits<{ input: [{ value: LocalImage }] }>();
+
+const image = ref<LocalImage>({ id });
 const imagePicker = ref<HTMLInputElement>();
 
 async function changeArtwork(): Promise<void> {
@@ -21,20 +24,20 @@ async function changeArtwork(): Promise<void> {
 		return;
 	}
 
-	const artwork = files[0];
-	await localImages.localImageManagementService.associateImage(id, artwork, {
-		width: 256,
-		height: 256,
+	const artwork = files[0]!;
+	await localImages.associateImage(idOut.value, artwork, {
+		maxWidth: 512,
+		maxHeight: 512,
 	});
 
-	image.value = { id };
+	image.value = { id: idOut.value };
 	emit("input", { value: image.value });
 }
 </script>
 
 <template>
 	<div class="song-image-picker">
-		<SongImg :src="image" :alt="`Image picker preview`" @click="imagePicker?.click()" />
+		<LocalImg :src="image" :alt="`Image picker preview`" @click="imagePicker?.click()" />
 		<input ref="imagePicker" type="file" accept="image/*" @change="changeArtwork" />
 	</div>
 </template>

@@ -1,21 +1,32 @@
-import { MusicKitSong, Playlist, SongImage } from "@/stores/music-player";
+import { alertController } from "@ionic/vue";
 
-import { MusicPlayerService, SilentError } from "@/services/MusicPlayer/MusicPlayerService";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { MusicKitSong, Playlist } from "@/stores/music-player";
 
-import { useLocalImages } from "@/stores/local-images";
+import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
+import {
+	MusicService,
+	MusicServiceEvent,
+	SilentError,
+	SongSearchResult,
+} from "@/services/Music/MusicService";
+
 import { generateUUID } from "@/utils/crypto";
 import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
-import { alertController } from "@ionic/vue";
-import { MusicKitAuthorizationService } from "../Authorization/MusicKitAuthorizationService";
 
-export async function musicKitSong(
+export function musicKitSearchResult(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
-): Promise<MusicKitSong> {
-	const attributes = song.attributes;
+): SongSearchResult<MusicKitSong> {
+	const { id, attributes } = song;
 
-	const artworkUrl = attributes?.artwork;
-	const artwork = artworkUrl && { url: MusicKit.formatArtworkURL(artworkUrl, 256, 256) };
+	const artworkAttribute = attributes?.artwork;
+
+	let artwork: Maybe<LocalImage>;
+	if (artworkAttribute) {
+		const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 256, 256);
+		artwork = { url: artworkUrl };
+	}
 
 	const artists = attributes?.artistName ? [attributes?.artistName] : [];
 	const genres = attributes?.genreNames ?? [];
@@ -23,7 +34,79 @@ export async function musicKitSong(
 	return {
 		type: "musickit",
 
-		id: song.id,
+		id,
+		artists,
+		title: attributes?.name,
+		album: attributes?.albumName,
+		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
+		genres,
+
+		artwork,
+	};
+}
+
+export async function musicKitSearchResultToSong(
+	searchResult: SongSearchResult<MusicKitSong>,
+): Promise<MusicKitSong> {
+	const { id, artists, genres, title, album, duration } = searchResult;
+
+	let artwork: Maybe<LocalImage>;
+	if (searchResult.artwork) {
+		const localImages = useLocalImages();
+		try {
+			const artworkBlob = await (await fetch(searchResult.artwork.url!)).blob();
+			await localImages.associateImage(id, artworkBlob);
+			artwork = { id };
+		} catch {
+			artwork = searchResult.artwork;
+		}
+	}
+
+	return {
+		type: "musickit",
+
+		id,
+		artists,
+		genres,
+
+		title,
+		album,
+		duration,
+
+		artwork,
+		style: await generateSongStyle(artwork),
+
+		data: {},
+	};
+}
+
+export async function musicKitSong(
+	song: MusicKit.Songs | MusicKit.LibrarySongs,
+): Promise<MusicKitSong> {
+	const { id, attributes } = song;
+
+	const artworkAttribute = attributes?.artwork;
+	const artists = attributes?.artistName ? [attributes?.artistName] : [];
+	const genres = attributes?.genreNames ?? [];
+
+	let artwork: Maybe<LocalImage>;
+	if (artworkAttribute) {
+		const localImages = useLocalImages();
+		const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 256, 256);
+		try {
+			const artworkBlob = await (await fetch(artworkUrl)).blob();
+			await localImages.associateImage(id, artworkBlob);
+			artwork = { id };
+		} catch {
+			// TODO: Remove this after Apple fixes artwork CORS issues
+			artwork = { url: artworkUrl };
+		}
+	}
+
+	return {
+		type: "musickit",
+
+		id,
 		artists,
 		genres,
 
@@ -38,15 +121,15 @@ export async function musicKitSong(
 	};
 }
 
-export function musicKitSongIdType(song: MusicKitSong): "library" | "catalog" {
-	if (!isNaN(Number(song.id))) {
+export function musicKitSongIdType(id: string): "library" | "catalog" {
+	if (!isNaN(Number(id))) {
 		return "catalog";
 	}
 	return "library";
 }
 
-export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong> {
-	logName = "MusicKitMusicPlayerService";
+export class MusicKitMusicService extends MusicService<MusicKitSong> {
+	logName = "MusicKitMusicService";
 	logColor = "#cc80dd";
 	type = "musickit" as const;
 	available = true;
@@ -114,13 +197,14 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 
 		const id = generateUUID();
 		const title = playlist.attributes?.name ?? "Unknown title";
-		const artworkUrl = playlist.attributes?.artwork;
+		const artworkAttribute = playlist.attributes?.artwork;
 
-		let artwork: Maybe<SongImage>;
-		if (artworkUrl) {
+		let artwork: Maybe<LocalImage>;
+		if (artworkAttribute) {
 			const localImages = useLocalImages();
-			const artworkBlob = await (await fetch(MusicKit.formatArtworkURL(artworkUrl))).blob();
-			await localImages.localImageManagementService.associateImage(id, artworkBlob);
+			const artworkUrl = MusicKit.formatArtworkURL(artworkAttribute, 256, 256);
+			const artworkBlob = await (await fetch(artworkUrl)).blob();
+			await localImages.associateImage(id, artworkBlob);
 			artwork = { id };
 		}
 
@@ -140,7 +224,11 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		};
 	}
 
-	async handleSearchSongs(term: string, offset: number): Promise<MusicKitSong[]> {
+	async *handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SongSearchResult<MusicKitSong>> {
 		const response = await this.music!.api.music<
 			MusicKit.SearchResponse,
 			MusicKit.CatalogSearchQuery
@@ -148,41 +236,56 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 			term,
 			types: ["songs", "music-videos"],
 			limit: 25,
-			offset,
+			offset: offset * 25 + 1,
 		});
 
 		const songs = response?.data?.results?.songs?.data;
-		if (songs) {
-			return await Promise.all(songs.map(musicKitSong));
+		if (!songs) return;
+
+		for (const song of songs) {
+			if (options?.signal?.aborted) {
+				return;
+			}
+			yield musicKitSearchResult(song);
 		}
-		return [];
 	}
 
-	handleGetSongFromSearchResult(searchResult: MusicKitSong): MusicKitSong {
-		return searchResult;
+	async handleGetSongFromSearchResult(
+		searchResult: SongSearchResult<MusicKitSong>,
+	): Promise<MusicKitSong> {
+		return await musicKitSearchResultToSong(searchResult);
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {
 		// TODO: Unimplemented
 	}
 
-	async handleRefreshSong(song: MusicKitSong): Promise<MusicKitSong> {
-		const idType = musicKitSongIdType(song);
+	async handleGetSong(songId: string, cache = true): Promise<MusicKitSong> {
+		if (cache) {
+			const cachedSong = this.getCached(songId);
+			if (cachedSong) return cachedSong;
+		}
+
+		const idType = musicKitSongIdType(songId);
 
 		const response = await this.music!.api.music<
 			MusicKit.SongsResponse | MusicKit.LibrarySongsResponse
 		>(
 			idType === "catalog"
-				? `/v1/catalog/{{storefrontId}}/songs/${song.id}`
-				: `/v1/me/library/songs/${song.id}`,
+				? `/v1/catalog/{{storefrontId}}/songs/${songId}`
+				: `/v1/me/library/songs/${songId}`,
 		);
 
-		const [refreshed] = response.data.data;
-		if (!refreshed) {
-			throw new Error(`Failed to find a song with id: ${song.id}`);
+		const [responseSong] = response.data.data;
+		if (!responseSong) {
+			throw new Error(`Failed to find a song with id: ${songId}`);
 		}
 
-		return musicKitSong(refreshed);
+		return this.cacheSong(await musicKitSong(responseSong));
+	}
+
+	async handleRefreshSong(song: MusicKitSong): Promise<MusicKitSong> {
+		return await this.handleGetSong(song.id, false);
 	}
 
 	async handleLibrarySongs(offset: number): Promise<MusicKitSong[]> {
@@ -191,20 +294,18 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 			MusicKit.LibrarySongsQuery
 		>("/v1/me/library/songs", { limit: 25, offset });
 
-		const songs = response.data.data.filter((song) => {
-			// Filter out songs that cannot be played
-			return !!song.attributes?.playParams;
-		});
-		const promises = songs.map((song) => musicKitSong(song));
-		return await Promise.all(promises);
+		const songs = response.data.data
+			.filter((song) => {
+				// Filter out songs that cannot be played
+				return !!song.attributes?.playParams;
+			})
+			.map((song) => this.getCached(song.id) ?? this.cacheSongPromise(musicKitSong(song)));
+
+		return await Promise.all(songs);
 	}
 
-	#timeUpdateCallback = (): void => {
-		this.store.time = this.music!.currentPlaybackTime;
-	};
-
 	async handleInitialization(): Promise<void> {
-		while (!this.authorization.isAuthorized) {
+		while (!this.authorization.authorized.value) {
 			const alert = await alertController.create({
 				header: "You need to authorize MusicKit",
 				subHeader: this.logName,
@@ -229,9 +330,11 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		this.music = music;
 
 		music.repeatMode = MusicKit.PlayerRepeatMode.none;
-		music.addEventListener("playbackTimeDidChange", this.#timeUpdateCallback);
-		music.addEventListener("mediaCanPlay", () => this.store.addMusicSessionActionHandlers(), {
-			once: true,
+		music.addEventListener("playbackTimeDidChange", () => {
+			this.dispatchEvent(new MusicServiceEvent("timeupdate", this.music!.currentPlaybackTime));
+		});
+		music.addEventListener("mediaCanPlay", () => {
+			this.dispatchEvent(new MusicServiceEvent("playing"));
 		});
 
 		// MusicKit attaches listeners to persist playback state on visibility state changes
@@ -239,7 +342,7 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 		music.addEventListener("playbackStateDidChange", async ({ state }) => {
 			switch (state) {
 				case MusicKit.PlaybackStates.ended:
-					this.store.skipNext();
+					this.dispatchEvent(new MusicServiceEvent("ended"));
 					break;
 				case MusicKit.PlaybackStates.playing:
 					if (!this.song) {
@@ -257,15 +360,28 @@ export class MusicKitMusicPlayerService extends MusicPlayerService<MusicKitSong>
 	handleDeinitialization(): void {}
 
 	async handlePlay(): Promise<void> {
-		const { music } = this;
-		await music?.setQueue({ song: this.song!.id });
 		try {
-			await music?.play();
+			const { music, song } = this;
+			if (!music || !song) return;
+
+			await music.stop();
+			await music.setQueue({ song: song.id, startPlaying: true, startTime: 0 });
 		} catch (error) {
-			// Someone skipped or stopped the song while it was still trying to play it, let it slide
-			if (error instanceof Error && error.name === "AbortError") {
-				return;
+			console.log("err:", error);
+
+			if (error instanceof Error) {
+				// Someone skipped or stopped the song while it was still trying to play it, let it slide
+				if (
+					error.name === "AbortError" ||
+					error.message.includes(
+						"The play() method was called without a previous stop() or pause() call.",
+					)
+				) {
+					return;
+				}
 			}
+
+			throw error;
 		}
 	}
 

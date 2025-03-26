@@ -3,15 +3,16 @@ import { parseBuffer, selectCover } from "music-metadata";
 
 import LocalMusic from "@/plugins/LocalMusicPlugin";
 
-import { useLocalImages } from "@/stores/local-images";
-import { LocalSong, SongImage } from "@/stores/music-player";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { LocalSong } from "@/stores/music-player";
 
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
 
 import { base64StringToBuffer } from "@/utils/buffer";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { generateSongStyle } from "@/utils/songs";
+import { Maybe } from "@/utils/types";
 import { useIDBKeyvalAsync } from "@/utils/vue";
 
 const localSongs = useIDBKeyvalAsync<LocalSong[]>("localMusicSongs", []);
@@ -106,14 +107,16 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
 	const duration = format.duration;
 	const genres = common.genre ?? [];
-	let artwork: SongImage | undefined;
+
 	const coverImage = selectCover(common.picture);
+	let artwork: Maybe<LocalImage>;
 	if (coverImage) {
-		const { data, type } = coverImage;
 		const localImages = useLocalImages();
-		await localImages.localImageManagementService.associateImage(id, new Blob([data], { type }), {
-			width: 256,
-			height: 256,
+		const { data, type } = coverImage;
+		const artworkBlob = new Blob([data], { type });
+		await localImages.associateImage(id, artworkBlob, {
+			maxHeight: 512,
+			maxWidth: 512,
 		});
 		artwork = { id };
 	}
@@ -180,8 +183,8 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 	return songs.value;
 }
 
-export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
-	logName = "LocalMusicPlayerService";
+export class LocalMusicService extends MusicService<LocalSong> {
+	logName = "LocalMusicService";
 	logColor = "#ddd480";
 	type = "local" as const;
 	available = getPlatform() !== "web";
@@ -197,10 +200,14 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	}
 
 	#fuse?: Fuse<LocalSong>;
-	async handleSearchSongs(term: string, offset: number): Promise<LocalSong[]> {
+	async *handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<LocalSong> {
 		// TODO: Maybe split results in smaller chunks and actually paginate it?
 		if (offset > 0) {
-			return [];
+			return;
 		}
 
 		if (!this.#fuse) {
@@ -213,8 +220,13 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		}
 
 		const results = this.#fuse.search(term);
-		const songs = results.map((value) => value.item);
-		return songs;
+		for (const { item } of results) {
+			if (options?.signal?.aborted) {
+				return;
+			}
+
+			yield item;
+		}
 	}
 
 	handleGetSongFromSearchResult(searchResult: LocalSong): LocalSong {
@@ -231,6 +243,12 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 		await getLocalSongs(true);
 	}
 
+	async handleGetSong(filePath: string): Promise<LocalSong> {
+		const data = await readSongFile(filePath);
+		const song = await parseLocalSong(data, filePath, filePath);
+		return song;
+	}
+
 	async handleRefreshSong(song: LocalSong): Promise<LocalSong> {
 		const filePath = song.data.path;
 		const data = await readSongFile(filePath);
@@ -239,17 +257,17 @@ export class LocalMusicPlayerService extends MusicPlayerService<LocalSong> {
 	}
 
 	handleInitialization(): void {
-		// TODO: Make an abstract MusicPlayerService class that uses HTMLAudioElement
-		// 		 Since this is shared between {YouTube,Local}MusicPlayerService's, and possibly more in the future
+		// TODO: Make an abstract MusicService class that uses HTMLAudioElement
+		// 		 Since this is shared between {YouTube,Local}MusicService's, and possibly more in the future
 		const audio = new Audio();
 		audio.addEventListener("timeupdate", () => {
-			this.store.time = audio.currentTime;
+			this.dispatchEvent(new MusicServiceEvent("timeupdate", audio.currentTime));
 		});
 		audio.addEventListener("playing", () => {
-			this.store.addMusicSessionActionHandlers();
+			this.dispatchEvent(new MusicServiceEvent("playing"));
 		});
 		audio.addEventListener("ended", () => {
-			this.store.skipNext();
+			this.dispatchEvent(new MusicServiceEvent("ended"));
 		});
 		this.audio = audio;
 	}

@@ -16,7 +16,9 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { SongImage, useMusicPlayer } from "@/stores/music-player";
+import { LocalImage } from "@/stores/local-images";
+import { useMusicPlayer } from "@/stores/music-player";
+
 import { generateUUID } from "@/utils/crypto";
 import { usePresentingElement } from "@/utils/vue";
 
@@ -28,7 +30,7 @@ const presentingElement = usePresentingElement();
 
 const playlistId = ref(generateUUID());
 const playlistTitle = ref("");
-const artwork = ref<SongImage>();
+const artwork = ref<LocalImage>();
 const modified = computed(() => !!(playlistTitle.value || artwork.value));
 const canCreate = computed(() => !!playlistTitle.value);
 
@@ -41,7 +43,7 @@ function resetModal(): void {
 function create(): void {
 	if (!canCreate.value) return;
 
-	musicPlayer.addPlaylist({
+	musicPlayer.state.addPlaylist({
 		id: playlistId.value,
 		title: playlistTitle.value,
 		artwork: toRaw(artwork.value),
@@ -156,8 +158,11 @@ async function canDismiss(reason?: "createdPlaylist"): Promise<boolean> {
 
 	& > ion-list {
 		width: 100%;
+		background: transparent;
 
 		& > ion-item {
+			--background: transparent;
+
 			& > ion-input {
 				font-size: 1.625rem;
 				font-weight: bold;

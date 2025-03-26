@@ -1,16 +1,35 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-
-import { useSongMetadata } from "@/stores/metadata";
-import { AnySong, Playlist, SongImage, useMusicPlayer } from "@/stores/music-player";
-
-import { Service } from "@/services/Service";
-import { Maybe } from "@/utils/types";
 import { alertController } from "@ionic/vue";
-import { computed, reactive, ref } from "vue";
-import { AuthorizationService } from "../Authorization/AuthorizationService";
+import { computed, ref } from "vue";
 
-export interface MusicPlayerServiceState {
+import { useMusicPlayer, type AnySong, type Playlist } from "@/stores/music-player";
+import { useMusicPlayerState } from "@/stores/music-state";
+
+import { AuthorizationService } from "@/services/Authorization/AuthorizationService";
+import { Service } from "@/services/Service";
+import { useMusicServices } from "@/stores/music-services";
+
+import { LocalImage } from "@/stores/local-images";
+import { useSongMetadata } from "@/stores/metadata";
+import { Maybe } from "@/utils/types";
+
+export interface MusicServiceState {
 	enabled: boolean;
+}
+
+interface MusicServiceEventTypes {
+	playing: never;
+	ended: never;
+	timeupdate: number;
+}
+type MusicServiceEventType = keyof MusicServiceEventTypes;
+
+export class MusicServiceEvent<Type extends MusicServiceEventType> extends CustomEvent<
+	MusicServiceEventTypes[Type]
+> {
+	constructor(type: Type, detail?: MusicServiceEventTypes[Type]) {
+		super(type, { detail });
+	}
 }
 
 export interface SongSearchResult<Song extends AnySong = AnySong> {
@@ -18,9 +37,11 @@ export interface SongSearchResult<Song extends AnySong = AnySong> {
 
 	id: string;
 	artists: string[];
+	genres: string[];
 	title?: string;
 	album?: string;
-	artwork?: SongImage;
+	artwork?: LocalImage;
+	duration?: number;
 }
 
 export class SilentError extends Error {
@@ -29,21 +50,25 @@ export class SilentError extends Error {
 	}
 }
 
-export abstract class MusicPlayerService<
+export abstract class MusicService<
 	Song extends AnySong = AnySong,
 	const SearchResult extends SongSearchResult<Song> = SongSearchResult<Song>,
-> extends Service<MusicPlayerServiceState> {
+> extends Service<MusicServiceState> {
 	abstract logName: string;
 	abstract type: Song["type"];
 	abstract available: boolean;
 
 	authorization?: AuthorizationService;
 
-	store = useMusicPlayer();
-	metadataStore = useSongMetadata();
+	state = useMusicPlayerState();
+	services = useMusicServices();
+	metadata = useSongMetadata();
+
 	initialized = false;
 	initialPlayed = false;
 	song?: Song;
+
+	#cache = new Map<string, Song>();
 
 	#enabled = ref(false);
 	enabled = computed({
@@ -65,6 +90,65 @@ export abstract class MusicPlayerService<
 
 		// Execute restoreState after the whole class has been instantiated
 		queueMicrotask(() => void this.restoreState());
+
+		this.addEventListener("playing", () => {
+			const musicPlayer = useMusicPlayer();
+			musicPlayer.addMusicSessionActionHandlers();
+		});
+
+		this.addEventListener("ended", async () => {
+			const musicPlayer = useMusicPlayer();
+			await musicPlayer.skipNext();
+		});
+
+		this.addEventListener("timeupdate", (event) => {
+			this.state.time = event.detail;
+		});
+	}
+
+	dispatchEvent<Type extends MusicServiceEventType>(event: MusicServiceEvent<Type>): boolean {
+		return super.dispatchEvent(event);
+	}
+
+	addEventListener<Type extends MusicServiceEventType>(
+		type: Type,
+		callback:
+			| ((event: MusicServiceEvent<Type>) => void)
+			| { handleEvent(object: MusicServiceEvent<Type>): void }
+			| null,
+		options?: AddEventListenerOptions | boolean,
+	): void {
+		super.addEventListener(type, callback as EventListenerOrEventListenerObject | null, options);
+	}
+
+	async enable(): Promise<void> {
+		this.log("enable");
+		this.#enabled.value = true;
+		await this.initialize();
+		await this.saveState({ enabled: true });
+	}
+
+	async disable(): Promise<void> {
+		this.log("disable");
+		this.#enabled.value = false;
+		await this.deinitialize();
+		await this.saveState({ enabled: false });
+	}
+
+	cacheSong(song: Song): Song {
+		this.#cache.set(song.id, song);
+		return song;
+	}
+
+	cacheSongPromise(song: Promise<Song>): Promise<Song> {
+		return song.then((song) => {
+			this.#cache.set(song.id, song);
+			return song;
+		});
+	}
+
+	getCached(id: string): Maybe<Song> {
+		return this.#cache.get(id);
 	}
 
 	async restoreState(): Promise<void> {
@@ -77,49 +161,8 @@ export abstract class MusicPlayerService<
 		this.enabled.value = state.enabled;
 	}
 
-	async disable(): Promise<void> {
-		this.log("disable");
-		this.#enabled.value = false;
-		await this.deinitialize();
-		await this.saveState({ enabled: false });
-	}
-
-	async enable(): Promise<void> {
-		this.log("enable");
-		this.#enabled.value = true;
-		await this.initialize();
-		await this.saveState({ enabled: true });
-	}
-
-	static #registeredServices: Record<string, MusicPlayerService> = reactive({});
-	static registerService(service: MusicPlayerService): void {
-		this.#registeredServices[service.type] = service;
-	}
-	static getRegisteredServices(): Readonly<Record<string, MusicPlayerService>> {
-		return this.#registeredServices;
-	}
-	static getEnabledServices(): MusicPlayerService[] {
-		return Object.values(this.#registeredServices).filter((service) => service.enabled.value);
-	}
-	static getService(type: string): Maybe<MusicPlayerService> {
-		const service = this.#registeredServices[type];
-		if (!service.enabled) return undefined;
-		return service;
-	}
-
-	static async stopServices(except?: MusicPlayerService): Promise<void> {
-		console.log(
-			`%cMusicPlayerService:`,
-			`color: #91dd80; font-weight: bold;`,
-			"Deinitializing MusicPlayer services",
-		);
-
-		for (const service of MusicPlayerService.getEnabledServices()) {
-			if (service === except) continue;
-			await service.stop();
-		}
-	}
-
+	// TODO: Rework error handling, instead of wrapping function in this
+	//		 just allow throwing {Silent,Unrecoverable,Recoverable}Error classes
 	async withUnrecoverableErrorHandling<const Fn extends (...args: any) => any>(
 		fn: Fn,
 		...args: Parameters<Fn>
@@ -198,12 +241,31 @@ export abstract class MusicPlayerService<
 		}
 	}
 
-	// TODO: make search and library return reactive arrays
-	abstract handleSearchSongs(term: string, offset: number): Promise<SearchResult[]>;
-	async searchSongs(term: string, offset = 0): Promise<SearchResult[]> {
+	abstract handleSearchSongs(
+		term: string,
+		offset: number,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SearchResult>;
+	async *searchSongs(
+		term: string,
+		offset = 0,
+		options?: { signal: AbortSignal },
+	): AsyncGenerator<SearchResult> {
 		this.log("searchSongs");
 		await this.initialize();
-		return await this.withErrorHandling([], this.handleSearchSongs, term, offset);
+
+		const results = await this.withErrorHandling(
+			undefined!,
+			this.handleSearchSongs,
+			term,
+			offset,
+			options,
+		);
+		if (!results) return;
+
+		for await (const result of results) {
+			yield result;
+		}
 	}
 
 	abstract handleGetSongFromSearchResult(searchResult: SearchResult): Song | Promise<Song>;
@@ -226,14 +288,15 @@ export abstract class MusicPlayerService<
 	async librarySongs(offset = 0): Promise<Song[]> {
 		this.log("librarySongs");
 		await this.initialize();
-		const songs = await this.withUnrecoverableErrorHandling(async () => {
-			const songs = await this.handleLibrarySongs(offset);
-			for (const song of songs) {
-				await this.applyMetadata(song);
-			}
-			return songs;
-		});
+		const songs = await this.withErrorHandling([], this.handleLibrarySongs, offset);
+		songs.map((song) => this.metadata.applyMetadata(song));
 		return songs;
+	}
+
+	abstract handleRefreshLibrarySongs(): void | Promise<void>;
+	async refreshLibrarySongs(): Promise<void> {
+		this.log("refresh");
+		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
 	}
 
 	handleGetPlaylist?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
@@ -246,37 +309,37 @@ export abstract class MusicPlayerService<
 		return playlist;
 	}
 
-	async handleApplyMetadata(song: Song): Promise<void> {
-		const metadata = await this.metadataStore.getMetadata(song);
-		if (Object.keys(metadata).length > 0) {
-			this.log("Applied metadata override for", song.id);
-			Object.assign(song, metadata satisfies Partial<AnySong>);
+	abstract handleGetSong(songId: string): Maybe<Song> | Promise<Maybe<Song>>;
+	async getSong(songId: string): Promise<Maybe<Song>> {
+		this.log("getSong");
+		await this.initialize();
+
+		const song = await this.withErrorHandling(undefined, this.handleGetSong, songId);
+		if (song) {
+			this.metadata.applyMetadata(song);
+			return song;
 		}
 	}
-	async applyMetadata(song: Song): Promise<void> {
-		this.log("applyMetadata");
-		await this.withErrorHandling(undefined, this.handleApplyMetadata, song);
-	}
 
-	abstract handleRefreshLibrarySongs(): void | Promise<void>;
-	async refreshLibrarySongs(): Promise<void> {
-		this.log("refresh");
-		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
-	}
+	abstract handleRefreshSong(song: Song): Maybe<Song> | Promise<Maybe<Song>>;
+	async refreshSong(song: Song): Promise<Maybe<Song>> {
+		this.log("getSong");
+		await this.initialize();
 
-	abstract handleRefreshSong(song: Song): Song | Promise<Song>;
-	async refreshSong(song: Song): Promise<void> {
-		const refreshed = await this.handleRefreshSong(song);
-		if (song.id !== refreshed.id) {
-			throw new Error("Refreshing song unexpectedly changed its id");
+		const refreshed = await this.withErrorHandling(undefined, this.handleRefreshSong, song);
+		if (!refreshed) {
+			return;
 		}
-		await this.withErrorHandling(undefined, this.applyMetadata, refreshed);
 
-		for (const [i, song] of this.store.queuedSongs.entries()) {
+		this.metadata.applyMetadata(refreshed);
+		for (const { song } of this.state.queue) {
 			if (song.id === refreshed.id) {
-				this.store.queuedSongs[i] = refreshed;
+				this.metadata.applyMetadata(song);
+				Object.assign(song, refreshed);
 			}
 		}
+
+		return refreshed;
 	}
 
 	async changeSong(song: Song): Promise<void> {
@@ -286,10 +349,10 @@ export abstract class MusicPlayerService<
 		if (this.initialized) {
 			await this.stop();
 		}
-
 		this.song = song;
-		this.store.time = 0;
-		this.store.duration = song.duration ?? 1;
+
+		this.state.time = 0;
+		this.state.duration = song.duration ?? 1;
 	}
 
 	#initialization?: PromiseWithResolvers<void>;
@@ -311,6 +374,7 @@ export abstract class MusicPlayerService<
 		}
 
 		this.log("initializing");
+
 		try {
 			await this.withUnrecoverableErrorHandling(this.handleInitialization);
 		} catch (error) {
@@ -324,9 +388,6 @@ export abstract class MusicPlayerService<
 		this.initialized = true;
 		this.#initialization.resolve();
 		this.#initialization = undefined;
-
-		await this.seekToTime(0);
-		await this.setVolume(this.store.volume);
 	}
 
 	#deinitialization?: PromiseWithResolvers<void>;
@@ -357,8 +418,9 @@ export abstract class MusicPlayerService<
 
 	abstract handlePlay(): void | Promise<void>;
 	abstract handleResume(): Promise<void>;
+	// TODO: Support cancelling pending operations
 	async play(): Promise<void> {
-		this.store.loading = true;
+		this.state.loading.playPause = true;
 
 		try {
 			if (this.initialPlayed) {
@@ -366,34 +428,45 @@ export abstract class MusicPlayerService<
 				await this.withUnrecoverableErrorHandling(this.handleResume);
 			} else {
 				await this.initialize();
-				await MusicPlayerService.stopServices(this);
+
+				await this.seekToTime(0);
+				await this.setVolume(this.state.volume);
+
+				this.log("stopping other services");
+				for (const service of this.services.enabledServices) {
+					if (service === this) {
+						continue;
+					}
+					await service.stop();
+				}
+
 				this.log("play");
 				await this.withUnrecoverableErrorHandling(this.handlePlay);
 				this.initialPlayed = true;
 			}
 		} catch (error) {
-			this.store.loading = false;
+			this.state.loading.playPause = false;
 			throw error;
 		}
 
-		this.store.loading = false;
-		this.store.playing = true;
+		this.state.loading.playPause = false;
+		this.state.playing = true;
 	}
 
 	abstract handlePause(): void | Promise<void>;
 	async pause(): Promise<void> {
 		this.log("pause");
-		this.store.loading = true;
+		this.state.loading.playPause = true;
 
 		try {
 			await this.withUnrecoverableErrorHandling(this.handlePause);
 		} catch (error) {
-			this.store.loading = false;
+			this.state.loading.playPause = false;
 			throw error;
 		}
 
-		this.store.loading = false;
-		this.store.playing = false;
+		this.state.loading.playPause = false;
+		this.state.playing = false;
 	}
 
 	abstract handleStop(): void | Promise<void>;
@@ -403,22 +476,22 @@ export abstract class MusicPlayerService<
 		this.song = undefined;
 		this.initialPlayed = false;
 
-		this.store.loading = true;
+		this.state.loading.playPause = true;
 
 		try {
 			await this.withUnrecoverableErrorHandling(this.handleStop);
 		} catch (error) {
-			this.store.loading = false;
+			this.state.loading.playPause = false;
 			throw error;
 		}
 
-		this.store.loading = false;
-		this.store.playing = false;
+		this.state.loading.playPause = false;
+		this.state.playing = false;
 	}
 
 	async togglePlay(): Promise<void> {
 		this.log("togglePlay");
-		if (this.store.playing) {
+		if (this.state.playing) {
 			await this.pause();
 		} else {
 			await this.play();
@@ -430,7 +503,7 @@ export abstract class MusicPlayerService<
 		this.log("seekToTime");
 		await this.initialize();
 		await this.withUnrecoverableErrorHandling(this.handleSeekToTime, timeInSeconds);
-		this.store.time = timeInSeconds;
+		this.state.time = timeInSeconds;
 	}
 
 	abstract handleSetVolume(volume: number): void | Promise<void>;
@@ -438,6 +511,6 @@ export abstract class MusicPlayerService<
 		this.log("setVolume");
 		await this.initialize();
 		await this.withUnrecoverableErrorHandling(this.handleSetVolume, volume);
-		this.store.volume = volume;
+		this.state.volume = volume;
 	}
 }

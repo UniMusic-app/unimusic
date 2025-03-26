@@ -1,3 +1,5 @@
+import { ref } from "vue";
+
 import { Service } from "@/services/Service";
 import { Maybe } from "@/utils/types";
 
@@ -14,13 +16,13 @@ export class UnauthorizedEvent extends CustomEvent<never> {
 }
 
 export abstract class AuthorizationService<const State = unknown> extends Service<State> {
-	isAuthorized = false;
+	authorized = ref(false);
 
 	constructor() {
 		super();
 
-		this.addEventListener("authorized", () => (this.isAuthorized = true));
-		this.addEventListener("unauthorized", () => (this.isAuthorized = false));
+		this.addEventListener("authorized", () => (this.authorized.value = true));
+		this.addEventListener("unauthorized", () => (this.authorized.value = false));
 	}
 
 	addEventListener(

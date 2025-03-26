@@ -3,8 +3,7 @@ import { computed, ref, useTemplateRef } from "vue";
 
 import { download as importIcon } from "ionicons/icons";
 
-import SongImg from "@/components/SongImg.vue";
-import SongItem from "@/components/SongItem.vue";
+import LocalImg from "@/components/LocalImg.vue";
 import {
 	actionSheetController,
 	alertController,
@@ -25,7 +24,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { MusicPlayerService } from "@/services/MusicPlayer/MusicPlayerService";
+import GenericSongItem from "@/components/GenericSongItem.vue";
 import { Playlist, useMusicPlayer } from "@/stores/music-player";
 import { songTypeToDisplayName } from "@/utils/songs";
 import { usePresentingElement } from "@/utils/vue";
@@ -43,8 +42,9 @@ const loading = ref(false);
 
 const canLoad = computed(() => serviceType.value && url.value && !loading.value);
 
-const supportedServices = (): MusicPlayerService[] =>
-	MusicPlayerService.getEnabledServices().filter((service) => !!service.handleGetPlaylist);
+const supportedServices = computed(() =>
+	musicPlayer.services.enabledServices.filter((service) => !!service.handleGetPlaylist),
+);
 
 function resetModal(): void {
 	serviceType.value = undefined;
@@ -55,7 +55,7 @@ function resetModal(): void {
 
 function importPlaylist(): void {
 	if (!playlist.value) return;
-	musicPlayer.addPlaylist(playlist.value);
+	musicPlayer.state.addPlaylist(playlist.value);
 	modal.value?.$el.dismiss("importedPlaylist");
 }
 
@@ -65,7 +65,7 @@ async function loadPlaylist(): Promise<void> {
 	loading.value = true;
 
 	try {
-		const service = MusicPlayerService.getService(serviceType.value);
+		const service = musicPlayer.services.getService(serviceType.value);
 		playlist.value = await service?.getPlaylist(new URL(url.value));
 		loading.value = false;
 		return;
@@ -137,7 +137,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 				<ion-item>
 					<ion-select label="Music Service" placeholder="Apple Music" v-model="serviceType">
 						<ion-select-option
-							v-for="service in supportedServices()"
+							v-for="service in supportedServices"
 							:key="service.type"
 							:value="service.type"
 						>
@@ -173,7 +173,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 			<div id="playlist-preview" v-if="playlist">
 				<h1 id="preview-headline">Preview</h1>
 
-				<SongImg :src="playlist.artwork" />
+				<LocalImg :src="playlist.artwork" />
 				<h1>{{ playlist.title }}</h1>
 
 				<ion-note v-if="playlist.songs.length === 0">This playlist has no songs!</ion-note>
@@ -184,7 +184,14 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 					</h2>
 
 					<ion-list>
-						<SongItem :song v-for="song in playlist.songs" :key="song.id" />
+						<GenericSongItem
+							v-for="song in playlist.songs"
+							:key="song.id"
+							:title="song.title"
+							:artists="song.artists"
+							:artwork="song.artwork"
+							:type="song.type"
+						/>
 					</ion-list>
 				</template>
 			</div>
@@ -265,7 +272,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 #playlist-preview {
 	margin-top: 12px;
 	padding: 0.5rem;
-	border-radius: 32px;
+	border-radius: 12px 12px 0 0;
 	background-color: var(--ion-color-light);
 	animation: appear 750ms;
 
@@ -273,6 +280,18 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 		font-size: 2.25rem;
 		padding-bottom: 0.5rem;
 		color: var(--ion-color-medium);
+	}
+
+	& > ion-list {
+		background: transparent;
+
+		:global(& ion-item) {
+			--background: transparent;
+		}
+
+		:global(& ion-item ion-note) {
+			--color: var(--ion-color-medium);
+		}
 	}
 }
 </style>

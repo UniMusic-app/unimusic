@@ -1,7 +1,9 @@
 <script lang="ts">
+import { LocalImage } from "@/stores/local-images";
+
 export interface PlaylistEditEvent {
 	title: string;
-	artwork?: SongImage;
+	artwork?: LocalImage;
 }
 </script>
 
@@ -23,7 +25,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { Playlist, SongImage } from "@/stores/music-player";
+import { Playlist } from "@/stores/music-player";
 import { usePresentingElement } from "@/utils/vue";
 
 const { trigger, playlist } = defineProps<{
@@ -143,8 +145,11 @@ async function canDismiss(reason?: "editedPlaylist"): Promise<boolean> {
 
 	& > ion-list {
 		width: 100%;
+		background: transparent;
 
 		& > ion-item {
+			--background: transparent;
+
 			& > ion-input {
 				font-size: 1.625rem;
 				font-weight: bold;
