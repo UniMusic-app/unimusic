@@ -236,7 +236,7 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 			term,
 			types: ["songs", "music-videos"],
 			limit: 25,
-			offset,
+			offset: offset * 25 + 1,
 		});
 
 		const songs = response?.data?.results?.songs?.data;
