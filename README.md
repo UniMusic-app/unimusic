@@ -1,4 +1,7 @@
-# Music player (name is wip)
+<p align="center">
+<img width="256" height="256" src="./assets/Icon-Rounded-Shadow-632x632.png" alt="UniMusic logo, a musical slur resembling smiley face" />
+</p>
+<h1 align="center"> UniMusic</h1>
 
 Unified cross-platform music player.
 

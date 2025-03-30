@@ -1,6 +1,6 @@
 {
-	"name": "music-player",
-	"description": "music player",
+	"name": "unimusic",
+	"description": "UniMusic is a universal music player with support for many music services.",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
