@@ -7,7 +7,7 @@ Unified cross-platform music player.
 
 ## Demo showcase
 
-https://github.com/user-attachments/assets/42d89e22-b63d-4374-b47c-801e98904826
+https://github.com/user-attachments/assets/29bd54d2-f7f3-44c9-bfcb-54f1a88080ab
 
 ## Roadmap
 
