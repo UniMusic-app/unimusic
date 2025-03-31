@@ -13,75 +13,27 @@ https://github.com/user-attachments/assets/29bd54d2-f7f3-44c9-bfcb-54f1a88080ab
 
 Development is currently prioritized for iOS and macOS, however first stable release should also work on Android, Linux and Windows.
 
-<table>
-	<tr>
-		<th colspan="2">Feature</th>
-		<th>Estimated timeline</th>
-	</tr>
-	<tr>
-		<td>MusicKit</td>
-		<td>
-			Support Apple Music via MusicKit to allow legal streaming of music on
-			every platform.
-		</td>
-		<td>14th January 2025</td>
-	</tr>
-	<tr>
-		<td>Deezer</td>
-		<td>Alike MusicKit</td>
-		<td>indeterminate*</td>
-	</tr>
-	<tr>
-		<td rowspan="2">Local media</td>
-		<td>Playing local audio tracks</td>
-    <td>31st January 2025</td>
-	</tr>
-  <tr>
-	  <td>Local device discovery with syncing media between devices</td>
-    <td>May 2025</td>
-  </tr>
-	<tr>
-		<td>YouTube</td>
-		<td>Playing YouTube media</td>
-		<td>14th February 2025</td>
-	</tr>
-	<tr>
-		<td rowspan="2">Unified search and playlists</td>
-		<td>Storing songs from multiple platforms in singular playlists</td>
-		<td rowspan="2">February-March 2025</td>
-	</tr>
-	<tr>
-		<td>Search for a song/album across platforms</td>
-	</tr>
-  <tr>
-    <td>Metadata tagging</td>
-    <td>
-      Simple hosting service storing
-      <ul>
-        <li>Lyrics</li>
-        <li>Cover albums</li>
-        <li>Albums</li>
-        <li>Track details (Artist, Year, etc.)</li>
-      </ul>
-      Such hosting will cache the metadata obtained either from MusicKit or
-      Last.fm and forward it to the user
-    </td>
-    <td>April 2025</td>
-  </tr>
-  <tr>
-    <td>Playlist synchronization</td>
-    <td>
-      Simple service to which user can log in that stores all the playlist data
-      and syncs them between devices
-    </td>
-    <td>indeterminate*</td>
-  </tr>
-  <tr>
-    <td>Decentralized media</td>
-    <td>Seeding, leeching and streaming torrents</td>
-    <td>indeterminate*</td>
-  </tr>
-</table>
+- ✅ - Basically ready
+- 🟧 - Partially done
+- 🟥 - Not yet added
+- ❓ - Unknown if it will be added
+
+| Service     | Status |
+| ----------- | :----: |
+| MusicKit    |   ✅   |
+| YouTube     |   ✅   |
+| Local media |   ✅   |
+| Deezer      |   ❓   |
+| Jellyfin    |   ❓   |
+| Funkwhale   |   ❓   |
+
+| Feature               | Status | Notes                                   |
+| --------------------- | :----: | --------------------------------------- |
+| Unified search        |   ✅   |                                         |
+| Unified playlists     |   🟧   | Missing UI for adding songs to playlist |
+| Unified library       |   🟧   | Missing album support (WIP)             |
+| Metadata tagging      |   🟥   | Manual metadata edition is supported    |
+| Media synchronisation |   🟥   |
 
 Dates attributed to each features are a subject to change as they are a very rough estimates at a very early point in development.
 Debugging, life-related things, app design and such might affect them.
