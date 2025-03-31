@@ -33,7 +33,8 @@ Development is currently prioritized for iOS and macOS, however first stable rel
 | Unified playlists     |   🟧   | Missing UI for adding songs to playlist |
 | Unified library       |   🟧   | Missing album support (WIP)             |
 | Metadata tagging      |   🟥   | Manual metadata edition is supported    |
-| Media synchronisation |   🟥   |
+| Media synchronisation |   🟥   |                                         |
+| Lyrics                |   🟥   |                                         |
 
 Dates attributed to each features are a subject to change as they are a very rough estimates at a very early point in development.
 Debugging, life-related things, app design and such might affect them.
