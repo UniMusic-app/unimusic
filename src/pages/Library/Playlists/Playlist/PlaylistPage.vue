@@ -4,6 +4,7 @@ import { computed } from "vue";
 import AppPage from "@/components/AppPage.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
+import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import PlaylistEditModal, { PlaylistEditEvent } from "../components/PlaylistEditModal.vue";
 
 import {
@@ -11,10 +12,13 @@ import {
 	IonActionSheet,
 	IonButton,
 	IonButtons,
+	IonHeader,
 	IonIcon,
 	IonItem,
 	IonList,
 	IonNote,
+	IonTitle,
+	IonToolbar,
 	useIonRouter,
 } from "@ionic/vue";
 import {
@@ -106,7 +110,14 @@ function goToSong(song: AnySong): void {
 
 		<div id="playlist-content" v-if="playlist">
 			<LocalImg :src="playlist.artwork" />
-			<h1>{{ playlist?.title }}</h1>
+
+			<ion-header collapse="condense">
+				<ion-toolbar>
+					<ion-title class="ion-text-nowrap" size="large">
+						<WrappingMarquee :text="playlist.title" />
+					</ion-title>
+				</ion-toolbar>
+			</ion-header>
 
 			<ion-note v-if="isEmpty">This playlist has no songs, fill it up!</ion-note>
 			<template v-else>
@@ -150,10 +161,19 @@ function goToSong(song: AnySong): void {
 #playlist-content {
 	text-align: center;
 
-	& > h1 {
-		font-weight: bold;
-		margin-top: 0;
-		margin-bottom: 0.25rem;
+	& > ion-header {
+		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+
+		& ion-title {
+			transform-origin: top center;
+			justify-content: center;
+
+			font-weight: bold;
+			margin: 0;
+
+			--marquee-duration: 20s;
+			--marquee-align: center;
+		}
 	}
 
 	& > h2 {
