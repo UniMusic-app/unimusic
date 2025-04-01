@@ -18,7 +18,7 @@ const ALLOWED_URLS = [
 ];
 const ALLOWED_URL_PATTERNS = ALLOWED_URLS.map((url) => new URLPattern(url));
 
-const urlScheme = "music-player";
+const urlScheme = "unimusic";
 const loadUrl = electronServe({
 	directory: fileURLToPath(new URL("../renderer/", import.meta.url)),
 	scheme: urlScheme,

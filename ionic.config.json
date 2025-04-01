@@ -1,5 +1,5 @@
 {
-	"name": "music-player",
+	"name": "UniMusic",
 	"integrations": {
 		"capacitor": {}
 	},
