@@ -11,6 +11,11 @@ import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
 
+export interface Artist {
+	id?: string;
+	name: string;
+}
+
 export interface Song<Type extends string, Data = unknown> {
 	type: Type;
 
@@ -33,7 +38,10 @@ export interface Song<Type extends string, Data = unknown> {
 	data: Data;
 }
 
-export type MusicKitSong = Song<"musickit">;
+export type SongPreview<Song extends AnySong = AnySong> = Pick<Song, "type" | "id" | "artists"> &
+	Partial<Song>;
+
+export type MusicKitSong = Song<"musickit", { catalogId: string }>;
 export type YouTubeSong = Song<"youtube">;
 export type LocalSong = Song<"local", { path: string }>;
 
@@ -41,14 +49,23 @@ export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
 
 export interface Playlist {
 	id: string;
+	title: string;
+	artwork?: LocalImage;
+	songs: AnySong[];
+
 	importInfo?: {
 		id: string;
 		type: AnySong["type"];
 		info?: string;
 	};
+}
+
+export interface Album {
+	id: string;
 	title: string;
 	artwork?: LocalImage;
-	songs: AnySong[];
+	artists: Artist[];
+	songs: SongPreview[];
 }
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
@@ -71,7 +88,6 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	});
 
 	// Automatically change songs
-
 	let abortController = new AbortController();
 	watch(currentQueueSong, async () => {
 		abortController.abort();

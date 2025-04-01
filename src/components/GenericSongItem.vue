@@ -6,7 +6,6 @@ import LocalImg from "@/components/LocalImg.vue";
 import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
 import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
 
-import { LocalImage } from "@/stores/local-images";
 import { AnySong } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 
@@ -19,16 +18,14 @@ const {
 	reorder,
 	disabled,
 	routerLink,
-} = defineProps<{
-	title?: string;
-	type: AnySong["type"];
-	artists: string[];
-	artwork?: LocalImage;
-	reorder?: boolean;
-	button?: boolean;
-	disabled?: boolean;
-	routerLink?: string;
-}>();
+} = defineProps<
+	Partial<AnySong> & {
+		reorder?: boolean;
+		button?: boolean;
+		disabled?: boolean;
+		routerLink?: string;
+	}
+>();
 
 const formattedArtists = computed(() => formatArtists(artists));
 const displayName = computed(() => songTypeToDisplayName(type));

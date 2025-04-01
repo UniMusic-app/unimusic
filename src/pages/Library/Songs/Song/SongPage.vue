@@ -8,9 +8,9 @@ import { pencil as editIcon, play as playIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
 import LocalImg from "@/components/LocalImg.vue";
+import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import SongEditModal, { SongEditEvent } from "../components/SongEditModal.vue";
 
-import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import { useSongMetadata } from "@/stores/metadata";
 import { AnySong, useMusicPlayer } from "@/stores/music-player";
 import { formatArtists } from "@/utils/songs";
@@ -26,13 +26,12 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const song = computedAsync(
-	async () =>
-		await musicPlayer.services.getSong(
-			route.params.type as AnySong["type"],
-			route.params.id as string,
-		),
-);
+const song = computedAsync(async () => {
+	return await musicPlayer.services.getSong(
+		route.params.songType as AnySong["type"],
+		route.params.songId as string,
+	);
+});
 
 const isSingle = computed(() => !!song.value?.album?.includes("- Single"));
 
@@ -56,12 +55,12 @@ async function editSong(event: SongEditEvent): Promise<void> {
 }
 
 async function playNow(): Promise<void> {
-	if (song.value) {
-		if (musicPlayer.state?.currentSong?.id === song.value.id) {
-			await musicPlayer.play();
-		} else {
-			await musicPlayer.state.addToQueue(song.value, musicPlayer.state.queueIndex);
-		}
+	if (!song.value) return;
+
+	if (musicPlayer.state?.currentSong?.id === song.value.id) {
+		await musicPlayer.play();
+	} else {
+		await musicPlayer.state.addToQueue(song.value, musicPlayer.state.queueIndex);
 	}
 }
 </script>
@@ -83,8 +82,13 @@ async function playNow(): Promise<void> {
 			<h1 class="ion-text-nowrap">
 				<WrappingMarquee :text="song.title ?? 'Unknown title'" />
 			</h1>
-			<h2>{{ formatArtists(song.artists) }}</h2>
-			<h3 v-if="!isSingle">{{ song.album }}</h3>
+			<!-- TODO: ARTISTS -->
+			<RouterLink class="artist" to="">
+				{{ formatArtists(song.artists) }}
+			</RouterLink>
+			<RouterLink v-if="!isSingle" class="album" :to="`/library/albums/song/${song.type}/${song.id}`">
+				{{ song.album }}
+			</RouterLink>
 
 			<ion-button strong @click="playNow">
 				<ion-icon slot="start" :icon="playIcon" />
@@ -126,16 +130,40 @@ async function playNow(): Promise<void> {
 		--marquee-align: center;
 	}
 
-	& > h2 {
-		font-size: 1.25rem;
-		font-weight: bold;
+	& > .artist,
+	& > .album {
+		display: block;
+
+		color: var(--ion-color-dark-rgb);
+		text-decoration: none;
+
+		width: max-content;
+
 		margin-top: 0;
+		margin-bottom: 10px;
+		margin-inline: auto;
+
+		cursor: pointer;
+		&:hover {
+			opacity: 80%;
+
+			@media (pointer: fine) {
+				text-decoration: underline;
+			}
+		}
+		&:active {
+			opacity: 60%;
+		}
 	}
 
-	& > h3 {
+	& > .artist {
+		font-size: 1.25rem;
+		font-weight: bold;
+	}
+
+	& > .album {
 		font-size: 1rem;
 		font-weight: 450;
-		margin-top: 0;
 	}
 
 	& > ion-button {

@@ -1,8 +1,8 @@
 import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
-import { MusicService, MusicServiceEvent, SongSearchResult } from "@/services/Music/MusicService";
-import type { Playlist, YouTubeSong } from "@/stores/music-player";
+import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
+import type { Playlist, SongPreview, YouTubeSong } from "@/stores/music-player";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
@@ -12,7 +12,7 @@ import { Maybe } from "@/utils/types";
 
 export function youtubeSongSearchResult(
 	node: YTNodes.MusicResponsiveListItem,
-): SongSearchResult<YouTubeSong> {
+): SongPreview<YouTubeSong> {
 	const artwork = node.thumbnails?.[0] && { url: node.thumbnails[0].url };
 	const artists = (node.artists ?? node.authors)?.map(({ name }) => name) ?? [];
 
@@ -29,10 +29,9 @@ export function youtubeSongSearchResult(
 
 export async function youtubeSong(
 	item: YTMusic.TrackInfo,
-	searchResult?: SongSearchResult<YouTubeSong>,
+	searchResult?: SongPreview<YouTubeSong>,
 ): Promise<YouTubeSong> {
 	const { id, title, author, duration, thumbnail, tags } = item.basic_info;
-
 	if (!id) {
 		throw new Error("Cannot generate YouTubeSong from item that doesn't have id");
 	}
@@ -51,14 +50,15 @@ export async function youtubeSong(
 
 	const album = searchResult?.album ?? tags?.at(-2);
 	const artists = searchResult?.artists ?? (author ? [author] : []);
+	// TODO: Genres
+	const genres = searchResult?.genres ?? [];
 
 	return {
 		type: "youtube",
 
 		id,
 		artists,
-		// TODO: genre
-		genres: [],
+		genres,
 
 		title,
 		album,
@@ -199,7 +199,7 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 		term: string,
 		offset: number,
 		options?: { signal: AbortSignal },
-	): AsyncGenerator<SongSearchResult<YouTubeSong>> {
+	): AsyncGenerator<SongPreview<YouTubeSong>> {
 		let contents;
 		if (this.#search.term === term && offset !== 0) {
 			const lastPage = this.#search.pages.at(-1);
@@ -231,22 +231,18 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 		}
 	}
 
-	async handleGetSongFromSearchResult(
-		searchResult: SongSearchResult<YouTubeSong>,
-	): Promise<YouTubeSong> {
+	async handleGetSongFromPreview(searchResult: SongPreview<YouTubeSong>): Promise<YouTubeSong> {
 		if (!this.innertube) {
 			throw new Error(
-				"Tried to call handleGetSongFromSearchResult() while YouTubeMusicService is not initialized",
+				"Tried to call handleGetSongFromPreview() while YouTubeMusicService is not initialized",
 			);
 		}
 
-		const cached = this.getCached(searchResult.id);
-		if (cached) {
-			return cached;
-		}
+		const cached = this.getCached<YouTubeSong>(searchResult.id);
+		if (cached) return cached;
 
 		const info = await this.innertube.music.getInfo(searchResult.id);
-		const song = this.cacheSong(await youtubeSong(info, searchResult));
+		const song = this.cache(await youtubeSong(info, searchResult));
 		return song;
 	}
 
@@ -294,7 +290,7 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 			for (const node of playlist.contents) {
 				if (!node.is(YTNodes.MusicResponsiveListItem)) continue;
 				const searchResult = youtubeSongSearchResult(node);
-				const song = await this.getSongFromSearchResult(searchResult);
+				const song = await this.getSongFromPreview(searchResult);
 				songs.push(song);
 			}
 
@@ -325,12 +321,12 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 
 	async handleGetSong(songId: string, cache = true): Promise<YouTubeSong> {
 		if (cache) {
-			const cachedSong = this.getCached(songId);
+			const cachedSong = this.getCached<YouTubeSong>(songId);
 			if (cachedSong) return cachedSong;
 		}
 
 		const trackInfo = await this.innertube!.music.getInfo(songId);
-		return this.cacheSong(await youtubeSong(trackInfo));
+		return this.cache(await youtubeSong(trackInfo));
 	}
 
 	async handleRefreshSong(song: YouTubeSong): Promise<YouTubeSong> {

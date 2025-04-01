@@ -59,7 +59,6 @@ const canEdit = computed(() => !!title.value && modified.value);
 function edit(): void {
 	if (!canEdit.value) return;
 
-	console.log(artwork.value);
 	emit("change", {
 		title: title.value,
 		artists: toRaw(artists.value),

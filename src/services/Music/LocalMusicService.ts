@@ -229,7 +229,7 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		}
 	}
 
-	handleGetSongFromSearchResult(searchResult: LocalSong): LocalSong {
+	handleGetSongFromPreview(searchResult: LocalSong): LocalSong {
 		return searchResult;
 	}
 
