@@ -83,7 +83,7 @@ function goToSong(song: AnySong): void {
 </script>
 
 <template>
-	<AppPage back-button="Playlists">
+	<AppPage :title="playlist?.title" :show-content-header="false" back-button="Playlists">
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button id="edit-playlist">
