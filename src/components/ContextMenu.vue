@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
-import { IonList } from "@ionic/vue";
+import { IonList, onIonViewWillLeave } from "@ionic/vue";
 import { onLongPress } from "@vueuse/core";
 import { nextTick, ref, useTemplateRef } from "vue";
-import { onBeforeRouteLeave } from "vue-router";
 
 const _slots = defineSlots<{
 	default(): any;
@@ -94,7 +93,7 @@ function close(): void {
 	emit("visibilitychange", false);
 }
 
-onBeforeRouteLeave(() => {
+onIonViewWillLeave(() => {
 	if (!opened.value) return;
 	opened.value = false;
 	emit("visibilitychange", false);
