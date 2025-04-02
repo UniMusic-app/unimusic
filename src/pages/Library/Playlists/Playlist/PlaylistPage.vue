@@ -123,12 +123,10 @@ function goToSong(song: AnySong): void {
 			<template v-else>
 				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
 
-				<div class="buttons">
-					<ion-button strong @click="play">
-						<ion-icon slot="start" :icon="playIcon" />
-						Play
-					</ion-button>
-				</div>
+				<ion-button strong @click="play">
+					<ion-icon slot="start" :icon="playIcon" />
+					Play
+				</ion-button>
 
 				<ion-list>
 					<GenericSongItem
@@ -165,11 +163,12 @@ function goToSong(song: AnySong): void {
 	text-align: center;
 
 	& > ion-header {
+		width: max-content;
+		margin-inline: auto;
 		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 
 		& ion-title {
 			transform-origin: top center;
-			justify-content: center;
 
 			font-weight: bold;
 			margin: 0;

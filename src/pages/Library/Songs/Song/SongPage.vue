@@ -122,10 +122,14 @@ async function playNow(): Promise<void> {
 	animation: fade-in 350ms;
 
 	& > h1 {
-		font-weight: 550;
+		font-size: min(2.125rem, 61.2px);
+		font-weight: bold;
+
+		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+
 		margin-top: 0;
 		margin-bottom: 0.25rem;
-		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+
 		--marquee-duration: 20s;
 		--marquee-align: center;
 	}
@@ -158,7 +162,7 @@ async function playNow(): Promise<void> {
 
 	& > .artist {
 		font-size: 1.25rem;
-		font-weight: bold;
+		font-weight: 550;
 	}
 
 	& > .album {
