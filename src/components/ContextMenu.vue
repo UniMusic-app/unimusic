@@ -3,6 +3,7 @@ import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { IonList } from "@ionic/vue";
 import { onLongPress } from "@vueuse/core";
 import { nextTick, ref, useTemplateRef } from "vue";
+import { onBeforeRouteLeave } from "vue-router";
 
 const _slots = defineSlots<{
 	default(): any;
@@ -93,10 +94,11 @@ function close(): void {
 	emit("visibilitychange", false);
 }
 
-function closeImmediately(): void {
+onBeforeRouteLeave(() => {
+	if (!opened.value) return;
 	opened.value = false;
 	emit("visibilitychange", false);
-}
+});
 </script>
 
 <template>
@@ -111,10 +113,10 @@ function closeImmediately(): void {
 			open
 		>
 			<div class="backdrop" @click.self="close" />
-			<div class="context-menu-item" @click="move ? closeImmediately : close">
+			<div class="context-menu-item" @click="close">
 				<slot />
 			</div>
-			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="closeImmediately">
+			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="close">
 				<slot name="options" />
 			</ion-list>
 		</div>
@@ -230,7 +232,7 @@ function closeImmediately(): void {
 	transition: var(--context-menu-transition);
 
 	--context-menu-top: clamp(
-		calc(var(--ion-safe-area-top) + 64px),
+		calc(var(--ion-safe-area-top) + 32px),
 		calc(var(--context-menu-item-top) - 64px),
 		calc(90vh - 64px - var(--context-menu-item-height) - var(--context-menu-options-height))
 	);
@@ -310,10 +312,11 @@ function closeImmediately(): void {
 		animation: list-in var(--context-menu-transition-duration) var(--context-menu-transition-easing);
 
 		background-color: transparent;
+		backdrop-filter: blur(6px) saturate(200%);
 
 		& > ion-item {
 			opacity: 90%;
-			backdrop-filter: blur(2px);
+
 			--background: var(--ion-background-color-step-150, #eee);
 			&:hover,
 			&:focus {
@@ -326,6 +329,7 @@ function closeImmediately(): void {
 		}
 
 		& > ion-item-divider {
+			opacity: 90%;
 			min-height: 6px;
 			--background: var(--ion-background-color-step-200, #ccc);
 			outline: 0.02px solid var(--ion-background-color-step-200);
