@@ -122,10 +122,13 @@ function goToSong(song: AnySong): void {
 			<ion-note v-if="isEmpty">This playlist has no songs, fill it up!</ion-note>
 			<template v-else>
 				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
-				<ion-button strong @click="play">
-					<ion-icon slot="start" :icon="playIcon" />
-					Play
-				</ion-button>
+
+				<div class="buttons">
+					<ion-button strong @click="play">
+						<ion-icon slot="start" :icon="playIcon" />
+						Play
+					</ion-button>
+				</div>
 
 				<ion-list>
 					<GenericSongItem
@@ -193,7 +196,7 @@ function goToSong(song: AnySong): void {
 			var(--ion-color-step-250, var(--ion-background-color-step-250, #c8c7cc));
 	}
 
-	& > .song-img {
+	& > .local-img {
 		margin-inline: auto;
 
 		--img-height: 192px;

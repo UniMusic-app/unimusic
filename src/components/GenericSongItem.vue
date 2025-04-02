@@ -101,7 +101,7 @@ function emitClick(event: PointerEvent): void {
 	--padding-start: 12px;
 	--padding-end: 12px;
 
-	& > .song-img {
+	& > .local-img {
 		transition: var(--context-menu-transition);
 
 		--img-border-radius: 12px;
@@ -146,7 +146,7 @@ function emitClick(event: PointerEvent): void {
 }
 
 ion-item {
-	& > .song-img {
+	& > .local-img {
 		pointer-events: none;
 
 		--img-border-radius: 8px;

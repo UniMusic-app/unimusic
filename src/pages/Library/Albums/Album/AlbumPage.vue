@@ -134,7 +134,7 @@ watchEffect(() => {
 		}
 	}
 
-	& > .song-img {
+	& > .local-img {
 		margin-inline: auto;
 
 		--img-height: 192px;

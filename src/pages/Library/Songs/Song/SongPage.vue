@@ -176,7 +176,7 @@ async function playNow(): Promise<void> {
 		padding-bottom: 1rem;
 	}
 
-	& > .song-img {
+	& > .local-img {
 		margin-inline: auto;
 
 		--img-height: 192px;
