@@ -1,10 +1,28 @@
 <script lang="ts" setup>
-import { IonHeader, IonList, IonTitle, IonToolbar } from "@ionic/vue";
 import { computedAsync } from "@vueuse/core";
-import { computed, watchEffect } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import {
+	IonButton,
+	IonButtons,
+	IonHeader,
+	IonIcon,
+	IonItem,
+	IonList,
+	IonTitle,
+	IonToolbar,
+} from "@ionic/vue";
+import {
+	ellipsisHorizontal as ellipsisIcon,
+	play as playIcon,
+	listOutline as playLastIcon,
+	playOutline as playNextIcon,
+	shuffle as shuffleIcon,
+} from "ionicons/icons";
+
 import AppPage from "@/components/AppPage.vue";
+import ContextMenu from "@/components/ContextMenu.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
@@ -32,13 +50,65 @@ const album = computedAsync(async () => {
 	return await musicPlayer.services.getAlbum(albumType as AnySong["type"], albumId as string);
 });
 
-watchEffect(() => {
-	console.log(album.value);
-});
+async function playAlbum(shuffle = false): Promise<void> {
+	if (!album.value) return;
+	const songs = await Promise.all(album.value.songs.map(musicPlayer.services.getSongFromPreview));
+	musicPlayer.state.setQueue(songs);
+
+	if (shuffle) {
+		musicPlayer.state.shuffleQueue();
+	}
+
+	musicPlayer.state.queueIndex = 0;
+}
+
+async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
+	if (!album.value) return;
+
+	const songs = await Promise.all(album.value.songs.map(musicPlayer.services.getSongFromPreview));
+	await musicPlayer.state.insertIntoQueue(
+		songs,
+		position === "next" ? musicPlayer.state.queueIndex + 1 : undefined,
+	);
+}
 </script>
 
 <template>
 	<AppPage :title="album?.title" :show-content-header="false" :back-button="previousRouteName">
+		<template #toolbar-end>
+			<ion-buttons id="album-actions">
+				<ContextMenu event="click" :move="false" y="top" x="right" :backdrop="false" :haptics="false">
+					<ion-button>
+						<ion-icon slot="icon-only" :icon="ellipsisIcon" />
+					</ion-button>
+
+					<template #options>
+						<ion-item
+							aria-label="Play next"
+							lines="full"
+							button
+							:detail="false"
+							@click="addAlbumToQueue('next')"
+						>
+							Play next
+							<ion-icon aria-hidden="true" :icon="playNextIcon" slot="end" />
+						</ion-item>
+
+						<ion-item
+							aria-label="Play next"
+							lines="full"
+							button
+							:detail="false"
+							@click="addAlbumToQueue('last')"
+						>
+							Play last
+							<ion-icon aria-hidden="true" :icon="playLastIcon" slot="end" />
+						</ion-item>
+					</template>
+				</ContextMenu>
+			</ion-buttons>
+		</template>
+
 		<div id="album-content" v-if="album">
 			<LocalImg :src="album.artwork" />
 
@@ -61,6 +131,18 @@ watchEffect(() => {
 					{{ artist.name }}
 				</a>
 			</h2>
+
+			<div class="buttons">
+				<ion-button strong @click="playAlbum(false)">
+					<ion-icon slot="start" :icon="playIcon" />
+					Play
+				</ion-button>
+
+				<ion-button strong @click="playAlbum(true)">
+					<ion-icon slot="start" :icon="shuffleIcon" />
+					Shuffle
+				</ion-button>
+			</div>
 
 			<ion-list>
 				<GenericSongItem
@@ -89,6 +171,21 @@ watchEffect(() => {
 	}
 }
 
+#album-actions {
+	:global(& .context-menu) {
+		padding-inline: 8px;
+	}
+
+	:global(& .context-menu-list) {
+		box-shadow: 0 0 16px #0003;
+		overflow: visible;
+	}
+
+	:global(& .context-menu-list > ion-item) {
+		--background: var(--ion-background-color-step-100, #fff);
+	}
+}
+
 #album-content {
 	text-align: center;
 
@@ -96,12 +193,13 @@ watchEffect(() => {
 
 	& > ion-header {
 		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+		width: max-content;
+		margin-inline: auto;
 
 		& ion-title {
 			transform-origin: top center;
-			justify-content: center;
 
-			font-weight: 550;
+			font-weight: bold;
 			margin: 0;
 
 			--marquee-duration: 20s;
@@ -131,6 +229,22 @@ watchEffect(() => {
 			&:active {
 				opacity: 60%;
 			}
+		}
+	}
+
+	& > .buttons {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+
+		padding-bottom: 1rem;
+		border-bottom: 0.55px solid
+			var(--ion-color-step-250, var(--ion-background-color-step-250, #c8c7cc));
+
+		& > ion-button {
+			width: calc(40%);
 		}
 	}
 

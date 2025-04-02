@@ -57,8 +57,18 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		queue.value = songs.map(songToQueueSong);
 	}
 
+	function shuffleQueue(): void {
+		// TODO: Add a way to "smart shuffle" a queue, trying to omit having songs from the same album in a row
+		queue.value.sort(() => Math.random() - 0.5);
+	}
+
 	async function addToQueue(song: AnySong, index = queue.value.length): Promise<void> {
 		queue.value.splice(index, 0, songToQueueSong(song));
+		await loadingCounters.queueChange.onLoaded();
+	}
+
+	async function insertIntoQueue(songs: AnySong[], index = queue.value.length): Promise<void> {
+		queue.value.splice(index, 0, ...songs.map(songToQueueSong));
 		await loadingCounters.queueChange.onLoaded();
 	}
 
@@ -136,7 +146,9 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		currentQueueSong,
 		currentSong,
 		setQueue,
+		shuffleQueue,
 		addToQueue,
+		insertIntoQueue,
 		removeFromQueue,
 		moveQueueItem,
 
