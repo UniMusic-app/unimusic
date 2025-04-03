@@ -218,6 +218,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 	& > ion-header {
 		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 		width: max-content;
+		max-width: 100%;
 		margin-inline: auto;
 
 		& ion-title {

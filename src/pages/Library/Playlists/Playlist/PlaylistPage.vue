@@ -164,6 +164,7 @@ function goToSong(song: AnySong): void {
 
 	& > ion-header {
 		width: max-content;
+		max-width: 100%;
 		margin-inline: auto;
 		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 
