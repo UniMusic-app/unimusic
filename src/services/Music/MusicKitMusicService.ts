@@ -384,7 +384,7 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 			idType === "catalog"
 				? `/v1/catalog/{{storefrontId}}/songs/${songId}`
 				: `/v1/me/library/songs/${songId}`,
-			{ include: ["catalog"] },
+			{ include: ["artists", "catalog"] },
 		);
 
 		const [responseSong] = response.data.data;
