@@ -124,6 +124,10 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 	return {
 		type: "local",
 
+		available: true,
+		// TODO: Try to find a way to classify local files as explicit
+		explicit: false,
+
 		id,
 		artists,
 		album,
