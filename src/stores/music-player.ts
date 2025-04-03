@@ -45,7 +45,7 @@ export type SongPreview<Song extends AnySong = AnySong> = Pick<Song, "type" | "i
 	Partial<Song>;
 
 export type MusicKitSong = Song<"musickit", { catalogId: string }>;
-export type YouTubeSong = Song<"youtube">;
+export type YouTubeSong = Song<"youtube", { albumId?: string }>;
 export type LocalSong = Song<"local", { path: string }>;
 
 export type AnySong = MusicKitSong | YouTubeSong | LocalSong;

@@ -2,7 +2,7 @@ import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
 import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
-import type { Playlist, SongPreview, YouTubeSong } from "@/stores/music-player";
+import type { Album, Artist, Playlist, SongPreview, YouTubeSong } from "@/stores/music-player";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
@@ -12,28 +12,43 @@ import { Maybe } from "@/utils/types";
 
 export function youtubeSongSearchResult(
 	node: YTNodes.MusicResponsiveListItem,
+	albumId?: string,
 ): SongPreview<YouTubeSong> {
+	const { id, title, album } = node;
+
 	const artwork = node.thumbnails?.[0] && { url: node.thumbnails[0].url };
 	const artists = (node.artists ?? node.authors)?.map(({ name }) => name) ?? [];
+	const available = node.item_type !== "unknown";
+	const explicit =
+		node.badges?.some(
+			(badge) => badge.is(YTNodes.MusicInlineBadge) && badge.icon_type === "MUSIC_EXPLICIT_BADGE",
+		) ?? false;
 
 	return {
 		type: "youtube",
-		id: node.id!,
-		title: node.title,
-		album: node.album?.name,
+		// Song might not have a visible ID if its not available
+		id: id ?? generateUUID(),
+		title,
 		artists,
-		genres: [],
 		artwork,
+
+		available,
+		explicit,
+
+		album: album?.name,
+
+		genres: [],
+		data: { albumId },
 	};
 }
 
 export async function youtubeSong(
-	item: YTMusic.TrackInfo,
+	trackInfo: YTMusic.TrackInfo,
 	searchResult?: SongPreview<YouTubeSong>,
 ): Promise<YouTubeSong> {
-	const { id, title, author, duration, thumbnail, tags } = item.basic_info;
+	const { id, title, author, duration, thumbnail } = trackInfo.basic_info;
 	if (!id) {
-		throw new Error("Cannot generate YouTubeSong from item that doesn't have id");
+		throw new Error("Cannot generate YouTubeSong from trackInfo that doesn't have id");
 	}
 
 	const thumbnailUrl = thumbnail?.[0]?.url;
@@ -48,7 +63,36 @@ export async function youtubeSong(
 		artwork = { id };
 	}
 
-	const album = searchResult?.album ?? tags?.at(-2);
+	const available = searchResult?.available ?? trackInfo?.playability_status?.status === "OK";
+
+	let album: Maybe<string>;
+	let albumId = searchResult?.data?.albumId;
+	let explicit = searchResult?.explicit ?? false;
+	if (trackInfo.tabs) {
+		outer: for (const tab of trackInfo.tabs) {
+			if (!tab.content?.is(YTNodes.MusicQueue)) continue;
+			if (!tab.content?.content?.is(YTNodes.PlaylistPanel)) continue;
+
+			for (const node of tab.content.content.contents) {
+				if (!node.is(YTNodes.PlaylistPanelVideo) || !node.album?.id) continue;
+				explicit ||= node.badges?.some(
+					(badge) => badge.is(YTNodes.MusicInlineBadge) && badge.icon_type === "MUSIC_EXPLICIT_BADGE",
+				);
+				albumId = node.album.id;
+				album = node.album.name;
+				break outer;
+			}
+		}
+	} else {
+		album = searchResult?.album;
+		const browserMediaSession = trackInfo.player_overlays?.browser_media_session?.as(
+			YTNodes.BrowserMediaSession,
+		);
+		if (browserMediaSession) {
+			album = browserMediaSession.album.text;
+		}
+	}
+
 	const artists = searchResult?.artists ?? (author ? [author] : []);
 	// TODO: Genres
 	const genres = searchResult?.genres ?? [];
@@ -64,10 +108,60 @@ export async function youtubeSong(
 		album,
 		duration,
 
+		available,
+		explicit,
+
 		artwork,
 		style: await generateSongStyle(artwork),
 
-		data: {},
+		data: { albumId },
+	};
+}
+
+export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<Album> {
+	const title = album.header?.title.toString() ?? "Unknown title";
+
+	const thumbnail = album.background?.as(YTNodes.MusicThumbnail);
+	const thumbnailUrl = thumbnail?.contents?.[0]?.url;
+
+	let artwork: Maybe<LocalImage>;
+	if (thumbnailUrl) {
+		const localImages = useLocalImages();
+		const artworkBlob = await (await fetch(thumbnailUrl)).blob();
+		await localImages.associateImage(id, artworkBlob, {
+			maxWidth: 512,
+			maxHeight: 512,
+		});
+		artwork = { id };
+	}
+
+	const artists: Artist[] = [];
+	const artistText = album.header?.as(YTNodes.MusicResponsiveHeader)?.strapline_text_one?.runs;
+	if (artistText) {
+		for (const run of artistText) {
+			if (!("endpoint" in run)) continue;
+			artists.push({
+				id: run.endpoint?.payload?.browseId,
+				name: run.text,
+			});
+		}
+	}
+
+	const songs: Album["songs"] = [];
+	for (const node of album.contents) {
+		const trackNumber = node.index !== undefined ? parseInt(node.index.toString()) : undefined;
+		songs.push({
+			trackNumber: isNaN(trackNumber!) ? undefined : trackNumber,
+			song: youtubeSongSearchResult(node, id),
+		});
+	}
+
+	return {
+		id,
+		title,
+		artists,
+		artwork,
+		songs,
 	};
 }
 
@@ -203,7 +297,6 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 		let contents;
 		if (this.#search.term === term && offset !== 0) {
 			const lastPage = this.#search.pages.at(-1);
-			console.log("last page:", lastPage, "has_cont:", lastPage?.has_continuation);
 			if (lastPage?.has_continuation) {
 				const continuation = await lastPage.getContinuation();
 				this.#search.pages.push(continuation);
@@ -256,6 +349,24 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 			}
 		}
 		return hints;
+	}
+
+	async handleGetSongsAlbum(song: YouTubeSong, cache = true): Promise<Maybe<Album>> {
+		if (!song.data.albumId) {
+			console.warn("Failed to retrieve album, song has no albumId:", song);
+			return;
+		}
+		return await this.handleGetAlbum(song.data.albumId, cache);
+	}
+
+	async handleGetAlbum(id: string, cache = true): Promise<Maybe<Album>> {
+		if (cache) {
+			const cachedAlbum = this.getCached<Album>(id);
+			if (cachedAlbum) return cachedAlbum;
+		}
+
+		const album = await this.innertube!.music.getAlbum(id);
+		return this.cache(await youtubeAlbum(id, album));
 	}
 
 	async handleGetPlaylist(idOrUrl: URL): Promise<Maybe<Playlist>> {
