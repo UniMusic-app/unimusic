@@ -23,11 +23,11 @@ import {
 
 import AppPage from "@/components/AppPage.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
-import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 
-import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { Album, AnySong, useMusicPlayer } from "@/stores/music-player";
+import AlbumDiscItem from "../components/AlbumDiscSong.vue";
 
 const musicPlayer = useMusicPlayer();
 const router = useRouter();
@@ -50,9 +50,18 @@ const album = computedAsync(async () => {
 	return await musicPlayer.services.getAlbum(albumType as AnySong["type"], albumId as string);
 });
 
+const groupedSongs = computed(() => {
+	const songs = album.value?.songs;
+	if (!songs) return;
+
+	return Map.groupBy(songs, ({ discNumber }) => discNumber ?? 0);
+});
+
 async function playAlbum(shuffle = false): Promise<void> {
 	if (!album.value) return;
-	const songs = await Promise.all(album.value.songs.map(musicPlayer.services.getSongFromPreview));
+	const songs = await Promise.all(
+		album.value.songs.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
+	);
 	musicPlayer.state.setQueue(songs);
 
 	if (shuffle) {
@@ -62,10 +71,21 @@ async function playAlbum(shuffle = false): Promise<void> {
 	musicPlayer.state.queueIndex = 0;
 }
 
+async function playDisc(discSongs: Album["songs"]): Promise<void> {
+	const songs = await Promise.all(
+		discSongs.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
+	);
+	musicPlayer.state.setQueue(songs);
+	musicPlayer.state.queueIndex = 0;
+}
+
 async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 	if (!album.value) return;
 
-	const songs = await Promise.all(album.value.songs.map(musicPlayer.services.getSongFromPreview));
+	const songs = await Promise.all(
+		album.value.songs.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
+	);
+
 	await musicPlayer.state.insertIntoQueue(
 		songs,
 		position === "next" ? musicPlayer.state.queueIndex + 1 : undefined,
@@ -144,17 +164,21 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 				</ion-button>
 			</div>
 
-			<ion-list>
-				<GenericSongItem
-					v-for="song in album.songs"
-					:key="song.id"
-					:title="song.title"
-					:artists="song.artists"
-					:artwork="song.artwork"
-					:type="song.type"
-				>
-					<template #options></template>
-				</GenericSongItem>
+			<ion-list v-if="groupedSongs">
+				<template v-for="[discNumber, discSongs] in groupedSongs.entries()" :key="discNumber">
+					<ion-item
+						class="disc-header"
+						lines="none"
+						button
+						:detail="false"
+						v-if="groupedSongs.size > 1"
+						@click="playDisc(discSongs)"
+					>
+						Disc {{ discNumber }}
+					</ion-item>
+
+					<AlbumDiscItem v-for="discSong in discSongs" :key="discSong.song.id" :discSong :album />
+				</template>
 			</ion-list>
 		</div>
 	</AppPage>

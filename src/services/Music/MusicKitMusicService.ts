@@ -171,7 +171,17 @@ export async function musicKitAlbum(album: MusicKit.Albums): Promise<Album> {
 	const artwork = await extractArtwork(id, attributes?.artwork);
 	const artists = extractArtists(relationships?.artists?.data ?? attributes?.artistName);
 
-	const songs = relationships?.tracks?.data?.map(musicKitSearchResult) ?? [];
+	const songs: Album["songs"] = [];
+	const tracks = relationships?.tracks?.data;
+	if (tracks) {
+		for (const track of tracks) {
+			songs.push({
+				discNumber: track.attributes?.discNumber,
+				trackNumber: track.attributes?.trackNumber,
+				song: musicKitSearchResult(track),
+			});
+		}
+	}
 
 	return {
 		id: album.id,

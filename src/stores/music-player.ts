@@ -60,12 +60,18 @@ export interface Playlist {
 	};
 }
 
+export interface DiscSong {
+	discNumber?: number | string;
+	trackNumber?: number | string;
+	song: SongPreview;
+}
+
 export interface Album {
 	id: string;
 	title: string;
 	artwork?: LocalImage;
 	artists: Artist[];
-	songs: SongPreview[];
+	songs: DiscSong[];
 }
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
