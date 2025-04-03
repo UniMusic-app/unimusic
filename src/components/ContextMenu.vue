@@ -18,11 +18,13 @@ const {
 	move = true,
 	backdrop = true,
 	haptics = true,
+	disabled = false,
 	x = "left",
 	y = "top",
 } = defineProps<{
 	event?: "click" | "contextmenu";
 	move?: boolean;
+	disabled?: boolean;
 	backdrop?: boolean;
 	haptics?: boolean;
 	x?: "left" | "center" | "right" | (string & {});
@@ -51,7 +53,7 @@ const options = useTemplateRef("contextMenuOptions");
 const style = ref<Record<string, string>>({});
 
 async function open(): Promise<void> {
-	if (opened.value) return;
+	if (disabled || opened.value) return;
 
 	if (haptics) {
 		await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});

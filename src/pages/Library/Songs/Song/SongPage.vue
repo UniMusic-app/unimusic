@@ -90,7 +90,7 @@ async function playNow(): Promise<void> {
 				{{ song.album }}
 			</RouterLink>
 
-			<ion-button strong @click="playNow">
+			<ion-button :disabled="!song.available" strong @click="playNow">
 				<ion-icon slot="start" :icon="playIcon" />
 				Play
 			</ion-button>

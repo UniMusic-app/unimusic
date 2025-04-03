@@ -60,7 +60,9 @@ const groupedSongs = computed(() => {
 async function playAlbum(shuffle = false): Promise<void> {
 	if (!album.value) return;
 	const songs = await Promise.all(
-		album.value.songs.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
+		album.value.songs
+			.filter(({ song }) => song.available)
+			.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
 	);
 	musicPlayer.state.setQueue(songs);
 
@@ -73,7 +75,9 @@ async function playAlbum(shuffle = false): Promise<void> {
 
 async function playDisc(discSongs: Album["songs"]): Promise<void> {
 	const songs = await Promise.all(
-		discSongs.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
+		discSongs
+			.filter(({ song }) => song.available)
+			.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
 	);
 	musicPlayer.state.setQueue(songs);
 	musicPlayer.state.queueIndex = 0;
@@ -285,6 +289,12 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 		box-shadow: 0 0 12px var(--shadow-color);
 		margin-block: 24px;
 		background-color: rgba(var(--ion-color-dark-rgb), 0.08);
+	}
+
+	& > ion-list {
+		& > .disc-header {
+			font-weight: 550;
+		}
 	}
 }
 </style>

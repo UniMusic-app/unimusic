@@ -21,6 +21,9 @@ export interface Song<Type extends string, Data = unknown> {
 
 	id: string;
 
+	available: boolean;
+	explicit: boolean;
+
 	artists: string[];
 	genres: string[];
 

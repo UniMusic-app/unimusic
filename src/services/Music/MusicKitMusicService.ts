@@ -79,6 +79,8 @@ export function musicKitSearchResult(
 
 	const artists = extractArtistNames(relationships?.artists?.data ?? attributes?.artistName);
 	const genres = extractGenres(relationships?.genres?.data ?? attributes?.genreNames);
+	const explicit = song.attributes?.contentRating === "explicit";
+	const available = typeof song.attributes?.playParams === "object";
 
 	return {
 		type: "musickit",
@@ -90,6 +92,9 @@ export function musicKitSearchResult(
 		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
 		genres,
 
+		explicit,
+		available,
+
 		artwork,
 	};
 }
@@ -97,7 +102,7 @@ export function musicKitSearchResult(
 export async function musicKitPreviewToSong(
 	searchResult: SongPreview<MusicKitSong>,
 ): Promise<MusicKitSong> {
-	const { id, artists, title, album, duration } = searchResult;
+	const { id, artists, title, album, duration, available = false, explicit = false } = searchResult;
 
 	const genres = searchResult.genres ?? [];
 	let artwork: Maybe<LocalImage>;
@@ -124,6 +129,9 @@ export async function musicKitPreviewToSong(
 		album,
 		duration,
 
+		explicit,
+		available,
+
 		artwork,
 		style: await generateSongStyle(artwork),
 
@@ -139,6 +147,8 @@ export async function musicKitSong(
 	const artwork = await extractArtwork(id, attributes?.artwork);
 	const artists = extractArtistNames(relationships?.artists?.data ?? attributes?.artistName);
 	const genres = extractGenres(relationships?.genres?.data ?? attributes?.genreNames);
+	const explicit = song.attributes?.contentRating === "explicit";
+	const available = typeof song.attributes?.playParams === "object";
 
 	let catalogId = id;
 	if (relationships && "catalog" in relationships) {
@@ -152,6 +162,9 @@ export async function musicKitSong(
 		id,
 		artists,
 		genres,
+
+		explicit,
+		available,
 
 		title: attributes?.name,
 		album: attributes?.albumName,

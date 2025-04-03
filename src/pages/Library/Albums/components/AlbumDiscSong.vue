@@ -1,10 +1,13 @@
 <script lang="ts" setup>
+import { ref } from "vue";
+
 import { Album, DiscSong, useMusicPlayer } from "@/stores/music-player";
+
+import { IonBadge, IonIcon, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
+import { alert as alertIcon } from "ionicons/icons";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
-import { IonBadge, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
-import { ref } from "vue";
 
 const { discSong, album } = defineProps<{
 	discSong: DiscSong;
@@ -32,9 +35,16 @@ async function playDiscSong(): Promise<void> {
 </script>
 
 <template>
-	<ContextMenu ref="contextMenu" @visibilitychange="contextMenuOpen = $event">
-		<ion-item button lines="full" @click="click">
-			<ion-badge color="light" slot="start">{{ discSong.trackNumber ?? "?" }}</ion-badge>
+	<ContextMenu
+		:disabled="!discSong.song.available"
+		ref="contextMenu"
+		@visibilitychange="contextMenuOpen = $event"
+	>
+		<ion-item :disabled="!discSong.song.available" button lines="full" @click="click">
+			<ion-badge color="light" slot="start">
+				{{ discSong.trackNumber ?? "!" }}
+			</ion-badge>
+
 			<LocalImg
 				v-if="album.artwork"
 				slot="start"

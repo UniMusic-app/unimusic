@@ -48,7 +48,7 @@ const deleteActionSheetButtons: ActionSheetButton[] = [
 ];
 
 function play(): void {
-	musicPlayer.state.setQueue(playlist.value!.songs);
+	musicPlayer.state.setQueue(playlist.value!.songs.filter((song) => song.available));
 	musicPlayer.state.queueIndex = 0;
 }
 
@@ -131,6 +131,7 @@ function goToSong(song: AnySong): void {
 				<ion-list>
 					<GenericSongItem
 						v-for="song in playlist.songs"
+						:disabled="!song.available"
 						:key="song.id"
 						:title="song.title"
 						:artists="song.artists"
