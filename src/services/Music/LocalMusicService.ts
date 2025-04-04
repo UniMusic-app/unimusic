@@ -1,7 +1,7 @@
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { computed } from "vue";
 
-import Fuse from "fuse.js";
+import Fuse, { FuseResult } from "fuse.js";
 import { parseBuffer, selectCover } from "music-metadata";
 
 import LocalMusic from "@/plugins/LocalMusicPlugin";
@@ -209,31 +209,40 @@ export class LocalMusicService extends MusicService<LocalSong> {
 	}
 
 	#fuse?: Fuse<LocalSong>;
+	#search = {
+		term: "",
+		pages: [] as Maybe<FuseResult<LocalSong>[]>[],
+	};
 	async *handleSearchSongs(
 		term: string,
 		offset: number,
 		options?: { signal: AbortSignal },
 	): AsyncGenerator<LocalSong> {
-		// TODO: Maybe split results in smaller chunks and actually paginate it?
-		if (offset > 0) {
-			return;
-		}
-
 		if (!this.#fuse) {
 			const allSongs = await getLocalSongs();
-
 			// TODO: This might require some messing around with distance/threshold settings to not make it excessively loose
 			this.#fuse = new Fuse(allSongs, {
 				keys: ["title", "artists", "album", "genres"] satisfies (keyof LocalSong)[],
 			});
 		}
 
-		const results = this.#fuse.search(term);
-		for (const { item } of results) {
-			if (options?.signal?.aborted) {
-				return;
-			}
+		if (term === this.#search.term) {
+			const page = this.#search.pages[offset];
+			if (!page) return;
 
+			for (const { item } of page) {
+				if (options?.signal?.aborted) return;
+				yield item;
+			}
+			return;
+		}
+
+		const results = this.#fuse.search(term);
+		const pages = Object.values(Object.groupBy(results, (_, index) => Math.floor(index / 25)));
+		this.#search.pages = pages;
+
+		for (const { item } of pages[0] ?? []) {
+			if (options?.signal?.aborted) return;
 			yield item;
 		}
 	}
