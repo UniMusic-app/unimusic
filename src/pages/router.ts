@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
 	// Album page provided as is
 	{ path: "/library/albums/album/:albumType/:albumId", name: "Album", component: AlbumPage },
 	// Album page provided by song
-	{ path: "/library/albums/song/:songType/:songId", name: "Album", component: AlbumPage },
+	{ path: "/library/albums/song/:songType/:songId", name: "Songs Album", component: AlbumPage },
 	{ path: "/library/playlists", name: "Playlists", component: PlaylistsPage },
 	{ path: "/library/playlists/:id", name: "Playlist", component: PlaylistPage },
 ];
