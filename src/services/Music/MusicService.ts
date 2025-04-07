@@ -16,6 +16,7 @@ import { AuthorizationService } from "@/services/Authorization/AuthorizationServ
 import { Service } from "@/services/Service";
 import { useMusicServices } from "@/stores/music-services";
 
+import { useLocalImages } from "@/stores/local-images";
 import { useSongMetadata } from "@/stores/metadata";
 import { Maybe } from "@/utils/types";
 
@@ -275,13 +276,31 @@ export abstract class MusicService<
 		return await this.withErrorHandling([], this.handleSearchHints, term);
 	}
 
-	abstract handleLibrarySongs(offset: number): Song[] | Promise<Song[]>;
-	async librarySongs(offset = 0): Promise<Song[]> {
+	handleGetLibrarySongs?(offset: number): AsyncGenerator<Song>;
+	async *getLibrarySongs(offset = 0): AsyncGenerator<Song> {
 		this.log("librarySongs");
+		if (!this.handleGetLibrarySongs) return;
+
 		await this.initialize();
-		const songs = await this.withErrorHandling([], this.handleLibrarySongs, offset);
-		songs.map((song) => this.metadata.applyMetadata(song));
+		const songs = await this.withErrorHandling(undefined!, this.handleGetLibrarySongs, offset);
+
+		for await (const song of songs) {
+			yield this.metadata.applyMetadata(song);
+		}
+
 		return songs;
+	}
+
+	handleRefreshLibrarySongs?(): void | Promise<void>;
+	async refreshLibrarySongs(): Promise<void> {
+		this.log("refreshLibrarySongs");
+		if (!this.handleRefreshLibrarySongs) {
+			throw new Error("This service does not support refreshLibrarySongs");
+		}
+		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
+
+		const localImages = useLocalImages();
+		localImages.deduplicate();
 	}
 
 	handleGetLibraryAlbums?(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview>;
@@ -291,10 +310,10 @@ export abstract class MusicService<
 			throw new Error("This service does not support getLibraryAlbums");
 		}
 
-		const results = await this.withErrorHandling(undefined!, this.handleGetLibraryAlbums, options);
-		if (!results) return;
+		const albums = await this.withErrorHandling(undefined!, this.handleGetLibraryAlbums, options);
+		if (!albums) return;
 
-		yield* results;
+		yield* albums;
 	}
 
 	handleRefreshLibraryAlbums?(): void | Promise<void>;
@@ -305,12 +324,6 @@ export abstract class MusicService<
 		}
 
 		await this.withErrorHandling(undefined!, this.handleRefreshLibraryAlbums);
-	}
-
-	abstract handleRefreshLibrarySongs(): void | Promise<void>;
-	async refreshLibrarySongs(): Promise<void> {
-		this.log("refresh");
-		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
 	}
 
 	handleGetSongsAlbum?(song: Song): Maybe<Album> | Promise<Maybe<Album>>;

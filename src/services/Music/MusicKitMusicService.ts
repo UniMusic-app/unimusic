@@ -197,7 +197,7 @@ export async function musicKitAlbum(album: MusicKit.Albums): Promise<Album> {
 		for (const track of tracks) {
 			songs.push({
 				discNumber: track.attributes?.discNumber,
-				trackNumber: track.attributes?.trackNumber,
+				trackNumber: Number(track.attributes?.trackNumber),
 				song: musicKitSongPreview(track),
 			});
 		}
@@ -456,20 +456,17 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 		return await this.handleGetSong(song.id, false);
 	}
 
-	async handleLibrarySongs(offset: number): Promise<MusicKitSong[]> {
+	async *handleGetLibrarySongs(offset: number): AsyncGenerator<MusicKitSong> {
 		const response = await this.music!.api.music<
 			MusicKit.LibrarySongsResponse,
 			MusicKit.LibrarySongsQuery
 		>("/v1/me/library/songs", { limit: 25, offset, include: ["catalog"] });
 
-		const songs = response.data.data
-			.filter((song) => {
-				// Filter out songs that cannot be played
-				return !!song.attributes?.playParams;
-			})
-			.map((song) => this.getCached<MusicKitSong>(song.id) ?? this.cachePromise(musicKitSong(song)));
-
-		return await Promise.all(songs);
+		for (const song of response.data.data) {
+			// Filter out songs that cannot be played
+			if (!song.attributes?.playParams) continue;
+			yield this.getCached<MusicKitSong>(song.id) ?? this.cachePromise(musicKitSong(song));
+		}
 	}
 
 	async handleInitialization(): Promise<void> {

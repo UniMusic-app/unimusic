@@ -171,11 +171,12 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 	};
 }
 
-async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
+async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
 	if (clearCache) {
 		localSongs.data.value = [];
 	} else if (localSongs.data.value.length) {
-		return localSongs.data.value;
+		yield* localSongs.data.value;
+		return;
 	}
 
 	// Required for Documents folder to show up in Files
@@ -209,13 +210,12 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 			const fileId = id ?? String(generateHash(filePath));
 
 			const song = await parseLocalSong(filePath, fileId);
+			yield song;
 			localSongs.data.value.push(song);
 		}
 	} catch (error) {
 		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
 	}
-
-	return localSongs.data.value;
 }
 
 export class LocalMusicService extends MusicService<LocalSong> {
@@ -271,7 +271,7 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		options?: { signal: AbortSignal },
 	): AsyncGenerator<LocalSong> {
 		if (!this.#fuse) {
-			const allSongs = await getLocalSongs();
+			const allSongs = await Array.fromAsync(getLocalSongs());
 			// TODO: This might require some messing around with distance/threshold settings to not make it excessively loose
 			this.#fuse = new Fuse(allSongs, {
 				keys: ["title", "artists", "album", "genres"] satisfies (keyof LocalSong)[],
@@ -372,15 +372,14 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		}
 	}
 
-	async handleLibrarySongs(_offset: number): Promise<LocalSong[]> {
+	async *handleGetLibrarySongs(_offset: number): AsyncGenerator<LocalSong> {
 		// TODO: Just like search, maybe paginate?
-		return getLocalSongs();
+		yield* getLocalSongs();
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {
 		this.#fuse = undefined;
-		await getLocalSongs(true);
-		useLocalImages().deduplicate();
+		await Array.fromAsync(getLocalSongs(true));
 	}
 
 	handleGetSong(songId: string): Maybe<LocalSong> {

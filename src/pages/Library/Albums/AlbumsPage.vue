@@ -29,14 +29,14 @@ onUpdated(async () => {
 		for await (const album of musicPlayer.services.libraryAlbums()) {
 			libraryAlbums.value.push(album);
 		}
-		console.log("LAB:", libraryAlbums.value.length);
 		isLoading.value = false;
 	}
 });
 
 async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
-	await musicPlayer.services.refreshLibraryAlbums();
 	isLoading.value = true;
+	await musicPlayer.services.refreshLibraryAlbums();
+	libraryAlbums.value.length = 0;
 	for await (const album of musicPlayer.services.libraryAlbums()) {
 		libraryAlbums.value.push(album);
 	}

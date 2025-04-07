@@ -422,15 +422,6 @@ export class YouTubeMusicService extends MusicService<YouTubeSong> {
 		};
 	}
 
-	handleLibrarySongs(_offset: number): YouTubeSong[] {
-		// TODO: Implement local version of it
-		return [];
-	}
-
-	async handleRefreshLibrarySongs(): Promise<void> {
-		// TODO: Unimplemented
-	}
-
 	async handleGetSong(songId: string, cache = true): Promise<YouTubeSong> {
 		if (cache) {
 			const cachedSong = this.getCached<YouTubeSong>(songId);

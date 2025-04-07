@@ -50,9 +50,11 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		}
 	}
 
-	async function librarySongs(offset = 0): Promise<AnySong[]> {
-		const allSongs = await withAllServices((service) => service.librarySongs(offset));
-		return allSongs.flat();
+	async function* librarySongs(offset = 0): AsyncGenerator<AnySong> {
+		for (const service of enabledServices.value) {
+			if (!service.handleGetLibrarySongs) continue;
+			yield* service.getLibrarySongs(offset);
+		}
 	}
 
 	async function refreshLibrarySongs(): Promise<void> {

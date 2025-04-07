@@ -12,19 +12,25 @@ import { useSessionStorage } from "@vueuse/core";
 const musicPlayer = useMusicPlayer();
 
 const librarySongs = useSessionStorage<AnySong[]>("librarySongs", []);
-const isLoading = ref(false);
-
+const isLoading = ref(librarySongs.value.length === 0);
 onUpdated(async () => {
-	if (librarySongs.value.length) return;
-
-	isLoading.value = true;
-	librarySongs.value = await musicPlayer.services.librarySongs();
-	isLoading.value = false;
+	if (!librarySongs.value.length) {
+		isLoading.value = true;
+		for await (const song of musicPlayer.services.librarySongs()) {
+			librarySongs.value.push(song);
+		}
+		isLoading.value = false;
+	}
 });
 
 async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
+	isLoading.value = true;
 	await musicPlayer.services.refreshLibrarySongs();
-	librarySongs.value = await musicPlayer.services.librarySongs();
+	librarySongs.value.length = 0;
+	for await (const song of musicPlayer.services.librarySongs()) {
+		librarySongs.value.push(song);
+	}
+	isLoading.value = false;
 	await event.target.complete();
 }
 </script>
@@ -35,12 +41,14 @@ async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 			<ion-refresher-content />
 		</ion-refresher>
 
-		<ion-list v-if="isLoading">
-			<SkeletonItem v-for="i in 25" :key="i" />
-		</ion-list>
-		<ion-list v-else>
+		<ion-list class="songs-list">
+			<template v-if="isLoading">
+				<SkeletonItem v-for="i in 25" :key="i" />
+			</template>
 			<GenericSongItem
+				v-else
 				v-for="song in librarySongs"
+				class="songs-item"
 				:key="song.id"
 				:router-link="`/library/songs/${song.type}/${song.id}`"
 				:title="song.title"
@@ -51,3 +59,20 @@ async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 		</ion-list>
 	</AppPage>
 </template>
+
+<style scoped>
+@keyframes show-up {
+	from {
+		opacity: 0%;
+	}
+
+	to {
+		opacity: 100%;
+	}
+}
+
+.skeleton-item,
+.songs-item {
+	animation: show-up 250ms ease-in;
+}
+</style>
