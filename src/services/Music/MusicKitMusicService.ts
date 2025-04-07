@@ -1,7 +1,14 @@
 import { alertController } from "@ionic/vue";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
-import { Album, Artist, MusicKitSong, Playlist, SongPreview } from "@/stores/music-player";
+import {
+	Album,
+	AlbumPreview,
+	Artist,
+	MusicKitSong,
+	Playlist,
+	SongPreview,
+} from "@/stores/music-player";
 
 import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
 import { MusicService, MusicServiceEvent, SilentError } from "@/services/Music/MusicService";
@@ -66,7 +73,7 @@ export async function extractArtwork(
 	}
 }
 
-export function musicKitSearchResult(
+export function musicKitSongPreview(
 	song: MusicKit.Songs | MusicKit.LibrarySongs,
 ): SongPreview<MusicKitSong> {
 	const { id, attributes, relationships } = song;
@@ -191,17 +198,39 @@ export async function musicKitAlbum(album: MusicKit.Albums): Promise<Album> {
 			songs.push({
 				discNumber: track.attributes?.discNumber,
 				trackNumber: track.attributes?.trackNumber,
-				song: musicKitSearchResult(track),
+				song: musicKitSongPreview(track),
 			});
 		}
 	}
 
 	return {
-		id: album.id,
+		type: "musickit",
+		id,
 		title,
 		artists,
 		artwork,
 		songs,
+	};
+}
+
+export function musicKitAlbumPreview(album: MusicKit.Albums): AlbumPreview {
+	const { id, attributes, relationships } = album;
+
+	const title = attributes?.name ?? "Unknown title";
+	const artists = extractArtists(relationships?.artists?.data ?? attributes?.artistName);
+
+	let artwork: Maybe<LocalImage>;
+	if (attributes?.artwork) {
+		const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
+		artwork = { url: artworkUrl };
+	}
+
+	return {
+		type: "musickit",
+		id,
+		title,
+		artists,
+		artwork,
 	};
 }
 
@@ -235,6 +264,21 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 
 		const { terms } = response.data.results;
 		return terms;
+	}
+
+	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview> {
+		const response = await this.music!.api.music<MusicKit.AlbumsResponse, MusicKit.AlbumsQuery>(
+			`/v1/me/library/albums`,
+			{ include: ["artists"] },
+		);
+
+		const albums = response.data.data;
+		if (!albums.length) return;
+
+		for (const album of albums) {
+			if (options?.signal?.aborted) return;
+			yield musicKitAlbumPreview(album);
+		}
 	}
 
 	async handleGetSongsAlbum(song: MusicKitSong, cache = true): Promise<Maybe<Album>> {
@@ -371,7 +415,7 @@ export class MusicKitMusicService extends MusicService<MusicKitSong> {
 			if (options?.signal?.aborted) {
 				return;
 			}
-			yield musicKitSearchResult(song);
+			yield musicKitSongPreview(song);
 		}
 	}
 

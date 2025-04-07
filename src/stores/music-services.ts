@@ -7,7 +7,7 @@ import { LocalMusicService } from "@/services/Music/LocalMusicService";
 import { MusicKitMusicService } from "@/services/Music/MusicKitMusicService";
 import { YouTubeMusicService } from "@/services/Music/YouTubeMusicService";
 
-import { Album, AnySong, SongPreview } from "@/stores/music-player";
+import { Album, AlbumPreview, AnySong, SongPreview } from "@/stores/music-player";
 
 import { Maybe } from "@/utils/types";
 
@@ -59,6 +59,20 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		await withAllServices((service) => service.refreshLibrarySongs());
 	}
 
+	async function* libraryAlbums(): AsyncGenerator<AlbumPreview> {
+		for (const service of enabledServices.value) {
+			if (!service.handleGetLibraryAlbums) return;
+			yield* service.getLibraryAlbums();
+		}
+	}
+
+	async function refreshLibraryAlbums(): Promise<void> {
+		await withAllServices((service) => {
+			if (!service.handleRefreshLibraryAlbums) return;
+			return service.refreshLibraryAlbums();
+		});
+	}
+
 	async function refreshSong(song: AnySong): Promise<Maybe<AnySong>> {
 		return await getService(song.type)?.refreshSong(song);
 	}
@@ -94,14 +108,19 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		getService,
 
 		withAllServices,
+
 		searchHints,
 		searchSongs,
+
+		getSong,
+		refreshSong,
+		getSongFromPreview,
 		librarySongs,
 		refreshLibrarySongs,
-		refreshSong,
-		getSong,
-		getSongFromPreview,
+
 		getAlbum,
+		libraryAlbums,
+		refreshLibraryAlbums,
 		getSongsAlbum,
 	};
 });

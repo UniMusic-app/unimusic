@@ -64,18 +64,21 @@ export interface Playlist {
 }
 
 export interface DiscSong {
-	discNumber?: number | string;
-	trackNumber?: number | string;
+	discNumber?: number;
+	trackNumber?: number;
 	song: SongPreview;
 }
 
 export interface Album {
+	type: AnySong["type"];
 	id: string;
 	title: string;
 	artwork?: LocalImage;
 	artists: Artist[];
 	songs: DiscSong[];
 }
+
+export type AlbumPreview = Pick<Album, "id" | "type" | "title" | "artwork" | "artists">;
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();

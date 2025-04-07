@@ -3,6 +3,7 @@ import { alertController } from "@ionic/vue";
 import { computed, ref } from "vue";
 
 import {
+	AlbumPreview,
 	SongPreview,
 	useMusicPlayer,
 	type Album,
@@ -43,7 +44,7 @@ export class SilentError extends Error {
 	}
 }
 
-interface Identifiable {
+export interface Identifiable {
 	id: string;
 }
 
@@ -239,12 +240,12 @@ export abstract class MusicService<
 	abstract handleSearchSongs(
 		term: string,
 		offset: number,
-		options?: { signal: AbortSignal },
+		options?: { signal?: AbortSignal },
 	): AsyncGenerator<SongPreview<Song>>;
 	async *searchSongs(
 		term: string,
 		offset = 0,
-		options?: { signal: AbortSignal },
+		options?: { signal?: AbortSignal },
 	): AsyncGenerator<SongPreview<Song>> {
 		this.log("searchSongs");
 		await this.initialize();
@@ -258,9 +259,7 @@ export abstract class MusicService<
 		);
 		if (!results) return;
 
-		for await (const result of results) {
-			yield result;
-		}
+		yield* results;
 	}
 
 	abstract handleGetSongFromPreview(searchResult: SongPreview<Song>): Song | Promise<Song>;
@@ -285,6 +284,29 @@ export abstract class MusicService<
 		return songs;
 	}
 
+	handleGetLibraryAlbums?(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview>;
+	async *getLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview> {
+		this.log("getLibraryAlbums");
+		if (!this.handleGetLibraryAlbums) {
+			throw new Error("This service does not support getLibraryAlbums");
+		}
+
+		const results = await this.withErrorHandling(undefined!, this.handleGetLibraryAlbums, options);
+		if (!results) return;
+
+		yield* results;
+	}
+
+	handleRefreshLibraryAlbums?(): void | Promise<void>;
+	async refreshLibraryAlbums(): Promise<void> {
+		this.log("refreshLibraryAlbums");
+		if (!this.handleRefreshLibraryAlbums) {
+			throw new Error("This service does not support refreshLibraryAlbums");
+		}
+
+		await this.withErrorHandling(undefined!, this.handleRefreshLibraryAlbums);
+	}
+
 	abstract handleRefreshLibrarySongs(): void | Promise<void>;
 	async refreshLibrarySongs(): Promise<void> {
 		this.log("refresh");
@@ -293,6 +315,7 @@ export abstract class MusicService<
 
 	handleGetSongsAlbum?(song: Song): Maybe<Album> | Promise<Maybe<Album>>;
 	async getSongsAlbum(song: Song): Promise<Maybe<Album>> {
+		this.log("getSongsAlbum");
 		if (!this.handleGetSongsAlbum) {
 			throw new Error("This service does not support getSongsAlbum");
 		}
@@ -316,6 +339,7 @@ export abstract class MusicService<
 
 	handleGetPlaylist?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
 	async getPlaylist(url: URL): Promise<Maybe<Playlist>> {
+		this.log("getPlaylist");
 		if (!this.handleGetPlaylist) {
 			throw new Error("This service does not support getPlaylist");
 		}
@@ -338,7 +362,7 @@ export abstract class MusicService<
 
 	abstract handleRefreshSong(song: Song): Maybe<Song> | Promise<Maybe<Song>>;
 	async refreshSong(song: Song): Promise<Maybe<Song>> {
-		this.log("getSong");
+		this.log("refreshSong");
 		await this.initialize();
 
 		const refreshed = await this.withErrorHandling(undefined, this.handleRefreshSong, song);

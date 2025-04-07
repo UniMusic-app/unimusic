@@ -157,6 +157,7 @@ export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<Al
 	}
 
 	return {
+		type: "youtube",
 		id,
 		title,
 		artists,
