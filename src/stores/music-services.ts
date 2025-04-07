@@ -58,7 +58,9 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	}
 
 	async function refreshLibrarySongs(): Promise<void> {
-		await withAllServices((service) => service.refreshLibrarySongs());
+		await withAllServices((service) => {
+			return service.handleRefreshLibrarySongs && service.refreshLibrarySongs();
+		});
 	}
 
 	async function* libraryAlbums(): AsyncGenerator<AlbumPreview> {
@@ -70,8 +72,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 
 	async function refreshLibraryAlbums(): Promise<void> {
 		await withAllServices((service) => {
-			if (!service.handleRefreshLibraryAlbums) return;
-			return service.refreshLibraryAlbums();
+			return service.handleRefreshLibraryAlbums && service.refreshLibraryAlbums();
 		});
 	}
 
