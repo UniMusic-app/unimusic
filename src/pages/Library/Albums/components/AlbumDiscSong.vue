@@ -3,8 +3,7 @@ import { ref } from "vue";
 
 import { Album, DiscSong, useMusicPlayer } from "@/stores/music-player";
 
-import { IonBadge, IonIcon, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
-import { alert as alertIcon } from "ionicons/icons";
+import { IonBadge, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
@@ -19,7 +18,7 @@ const router = useIonRouter();
 
 const contextMenuOpen = ref(false);
 
-async function click() {
+async function click(): Promise<void> {
 	if (contextMenuOpen.value) {
 		router.push(`/library/songs/${discSong.song.type}/${discSong.song.id}`);
 	} else {

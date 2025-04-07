@@ -22,7 +22,7 @@ onUpdated(async () => {
 	isLoading.value = false;
 });
 
-async function refreshLocalLibrary(event: RefresherCustomEvent): Promise<void> {
+async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 	await musicPlayer.services.refreshLibrarySongs();
 	librarySongs.value = await musicPlayer.services.librarySongs();
 	await event.target.complete();
@@ -31,7 +31,7 @@ async function refreshLocalLibrary(event: RefresherCustomEvent): Promise<void> {
 
 <template>
 	<AppPage title="Songs" back-button="Library">
-		<ion-refresher slot="fixed" @ion-refresh="refreshLocalLibrary($event)">
+		<ion-refresher slot="fixed" @ion-refresh="refreshSongLibrary">
 			<ion-refresher-content />
 		</ion-refresher>
 
@@ -40,9 +40,9 @@ async function refreshLocalLibrary(event: RefresherCustomEvent): Promise<void> {
 		</ion-list>
 		<ion-list v-else>
 			<GenericSongItem
-				v-for="(song, i) in librarySongs"
+				v-for="song in librarySongs"
+				:key="song.id"
 				:router-link="`/library/songs/${song.type}/${song.id}`"
-				:key="i"
 				:title="song.title"
 				:artists="song.artists"
 				:artwork="song.artwork"
