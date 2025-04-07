@@ -1,28 +1,26 @@
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
-import { computed } from "vue";
+import { toRaw } from "vue";
 
 import Fuse, { FuseResult } from "fuse.js";
-import { parseBuffer, selectCover } from "music-metadata";
+import { parseWebStream, selectCover } from "music-metadata";
 
 import LocalMusic from "@/plugins/LocalMusicPlugin";
+import { Capacitor } from "@capacitor/core";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
-import { LocalSong } from "@/stores/music-player";
+import { Album, AlbumPreview, DiscSong, LocalSong } from "@/stores/music-player";
 
 import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
 
 import { base64StringToBuffer } from "@/utils/buffer";
-import { generateUUID } from "@/utils/crypto";
+import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
 
-const $localSongs = useIDBKeyval<LocalSong[]>("localMusicSongs", []);
-const localSongs = computed<LocalSong[]>({
-	get: () => $localSongs.data.value,
-	set: (value) => ($localSongs.data.value = value),
-});
+const localSongs = useIDBKeyval<LocalSong[]>("localMusicSongs", []);
+const albums = useIDBKeyval<Album[]>("localAlbums", []);
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
 	switch (getPlatform()) {
@@ -75,34 +73,51 @@ async function* traverseDirectory(path: string): AsyncGenerator<{ filePath: stri
 	}
 }
 
-async function readSongFile(path: string): Promise<Uint8Array> {
+async function getFileStream(path: string): Promise<ReadableStream<Uint8Array>> {
 	switch (getPlatform()) {
+		case "electron": {
+			const buffer = await ElectronMusicPlayer!.readFile(path);
+			const stream = new ReadableStream({
+				start(controller): void {
+					controller.enqueue(buffer);
+					controller.close();
+				},
+			});
+			return stream;
+		}
+		// TODO: Stream data on Android?
 		case "android": {
 			const { data } = await LocalMusic.readSong({ path });
 			const buffer = base64StringToBuffer(data);
-			return buffer;
-		}
-		case "electron": {
-			const buffer = await ElectronMusicPlayer!.readFile(path);
-			return buffer;
+			const stream = new ReadableStream({
+				start(controller): void {
+					controller.enqueue(buffer);
+					controller.close();
+				},
+			});
+			return stream;
 		}
 		default: {
 			const { Filesystem, Directory } = await import("@capacitor/filesystem");
 
-			const { data } = await Filesystem.readFile({
-				path,
+			const { uri } = await Filesystem.getUri({
+				path: path,
 				directory: Directory.Documents,
 			});
-
-			if (data instanceof Blob) return await data.bytes();
-			const buffer = base64StringToBuffer(data);
-			return buffer;
+			const fileSrc = Capacitor.convertFileSrc(uri);
+			const response = await fetch(fileSrc);
+			if (!response.body) {
+				throw new Error(`Failed retrieving file stream for ${path}: body is empty.`);
+			}
+			return response.body;
 		}
 	}
 }
 
-async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Promise<LocalSong> {
-	const metadata = await parseBuffer(buffer, {
+async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
+	const stream = await getFileStream(path);
+
+	const metadata = await parseWebStream(stream, {
 		path,
 		mimeType: audioMimeTypeFromPath(path),
 	});
@@ -114,6 +129,9 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
 	const duration = format.duration;
 	const genres = common.genre ?? [];
+
+	const discNumber = common.disk.no ?? undefined;
+	const trackNumber = common.track.no ?? undefined;
 
 	const coverImage = selectCover(common.picture);
 	let artwork: Maybe<LocalImage>;
@@ -145,15 +163,19 @@ async function parseLocalSong(buffer: Uint8Array, path: string, id: string): Pro
 		artwork,
 		style: await generateSongStyle(artwork),
 
-		data: { path },
+		data: {
+			path,
+			discNumber,
+			trackNumber,
+		},
 	};
 }
 
 async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 	if (clearCache) {
-		localSongs.value = [];
-	} else if (localSongs.value.length) {
-		return localSongs.value;
+		localSongs.data.value = [];
+	} else if (localSongs.data.value.length) {
+		return localSongs.data.value;
 	}
 
 	// Required for Documents folder to show up in Files
@@ -181,15 +203,19 @@ async function getLocalSongs(clearCache = false): Promise<LocalSong[]> {
 			// and content paths don't have an extension
 			if (getPlatform() !== "android" && !audioMimeTypeFromPath(filePath)) continue;
 
-			const data = await readSongFile(filePath);
-			const song = await parseLocalSong(data, filePath, id ?? generateUUID());
-			localSongs.value.push(song);
+			// Instead of generating UUID and then managing the proper song object
+			// We use hashed filePath as an alternative id.
+			// We have to hash it to prevent clashing with routes when used as a route parameter.
+			const fileId = id ?? String(generateHash(filePath));
+
+			const song = await parseLocalSong(filePath, fileId);
+			localSongs.data.value.push(song);
 		}
 	} catch (error) {
 		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
 	}
 
-	return localSongs.value;
+	return localSongs.data.value;
 }
 
 export class LocalMusicService extends MusicService<LocalSong> {
@@ -204,8 +230,34 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		super();
 	}
 
+	handleInitialization(): void {
+		// TODO: Make an abstract MusicService class that uses HTMLAudioElement
+		// 		 Since this is shared between {YouTube,Local}MusicService's, and possibly more in the future
+		const audio = new Audio();
+		audio.addEventListener("timeupdate", () => {
+			this.dispatchEvent(new MusicServiceEvent("timeupdate", audio.currentTime));
+		});
+		audio.addEventListener("playing", () => {
+			this.dispatchEvent(new MusicServiceEvent("playing"));
+		});
+		audio.addEventListener("ended", () => {
+			this.dispatchEvent(new MusicServiceEvent("ended"));
+		});
+		this.audio = audio;
+	}
+
+	handleDeinitialization(): void {}
+
 	handleSearchHints(_term: string): string[] {
 		return [];
+	}
+
+	handleGetSongsAlbum(song: LocalSong): Maybe<Album> {
+		return albums.data.value.find(({ songs }) => songs.some(({ song: { id } }) => id === song.id));
+	}
+
+	handleGetAlbum(albumId: string): Maybe<Album> {
+		return albums.data.value.find(({ id }) => id === albumId);
 	}
 
 	#fuse?: Fuse<LocalSong>;
@@ -251,6 +303,75 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		return searchResult;
 	}
 
+	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview> {
+		if (!albums.data.value.length) {
+			await this.refreshLibraryAlbums();
+		}
+
+		for (const album of albums.data.value) {
+			if (options?.signal?.aborted) return;
+			yield album;
+		}
+	}
+
+	handleRefreshLibraryAlbums(): void {
+		// First we cleanup songs from albums, in case some were removed
+		// This also allows us to then remove albums that are empty
+		for (const album of albums.data.value) {
+			album.songs.length = 0;
+		}
+
+		for (const song of localSongs.data.value) {
+			if (!song.album) continue;
+
+			const discSong: DiscSong = {
+				song: toRaw(song),
+				discNumber: song.data.discNumber,
+				trackNumber: song.data.trackNumber,
+			};
+
+			// Find all albums that match the songs album title and has at least 1 shared artist
+			const possibleAlbums = albums.data.value.filter(
+				(album) =>
+					album.title === song.album &&
+					album.artists.some((artist) => song.artists.includes(artist.name)),
+			);
+
+			// If no such albums exist, create a new one
+			if (!possibleAlbums.length) {
+				const album: Album = {
+					type: "local",
+					id: generateUUID(),
+					title: song.album,
+					songs: [discSong],
+					artists: song.artists.map((name) => ({ name })),
+					artwork: toRaw(song.artwork),
+				};
+
+				albums.data.value.push(album);
+				continue;
+			}
+
+			for (const album of possibleAlbums) {
+				album.songs.push(discSong);
+			}
+		}
+
+		for (const [i, album] of albums.data.value.entries()) {
+			// Remove albums with no songs
+			if (album.songs.length === 0) {
+				album.songs.splice(i, 1);
+				continue;
+			}
+
+			// Sort album songs so they match the disc and track order
+			album.songs.sort(
+				(a, b) =>
+					(a.discNumber ?? 0) - (b.discNumber ?? 0) || (a.trackNumber ?? 0) - (b.trackNumber ?? 0),
+			);
+		}
+	}
+
 	async handleLibrarySongs(_offset: number): Promise<LocalSong[]> {
 		// TODO: Just like search, maybe paginate?
 		return getLocalSongs();
@@ -259,44 +380,28 @@ export class LocalMusicService extends MusicService<LocalSong> {
 	async handleRefreshLibrarySongs(): Promise<void> {
 		this.#fuse = undefined;
 		await getLocalSongs(true);
+		useLocalImages().deduplicate();
 	}
 
 	handleGetSong(songId: string): Maybe<LocalSong> {
 		const cached = this.getCached<LocalSong>(songId);
 		if (cached) return cached;
 
-		const song = localSongs.value.find((song) => song.id === songId);
+		const song = localSongs.data.value.find((song) => song.id === songId);
 		return song && this.cache(song);
 	}
 
 	async handleRefreshSong(song: LocalSong): Promise<LocalSong> {
 		const filePath = song.data.path;
-		const data = await readSongFile(filePath);
-		const refreshed = await parseLocalSong(data, filePath, song.id);
+		const refreshed = await parseLocalSong(filePath, song.id);
 		return this.cache(refreshed);
 	}
 
-	handleInitialization(): void {
-		// TODO: Make an abstract MusicService class that uses HTMLAudioElement
-		// 		 Since this is shared between {YouTube,Local}MusicService's, and possibly more in the future
-		const audio = new Audio();
-		audio.addEventListener("timeupdate", () => {
-			this.dispatchEvent(new MusicServiceEvent("timeupdate", audio.currentTime));
-		});
-		audio.addEventListener("playing", () => {
-			this.dispatchEvent(new MusicServiceEvent("playing"));
-		});
-		audio.addEventListener("ended", () => {
-			this.dispatchEvent(new MusicServiceEvent("ended"));
-		});
-		this.audio = audio;
-	}
-
-	handleDeinitialization(): void {}
-
 	async handlePlay(): Promise<void> {
 		const { path } = this.song!.data;
-		const buffer = await readSongFile(path);
+
+		const stream = await getFileStream(path);
+		const buffer = await new Response(stream).arrayBuffer();
 		const blob = new Blob([buffer], { type: audioMimeTypeFromPath(path) });
 		const url = URL.createObjectURL(blob);
 

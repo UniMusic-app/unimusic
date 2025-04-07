@@ -61,7 +61,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 
 	async function* libraryAlbums(): AsyncGenerator<AlbumPreview> {
 		for (const service of enabledServices.value) {
-			if (!service.handleGetLibraryAlbums) return;
+			if (!service.handleGetLibraryAlbums) continue;
 			yield* service.getLibraryAlbums();
 		}
 	}
