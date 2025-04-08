@@ -41,14 +41,12 @@ async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 			<ion-refresher-content />
 		</ion-refresher>
 
-		<ion-list class="songs-list">
-			<template v-if="isLoading">
-				<SkeletonItem v-for="i in 25" :key="i" />
-			</template>
+		<ion-list v-if="isLoading" class="songs-list">
+			<SkeletonItem v-for="i in 25" :key="i" />
+		</ion-list>
+		<ion-list v-else class="songs-list">
 			<GenericSongItem
-				v-else
 				v-for="song in librarySongs"
-				class="songs-item"
 				:key="song.id"
 				:router-link="`/library/songs/${song.type}/${song.id}`"
 				:title="song.title"
@@ -71,8 +69,7 @@ async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 	}
 }
 
-.skeleton-item,
-.songs-item {
+.songs-list {
 	animation: show-up 250ms ease-in;
 }
 </style>

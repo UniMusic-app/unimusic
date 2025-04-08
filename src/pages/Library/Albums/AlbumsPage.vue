@@ -51,11 +51,11 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 			<ion-refresher-content />
 		</ion-refresher>
 
-		<div class="album-cards">
-			<template v-if="isLoading">
-				<SkeletonCard v-for="i in 25" :key="i" />
-			</template>
-			<ContextMenu v-else v-for="album in libraryAlbums" :key="album.id">
+		<div v-if="isLoading" class="album-cards">
+			<SkeletonCard v-for="i in 25" :key="i" />
+		</div>
+		<div v-else class="album-cards">
+			<ContextMenu v-for="album in libraryAlbums" :key="album.id">
 				<ion-card class="album-card" :router-link="`/library/albums/album/${album.type}/${album.id}`">
 					<LocalImg :src="album.artwork" />
 
@@ -74,6 +74,16 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 </template>
 
 <style scoped>
+@keyframes show-up {
+	from {
+		opacity: 0%;
+	}
+
+	to {
+		opacity: 100%;
+	}
+}
+
 .album-cards {
 	display: grid;
 	width: 100vw;
@@ -82,6 +92,8 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 
 	justify-content: center;
 	align-items: center;
+
+	animation: show-up 250ms ease-in;
 
 	--gap: 8px;
 	--columns: 1;
@@ -126,24 +138,12 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 	background: var(--context-menu-item-background);
 }
 
-@keyframes show-up {
-	from {
-		opacity: 0%;
-	}
-
-	to {
-		opacity: 100%;
-	}
-}
-
 .album-card,
 .skeleton-card {
 	margin: 0;
 	background: transparent;
 	box-shadow: none;
 	border-radius: 0;
-
-	animation: show-up 250ms ease-in;
 
 	& > .local-img {
 		border-radius: 8px;
