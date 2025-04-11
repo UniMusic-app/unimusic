@@ -1,4 +1,5 @@
 <script lang="ts">
+import { Filled, Playlist } from "@/services/Music/objects";
 import { LocalImage } from "@/stores/local-images";
 
 export interface PlaylistEditEvent {
@@ -25,12 +26,11 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { Playlist } from "@/stores/music-player";
 import { usePresentingElement } from "@/utils/vue";
 
 const { trigger, playlist } = defineProps<{
 	trigger: string;
-	playlist: Playlist;
+	playlist: Filled<Playlist>;
 }>();
 const emit = defineEmits<{
 	change: [PlaylistEditEvent];

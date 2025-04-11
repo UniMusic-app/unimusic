@@ -1,84 +1,16 @@
 import { defineStore, storeToRefs } from "pinia";
 import { computed, watch } from "vue";
 
-import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { useLocalImages } from "@/stores/local-images";
 import { useMusicServices } from "@/stores/music-services";
 import { useMusicPlayerState } from "@/stores/music-state";
 
 import type { MusicService } from "@/services/Music/MusicService";
 
+import { filledArtistPreview } from "@/services/Music/objects";
 import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
-
-export interface Artist {
-	id?: string;
-	name: string;
-}
-
-export interface Song<Type extends string, Data = unknown> {
-	type: Type;
-
-	id: string;
-
-	available: boolean;
-	explicit: boolean;
-
-	artists: string[];
-	genres: string[];
-
-	title?: string;
-	album?: string;
-	duration?: number;
-
-	artwork?: LocalImage;
-	style: {
-		fgColor: string;
-		bgColor: string;
-		bgGradient: string;
-	};
-
-	data: Data;
-}
-
-export type SongPreview<Song extends AnySong = AnySong> = Pick<Song, "type" | "id" | "artists"> &
-	Partial<Song>;
-
-export type MusicKitSong = Song<"musickit", { catalogId: string }>;
-export type YouTubeSong = Song<"youtube", { albumId?: string }>;
-export type LocalSong = Song<"local", { path: string; discNumber?: number; trackNumber?: number }>;
-
-export type AnySong = MusicKitSong | YouTubeSong | LocalSong;
-
-export interface Playlist {
-	id: string;
-	title: string;
-	artwork?: LocalImage;
-	songs: AnySong[];
-
-	importInfo?: {
-		id: string;
-		type: AnySong["type"];
-		info?: string;
-	};
-}
-
-export interface DiscSong {
-	discNumber?: number;
-	trackNumber?: number;
-	song: SongPreview;
-}
-
-export interface Album {
-	type: AnySong["type"];
-	id: string;
-	title: string;
-	artwork?: LocalImage;
-	artists: Artist[];
-	songs: DiscSong[];
-}
-
-export type AlbumPreview = Pick<Album, "id" | "type" | "title" | "artwork" | "artists">;
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
@@ -190,7 +122,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 						hasSkipForward: false,
 
 						track: currentSong?.title ?? "",
-						artist: formatArtists(currentSong?.artists),
+						artist: formatArtists(currentSong?.artists?.map(filledArtistPreview)),
 						album: currentSong?.album ?? "",
 
 						// FIXME: Local artworks
@@ -264,7 +196,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 			navigator.mediaSession.metadata = new window.MediaMetadata({
 				title: song.title,
-				artist: formatArtists(song.artists),
+				artist: formatArtists(song.artists.map(filledArtistPreview)),
 				album: song.album,
 				artwork: typeof artworkUrl === "string" ? [{ src: artworkUrl }] : undefined,
 			});

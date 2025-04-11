@@ -2,23 +2,19 @@
 import { alertController } from "@ionic/vue";
 import { computed, ref } from "vue";
 
-import {
-	AlbumPreview,
-	SongPreview,
-	useMusicPlayer,
-	type Album,
-	type AnySong,
-	type Playlist,
-} from "@/stores/music-player";
 import { useMusicPlayerState } from "@/stores/music-state";
 
 import { AuthorizationService } from "@/services/Authorization/AuthorizationService";
 import { Service } from "@/services/Service";
-import { useMusicServices } from "@/stores/music-services";
 
 import { useLocalImages } from "@/stores/local-images";
 import { useSongMetadata } from "@/stores/metadata";
+import { useMusicPlayer } from "@/stores/music-player";
+import { useMusicServices } from "@/stores/music-services";
+
 import { Maybe } from "@/utils/types";
+
+import { Album, AlbumPreview, Artist, Playlist, Song, SongPreview, SongType } from "./objects";
 
 export interface MusicServiceState {
 	enabled: boolean;
@@ -50,10 +46,10 @@ export interface Identifiable {
 }
 
 export abstract class MusicService<
-	Song extends AnySong = AnySong,
+	Type extends SongType = SongType,
 > extends Service<MusicServiceState> {
 	abstract logName: string;
-	abstract type: Song["type"];
+	abstract type: Type;
 	abstract available: boolean;
 
 	authorization?: AuthorizationService;
@@ -64,7 +60,7 @@ export abstract class MusicService<
 
 	initialized = false;
 	initialPlayed = false;
-	song?: Song;
+	song?: Song<Type>;
 
 	#enabled = ref(false);
 	enabled = computed({
@@ -129,23 +125,6 @@ export abstract class MusicService<
 		this.#enabled.value = false;
 		await this.deinitialize();
 		await this.saveState({ enabled: false });
-	}
-
-	#cache = new Map<string, unknown>();
-	cache<Data extends Identifiable>(data: Data): Data {
-		this.#cache.set(data.id, data);
-		return data;
-	}
-
-	cachePromise<Data extends Identifiable>(data: Promise<Data>): Promise<Data> {
-		return data.then((data) => {
-			this.#cache.set(data.id, data);
-			return data;
-		});
-	}
-
-	getCached<Data extends Identifiable>(id: string): Maybe<Data> {
-		return this.#cache.get(id) as Maybe<Data>;
 	}
 
 	async restoreState(): Promise<void> {
@@ -242,12 +221,12 @@ export abstract class MusicService<
 		term: string,
 		offset: number,
 		options?: { signal?: AbortSignal },
-	): AsyncGenerator<SongPreview<Song>>;
+	): AsyncGenerator<SongPreview<Type> | Song<Type>>;
 	async *searchSongs(
 		term: string,
 		offset = 0,
 		options?: { signal?: AbortSignal },
-	): AsyncGenerator<SongPreview<Song>> {
+	): AsyncGenerator<SongPreview<Type> | Song<Type>> {
 		this.log("searchSongs");
 		await this.initialize();
 
@@ -263,8 +242,10 @@ export abstract class MusicService<
 		yield* results;
 	}
 
-	abstract handleGetSongFromPreview(searchResult: SongPreview<Song>): Song | Promise<Song>;
-	async getSongFromPreview(searchResult: SongPreview<Song>): Promise<Song> {
+	abstract handleGetSongFromPreview(
+		searchResult: SongPreview<Type>,
+	): Song<Type> | Promise<Song<Type>>;
+	async getSongFromPreview(searchResult: SongPreview<Type>): Promise<Song<Type>> {
 		this.log("getSongFromSearchResult");
 		return await this.withUnrecoverableErrorHandling(this.handleGetSongFromPreview, searchResult);
 	}
@@ -276,8 +257,8 @@ export abstract class MusicService<
 		return await this.withErrorHandling([], this.handleSearchHints, term);
 	}
 
-	handleGetLibrarySongs?(offset: number): AsyncGenerator<Song>;
-	async *getLibrarySongs(offset = 0): AsyncGenerator<Song> {
+	handleGetLibrarySongs?(offset: number): AsyncGenerator<Song<Type>>;
+	async *getLibrarySongs(offset = 0): AsyncGenerator<Song<Type>> {
 		this.log("librarySongs");
 		if (!this.handleGetLibrarySongs) return;
 
@@ -326,8 +307,8 @@ export abstract class MusicService<
 		await this.withErrorHandling(undefined!, this.handleRefreshLibraryAlbums);
 	}
 
-	handleGetSongsAlbum?(song: Song): Maybe<Album> | Promise<Maybe<Album>>;
-	async getSongsAlbum(song: Song): Promise<Maybe<Album>> {
+	handleGetSongsAlbum?(song: Song<Type>): Maybe<Album<Type>> | Promise<Maybe<Album<Type>>>;
+	async getSongsAlbum(song: Song<Type>): Promise<Maybe<Album<Type>>> {
 		this.log("getSongsAlbum");
 		if (!this.handleGetSongsAlbum) {
 			throw new Error("This service does not support getSongsAlbum");
@@ -361,8 +342,19 @@ export abstract class MusicService<
 		return playlist;
 	}
 
-	abstract handleGetSong(songId: string): Maybe<Song> | Promise<Maybe<Song>>;
-	async getSong(songId: string): Promise<Maybe<Song>> {
+	handleGetArtist?(id: string): Maybe<Artist<Type>> | Promise<Maybe<Artist<Type>>>;
+	async getArtist(id: string): Promise<Maybe<Artist<Type>>> {
+		this.log("getArtist");
+		if (!this.handleGetArtist) {
+			throw new Error("This service does not support getArtist");
+		}
+
+		const artist = await this.withErrorHandling(undefined, this.handleGetArtist, id);
+		return artist;
+	}
+
+	abstract handleGetSong(songId: string): Maybe<Song<Type>> | Promise<Maybe<Song<Type>>>;
+	async getSong(songId: string): Promise<Maybe<Song<Type>>> {
 		this.log("getSong");
 		await this.initialize();
 
@@ -373,8 +365,8 @@ export abstract class MusicService<
 		}
 	}
 
-	abstract handleRefreshSong(song: Song): Maybe<Song> | Promise<Maybe<Song>>;
-	async refreshSong(song: Song): Promise<Maybe<Song>> {
+	abstract handleRefreshSong(song: Song<Type>): Maybe<Song<Type>> | Promise<Maybe<Song<Type>>>;
+	async refreshSong(song: Song<Type>): Promise<Maybe<Song<Type>>> {
 		this.log("refreshSong");
 		await this.initialize();
 
@@ -394,7 +386,7 @@ export abstract class MusicService<
 		return refreshed;
 	}
 
-	async changeSong(song: Song): Promise<void> {
+	async changeSong(song: Song<Type>): Promise<void> {
 		this.log("changeSong");
 		if (this.song === song) return;
 

@@ -18,13 +18,16 @@ const routes: RouteRecordRaw[] = [
 	{ path: "/search", name: "Search", component: SearchPage },
 
 	{ path: "/library", name: "Library", component: LibraryPage },
+
 	{ path: "/library/songs", name: "Songs", component: SongsPage },
 	{ path: "/library/songs/:songType/:songId", name: "Song", component: SongPage },
+
 	{ path: "/library/albums", name: "Albums", component: AlbumsPage },
 	// Album page provided as is
 	{ path: "/library/albums/album/:albumType/:albumId", name: "Album", component: AlbumPage },
 	// Album page provided by song
 	{ path: "/library/albums/song/:songType/:songId", name: "Songs Album", component: AlbumPage },
+
 	{ path: "/library/playlists", name: "Playlists", component: PlaylistsPage },
 	{ path: "/library/playlists/:id", name: "Playlist", component: PlaylistPage },
 ];

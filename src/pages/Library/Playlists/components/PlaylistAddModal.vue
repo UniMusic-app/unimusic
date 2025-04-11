@@ -45,6 +45,9 @@ function create(): void {
 
 	musicPlayer.state.addPlaylist({
 		id: playlistId.value,
+		kind: "playlist",
+		type: "unimusic",
+
 		title: playlistTitle.value,
 		artwork: toRaw(artwork.value),
 		songs: [],

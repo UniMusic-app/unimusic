@@ -15,7 +15,8 @@ import LocalImg from "@/components/LocalImg.vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import SkeletonCard from "@/components/SkeletonCard.vue";
-import { AlbumPreview, useMusicPlayer } from "@/stores/music-player";
+import { AlbumPreview, filledArtistPreview } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import { formatArtists } from "@/utils/songs";
 import { useSessionStorage } from "@vueuse/core";
 
@@ -64,7 +65,7 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 							{{ album.title }}
 						</ion-card-title>
 						<ion-card-subtitle class="ion-text-nowrap">
-							{{ formatArtists(album.artists.map(({ name }) => name)) }}
+							{{ formatArtists(album.artists.map(filledArtistPreview)) }}
 						</ion-card-subtitle>
 					</ion-card-header>
 				</ion-card>

@@ -3,15 +3,14 @@ import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { defineStore } from "pinia";
 import { computed, ref, toRaw } from "vue";
 
-import type { AnySong, Playlist } from "@/stores/music-player";
-
+import { Playlist, Song } from "@/services/Music/objects";
 import { generateUUID } from "@/utils/crypto";
 import { Maybe } from "@/utils/types";
 import { useLoadingCounter } from "@/utils/vue";
 
 interface QueueSong {
 	id: string;
-	song: AnySong;
+	song: Song;
 }
 
 export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
@@ -44,16 +43,14 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 	});
 	const queueIndex = useLocalStorage("queueIndex", 0);
 	const currentQueueSong = computed<Maybe<QueueSong>>(() => queue.value[queueIndex.value]);
-	const currentSong = computed<Maybe<AnySong>>(() => currentQueueSong.value?.song);
+	const currentSong = computed<Maybe<Song>>(() => currentQueueSong.value?.song);
 
-	function songToQueueSong(song: AnySong): QueueSong {
-		return {
-			id: generateUUID(),
-			song: toRaw(song),
-		};
+	function songToQueueSong(song: Song): QueueSong {
+		return { id: generateUUID(), song: toRaw(song) };
 	}
 
-	function setQueue(songs: AnySong[]): void {
+	function setQueue(songs: Song[]): void {
+		console.log(songs);
 		queue.value = songs.map(songToQueueSong);
 	}
 
@@ -62,12 +59,12 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		queue.value.sort(() => Math.random() - 0.5);
 	}
 
-	async function addToQueue(song: AnySong, index = queue.value.length): Promise<void> {
+	async function addToQueue(song: Song, index = queue.value.length): Promise<void> {
 		queue.value.splice(index, 0, songToQueueSong(song));
 		await loadingCounters.queueChange.onLoaded();
 	}
 
-	async function insertIntoQueue(songs: AnySong[], index = queue.value.length): Promise<void> {
+	async function insertIntoQueue(songs: Song[], index = queue.value.length): Promise<void> {
 		queue.value.splice(index, 0, ...songs.map(songToQueueSong));
 		await loadingCounters.queueChange.onLoaded();
 	}

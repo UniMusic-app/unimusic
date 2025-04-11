@@ -29,13 +29,17 @@ import {
 	playOutline as playSongNextIcon,
 } from "ionicons/icons";
 
-import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { filledPlaylist, Song } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute } from "vue-router";
 
 const musicPlayer = useMusicPlayer();
 const route = useRoute();
 
-const playlist = computed(() => musicPlayer.state.getPlaylist(route.params.id as string));
+const playlist = computed(() => {
+	const playlist = musicPlayer.state.getPlaylist(route.params.id as string);
+	return playlist && filledPlaylist(playlist);
+});
 const isEmpty = computed(() => !playlist.value?.songs.length);
 const totalDuration = computed(() => {
 	const songs = playlist?.value?.songs ?? [];
@@ -69,19 +73,19 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 
 const router = useIonRouter();
 
-async function playSong(song: AnySong): Promise<void> {
+async function playSong(song: Song): Promise<void> {
 	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
 }
 
-async function playSongNext(song: AnySong): Promise<void> {
+async function playSongNext(song: Song): Promise<void> {
 	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
 }
 
-async function addSongToQueue(song: AnySong): Promise<void> {
+async function addSongToQueue(song: Song): Promise<void> {
 	await musicPlayer.state.addToQueue(song);
 }
 
-function goToSong(song: AnySong): void {
+function goToSong(song: Song): void {
 	router.push(`/library/songs/${song.type}/${song.id}`);
 }
 </script>

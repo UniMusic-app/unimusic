@@ -1,16 +1,17 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 
-import { Album, DiscSong, useMusicPlayer } from "@/stores/music-player";
+import { useMusicPlayer } from "@/stores/music-player";
 
 import { IonBadge, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
+import { Album, AlbumSong, Filled } from "@/services/Music/objects";
 
-const { discSong, album } = defineProps<{
-	discSong: DiscSong;
-	album: Album;
+const { albumSong, album } = defineProps<{
+	albumSong: Filled<AlbumSong>;
+	album: Filled<Album>;
 }>();
 
 const musicPlayer = useMusicPlayer();
@@ -20,14 +21,14 @@ const contextMenuOpen = ref(false);
 
 async function click(): Promise<void> {
 	if (contextMenuOpen.value) {
-		router.push(`/library/songs/${discSong.song.type}/${discSong.song.id}`);
+		router.push(`/library/songs/${albumSong.song.type}/${albumSong.song.id}`);
 	} else {
-		await playDiscSong();
+		await playAlbumSong();
 	}
 }
 
-async function playDiscSong(): Promise<void> {
-	const song = await musicPlayer.services.getSongFromPreview(discSong.song);
+async function playAlbumSong(): Promise<void> {
+	const song = await musicPlayer.services.retrieveSong(albumSong.song);
 	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
 	musicPlayer.state.queueIndex = musicPlayer.state.queueIndex + 1;
 }
@@ -35,23 +36,23 @@ async function playDiscSong(): Promise<void> {
 
 <template>
 	<ContextMenu
-		:disabled="!discSong.song.available"
+		:disabled="!albumSong.song.available"
 		ref="contextMenu"
 		@visibilitychange="contextMenuOpen = $event"
 	>
-		<ion-item :disabled="!discSong.song.available" button lines="full" @click="click">
+		<ion-item :disabled="!albumSong.song.available" button lines="full" @click="click">
 			<ion-badge color="light" slot="start">
-				{{ discSong.trackNumber ?? "!" }}
+				{{ albumSong.trackNumber ?? "!" }}
 			</ion-badge>
 
 			<LocalImg
 				v-if="album.artwork"
 				slot="start"
 				:src="album.artwork"
-				:alt="`Artwork for song '${discSong.song.title}' from album '${album.title}'`"
+				:alt="`Artwork for song '${albumSong.song.title}' from album '${album.title}'`"
 			/>
 
-			<ion-label>{{ discSong.song.title ?? "Unknown title" }}</ion-label>
+			<ion-label>{{ albumSong.song.title ?? "Unknown title" }}</ion-label>
 		</ion-item>
 
 		<template #options>

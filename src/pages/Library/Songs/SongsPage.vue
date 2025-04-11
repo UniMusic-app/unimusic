@@ -6,12 +6,13 @@ import { IonList, IonRefresher, IonRefresherContent, RefresherCustomEvent } from
 import AppPage from "@/components/AppPage.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
-import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { Song } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import { useSessionStorage } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
 
-const librarySongs = useSessionStorage<AnySong[]>("librarySongs", []);
+const librarySongs = useSessionStorage<Song[]>("librarySongs", []);
 const isLoading = ref(librarySongs.value.length === 0);
 onUpdated(async () => {
 	if (!librarySongs.value.length) {

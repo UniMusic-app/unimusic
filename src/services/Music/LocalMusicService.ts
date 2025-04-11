@@ -1,4 +1,3 @@
-import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { toRaw } from "vue";
 
 import Fuse, { FuseResult } from "fuse.js";
@@ -8,7 +7,6 @@ import LocalMusic from "@/plugins/LocalMusicPlugin";
 import { Capacitor } from "@capacitor/core";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
-import { Album, AlbumPreview, DiscSong, LocalSong } from "@/stores/music-player";
 
 import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
 
@@ -18,9 +16,34 @@ import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
+import {
+	Album,
+	AlbumSong,
+	Artist,
+	ArtistKey,
+	ArtistPreview,
+	cache,
+	filledArtistPreview,
+	generateCacheMethod,
+	getAllCached,
+	getKey,
+	removeFromCache,
+	Song,
+	SongPreview,
+} from "./objects";
 
-const localSongs = useIDBKeyval<LocalSong[]>("localMusicSongs", []);
-const albums = useIDBKeyval<Album[]>("localAlbums", []);
+const getCached = generateCacheMethod("local");
+
+type LocalAlbum = Album<"local">;
+type LocalAlbumSong = AlbumSong<"local">;
+type _LocalArtist = Artist<"local">;
+type LocalArtistPreview<Full extends boolean = boolean> = ArtistPreview<"local", Full>;
+type _LocalArtistKey = ArtistKey<"local">;
+type LocalSong = Song<"local">;
+type LocalSongPreview = SongPreview<"local">;
+
+// const localSongs = useIDBKeyval<LocalSong[]>("localMusicSongs", []);
+// const albums = useIDBKeyval<LocalAlbum[]>("localAlbums", []);
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
 	switch (getPlatform()) {
@@ -124,7 +147,15 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 
 	const { common, format } = metadata;
 
-	const artists = common.artists ?? [];
+	const artists: LocalArtistPreview[] = [];
+	if (common.artists?.length) {
+		for (let i = 0; i < common.artists.length; ++i) {
+			const title = common.artists[i]!;
+			const id = common.musicbrainz_artistid?.[i];
+			artists.push({ id, title });
+		}
+	}
+
 	const album = common.album;
 	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
 	const duration = format.duration;
@@ -148,7 +179,9 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 
 	return {
 		type: "local",
+		kind: "song",
 
+		// TODO: Check if format is supported
 		available: true,
 		// TODO: Try to find a way to classify local files as explicit
 		explicit: false,
@@ -172,10 +205,14 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 }
 
 async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
+	const localSongs = getAllCached<LocalSong>("local", "song").toArray();
+
 	if (clearCache) {
-		localSongs.data.value = [];
-	} else if (localSongs.data.value.length) {
-		yield* localSongs.data.value;
+		for (const song of localSongs) {
+			removeFromCache(song);
+		}
+	} else if (localSongs.length) {
+		yield* localSongs;
 		return;
 	}
 
@@ -210,15 +247,15 @@ async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
 			const fileId = id ?? String(generateHash(filePath));
 
 			const song = await parseLocalSong(filePath, fileId);
+			cache(song);
 			yield song;
-			localSongs.data.value.push(song);
 		}
 	} catch (error) {
 		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
 	}
 }
 
-export class LocalMusicService extends MusicService<LocalSong> {
+export class LocalMusicService extends MusicService<"local"> {
 	logName = "LocalMusicService";
 	logColor = "#ddd480";
 	type = "local" as const;
@@ -252,12 +289,15 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		return [];
 	}
 
-	handleGetSongsAlbum(song: LocalSong): Maybe<Album> {
-		return albums.data.value.find(({ songs }) => songs.some(({ song: { id } }) => id === song.id));
+	handleGetSongsAlbum(song: LocalSong): Maybe<LocalAlbum> {
+		const songKey = getKey(song);
+		return getAllCached<LocalAlbum>("local", "album").find(({ songs }) =>
+			songs.some((albumSong) => albumSong.song === songKey),
+		);
 	}
 
-	handleGetAlbum(albumId: string): Maybe<Album> {
-		return albums.data.value.find(({ id }) => id === albumId);
+	handleGetAlbum(albumId: string): Maybe<LocalAlbum> {
+		return getAllCached<LocalAlbum>("local", "album").find(({ id }) => id === albumId);
 	}
 
 	#fuse?: Fuse<LocalSong>;
@@ -299,16 +339,21 @@ export class LocalMusicService extends MusicService<LocalSong> {
 		}
 	}
 
-	handleGetSongFromPreview(searchResult: LocalSong): LocalSong {
-		return searchResult;
+	handleGetSongFromPreview(searchResult: LocalSongPreview): LocalSong {
+		return searchResult as unknown as LocalSong;
 	}
 
-	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview> {
-		if (!albums.data.value.length) {
+	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<LocalAlbum> {
+		let iterator = getAllCached<LocalAlbum>("local", "album");
+		const first = iterator.next();
+		if (first.done) {
 			await this.refreshLibraryAlbums();
+			iterator = getAllCached<LocalAlbum>("local", "album");
+		} else {
+			yield first.value;
 		}
 
-		for (const album of albums.data.value) {
+		for (const album of iterator) {
 			if (options?.signal?.aborted) return;
 			yield album;
 		}
@@ -317,38 +362,46 @@ export class LocalMusicService extends MusicService<LocalSong> {
 	handleRefreshLibraryAlbums(): void {
 		// First we cleanup songs from albums, in case some were removed
 		// This also allows us to then remove albums that are empty
-		for (const album of albums.data.value) {
+		const localAlbums = getAllCached<LocalAlbum>("local", "album").toArray();
+
+		for (const album of localAlbums) {
 			album.songs.length = 0;
 		}
 
-		for (const song of localSongs.data.value) {
+		for (const song of getAllCached<LocalSong>("local", "song")) {
 			if (!song.album) continue;
 
-			const discSong: DiscSong = {
-				song: toRaw(song),
+			const discSong: LocalAlbumSong = {
+				song: getKey(song),
 				discNumber: song.data.discNumber,
 				trackNumber: song.data.trackNumber,
 			};
 
 			// Find all albums that match the songs album title and has at least 1 shared artist
-			const possibleAlbums = albums.data.value.filter(
-				(album) =>
-					album.title === song.album &&
-					album.artists.some((artist) => song.artists.includes(artist.name)),
-			);
+			const possibleAlbums = localAlbums.filter((album) => {
+				if (album.title !== song.album) return false;
+
+				return album.artists.some((artist) => {
+					const albumArtist = filledArtistPreview(artist);
+					return song.artists.find(
+						(songArtist) => filledArtistPreview(songArtist).title == albumArtist.title,
+					);
+				});
+			});
 
 			// If no such albums exist, create a new one
 			if (!possibleAlbums.length) {
-				const album: Album = {
+				const album: LocalAlbum = cache({
 					type: "local",
+					kind: "album",
 					id: generateUUID(),
 					title: song.album,
 					songs: [discSong],
-					artists: song.artists.map((name) => ({ name })),
+					artists: toRaw(song.artists),
 					artwork: toRaw(song.artwork),
-				};
+				});
 
-				albums.data.value.push(album);
+				localAlbums.push(album);
 				continue;
 			}
 
@@ -357,7 +410,7 @@ export class LocalMusicService extends MusicService<LocalSong> {
 			}
 		}
 
-		for (const [i, album] of albums.data.value.entries()) {
+		for (const [i, album] of localAlbums.entries()) {
 			// Remove albums with no songs
 			if (album.songs.length === 0) {
 				album.songs.splice(i, 1);
@@ -383,17 +436,17 @@ export class LocalMusicService extends MusicService<LocalSong> {
 	}
 
 	handleGetSong(songId: string): Maybe<LocalSong> {
-		const cached = this.getCached<LocalSong>(songId);
+		const cached = getCached("song", songId);
 		if (cached) return cached;
 
-		const song = localSongs.data.value.find((song) => song.id === songId);
-		return song && this.cache(song);
+		const song = getAllCached<LocalSong>("local", "song").find((song) => song.id === songId);
+		return song && cache(song);
 	}
 
 	async handleRefreshSong(song: LocalSong): Promise<LocalSong> {
 		const filePath = song.data.path;
 		const refreshed = await parseLocalSong(filePath, song.id);
-		return this.cache(refreshed);
+		return cache(refreshed);
 	}
 
 	async handlePlay(): Promise<void> {

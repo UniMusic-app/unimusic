@@ -11,8 +11,9 @@ import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import SongEditModal, { SongEditEvent } from "../components/SongEditModal.vue";
 
+import { filledSong, SongType } from "@/services/Music/objects";
 import { useSongMetadata } from "@/stores/metadata";
-import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { useMusicPlayer } from "@/stores/music-player";
 import { formatArtists } from "@/utils/songs";
 
 const musicPlayer = useMusicPlayer();
@@ -27,10 +28,12 @@ const previousRouteName = computed(() => {
 });
 
 const song = computedAsync(async () => {
-	return await musicPlayer.services.getSong(
-		route.params.songType as AnySong["type"],
+	const song = await musicPlayer.services.getSong(
+		route.params.songType as SongType,
 		route.params.songId as string,
 	);
+
+	return song && filledSong(song);
 });
 
 const isSingle = computed(() => !!song.value?.album?.includes("- Single"));
@@ -51,7 +54,9 @@ async function editSong(event: SongEditEvent): Promise<void> {
 	if (!song.value) return;
 
 	songMetadata.setMetadata(song.value.id, event);
-	song.value = await musicPlayer.services.refreshSong(song.value);
+
+	const refreshed = await musicPlayer.services.refreshSong(song.value);
+	song.value = refreshed && filledSong(refreshed);
 }
 
 async function playNow(): Promise<void> {
@@ -83,7 +88,7 @@ async function playNow(): Promise<void> {
 				<WrappingMarquee :text="song.title ?? 'Unknown title'" />
 			</h1>
 			<!-- TODO: ARTISTS -->
-			<RouterLink class="artist" to="">
+			<RouterLink class="artist" :to="`/library`">
 				{{ formatArtists(song.artists) }}
 			</RouterLink>
 			<RouterLink v-if="!isSingle" class="album" :to="`/library/albums/song/${song.type}/${song.id}`">

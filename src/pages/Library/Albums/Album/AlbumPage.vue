@@ -26,7 +26,8 @@ import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 
-import { Album, AnySong, useMusicPlayer } from "@/stores/music-player";
+import { AlbumSong, Filled, filledAlbum, SongType } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import AlbumDiscItem from "../components/AlbumDiscSong.vue";
 
 const musicPlayer = useMusicPlayer();
@@ -39,16 +40,28 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const album = computedAsync(async () => {
-	const { albumType, albumId, songType, songId } = route.params;
+const album = computedAsync(
+	async () => {
+		const { albumType, albumId, songType, songId } = route.params;
 
-	if (songType) {
-		const song = await musicPlayer.services.getSong(songType as AnySong["type"], songId as string);
-		return song && (await musicPlayer.services.getSongsAlbum(song));
-	}
+		if (songType) {
+			const song = await musicPlayer.services.getSong(songType as SongType, songId as string);
+			const album = song && (await musicPlayer.services.getSongsAlbum(song));
+			return album && filledAlbum(album);
+		}
 
-	return await musicPlayer.services.getAlbum(albumType as AnySong["type"], albumId as string);
-});
+		const album = await musicPlayer.services.getAlbum(albumType as SongType, albumId as string);
+		const filled = album && filledAlbum(album);
+		return filled;
+	},
+	undefined,
+	{
+		onError(error) {
+			console.error(error);
+			throw error;
+		},
+	},
+);
 
 const groupedSongs = computed(() => {
 	const songs = album.value?.songs;
@@ -59,11 +72,13 @@ const groupedSongs = computed(() => {
 
 async function playAlbum(shuffle = false): Promise<void> {
 	if (!album.value) return;
-	const songs = await Promise.all(
-		album.value.songs
-			.filter(({ song }) => song.available)
-			.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
+	const songs = await musicPlayer.services.getAvailableSongs(
+		album.value.songs.map(({ song }) => song),
 	);
+
+	console.log("Album songs:", album.value.songs);
+	console.log("Set songs:", songs);
+
 	musicPlayer.state.setQueue(songs);
 
 	if (shuffle) {
@@ -73,12 +88,8 @@ async function playAlbum(shuffle = false): Promise<void> {
 	musicPlayer.state.queueIndex = 0;
 }
 
-async function playDisc(discSongs: Album["songs"]): Promise<void> {
-	const songs = await Promise.all(
-		discSongs
-			.filter(({ song }) => song.available)
-			.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
-	);
+async function playDisc(albumSongs: Filled<AlbumSong[]>): Promise<void> {
+	const songs = await musicPlayer.services.getAvailableSongs(albumSongs.map(({ song }) => song));
 	musicPlayer.state.setQueue(songs);
 	musicPlayer.state.queueIndex = 0;
 }
@@ -86,8 +97,8 @@ async function playDisc(discSongs: Album["songs"]): Promise<void> {
 async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 	if (!album.value) return;
 
-	const songs = await Promise.all(
-		album.value.songs.map(({ song }) => musicPlayer.services.getSongFromPreview(song)),
+	const songs = await musicPlayer.services.getAvailableSongs(
+		album.value.songs.map(({ song }) => song),
 	);
 
 	await musicPlayer.state.insertIntoQueue(
@@ -152,7 +163,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 					v-for="artist in album.artists"
 					:key="artist.id"
 				>
-					{{ artist.name }}
+					{{ artist.title }}
 				</a>
 			</h2>
 
@@ -169,19 +180,19 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 			</div>
 
 			<ion-list v-if="groupedSongs">
-				<template v-for="[discNumber, discSongs] in groupedSongs.entries()" :key="discNumber">
+				<template v-for="[discNumber, albumSongs] in groupedSongs.entries()" :key="discNumber">
 					<ion-item
 						class="disc-header"
 						lines="none"
 						button
 						:detail="false"
 						v-if="groupedSongs.size > 1"
-						@click="playDisc(discSongs)"
+						@click="playDisc(albumSongs)"
 					>
 						Disc {{ discNumber }}
 					</ion-item>
 
-					<AlbumDiscItem v-for="discSong in discSongs" :key="discSong.song.id" :discSong :album />
+					<AlbumDiscItem v-for="albumSong in albumSongs" :key="albumSong.song.id" :albumSong :album />
 				</template>
 			</ion-list>
 		</div>

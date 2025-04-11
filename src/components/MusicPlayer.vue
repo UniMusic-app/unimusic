@@ -34,8 +34,9 @@ import {
 	playSkipBack as skipPreviousIcon,
 } from "ionicons/icons";
 
-import { AnySong, useMusicPlayer } from "@/stores/music-player";
+import { useMusicPlayer } from "@/stores/music-player";
 
+import { filledArtistPreview, Song } from "@/services/Music/objects";
 import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
@@ -45,7 +46,9 @@ const musicPlayer = useMusicPlayer();
 const state = musicPlayer.state;
 const { currentSong, time, playing, duration } = storeToRefs(state);
 
-const formattedArtists = computed(() => formatArtists(currentSong.value?.artists));
+const formattedArtists = computed(() =>
+	formatArtists(currentSong.value?.artists?.map(filledArtistPreview)),
+);
 const currentTime = computed(() => secondsToMMSS(time.value));
 const timeRemaining = computed(() => secondsToMMSS(musicPlayer.timeRemaining));
 const currentService = computed(
@@ -86,7 +89,7 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 	event.detail.complete();
 }
 
-function goToSong(song: AnySong, hash?: string): void {
+function goToSong(song: Song, hash?: string): void {
 	dismiss();
 	router.push(`/library/songs/${song.type}/${song.id}` + (hash ? `#${hash}` : ""));
 }
