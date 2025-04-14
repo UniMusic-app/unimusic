@@ -109,41 +109,6 @@ declare global {
 		}
 
 		/**
-		 * A resource object that represents the artist of an album where an artist can be one or more people.
-		 * @see https://developer.apple.com/documentation/applemusicapi/artists-uip
-		 */
-		interface Artists {
-			/** The identifier for the album. */
-			id: string;
-			/** This value is always artists. */
-			type: "artists";
-			/** The relative location for the album resource. */
-			href: string;
-			/** The attributes for the artist. */
-			attributes?: ArtistsAttributes;
-
-			/** The relationships for the album. */
-			relationships?: MusicKit.ResourceRelationships;
-			/** The relationship views for the album. */
-			views?: MusicKit.ResourceViews;
-		}
-
-		/**
-		 * The attributes for an artist resource.
-		 * @see https://developer.apple.com/documentation/applemusicapi/artists/attributes
-		 */
-		interface ArtistsAttributes {
-			/** The artwork for the artist image. */
-			artwork?: Artwork;
-			/** The names of the genres associated with this artist. */
-			genreNames: string[];
-			/** The localized name of the artist. */
-			name: string;
-			/** The URL for sharing the artist in Apple Music. */
-			url: string;
-		}
-
-		/**
 		 * The attributes for a playlist resource.
 		 * @see https://developer.apple.com/documentation/applemusicapi/playlists/attributes
 		 */

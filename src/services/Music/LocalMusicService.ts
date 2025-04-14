@@ -23,7 +23,8 @@ import {
 	ArtistKey,
 	ArtistPreview,
 	cache,
-	filledArtistPreview,
+	DisplayableArtist,
+	filledDisplayableArtist,
 	generateCacheMethod,
 	getAllCached,
 	getKey,
@@ -37,13 +38,11 @@ const getCached = generateCacheMethod("local");
 type LocalAlbum = Album<"local">;
 type LocalAlbumSong = AlbumSong<"local">;
 type _LocalArtist = Artist<"local">;
-type LocalArtistPreview<Full extends boolean = boolean> = ArtistPreview<"local", Full>;
+type _LocalArtistPreview = ArtistPreview<"local">;
 type _LocalArtistKey = ArtistKey<"local">;
 type LocalSong = Song<"local">;
 type LocalSongPreview = SongPreview<"local">;
-
-// const localSongs = useIDBKeyval<LocalSong[]>("localMusicSongs", []);
-// const albums = useIDBKeyval<LocalAlbum[]>("localAlbums", []);
+type LocalDisplayableArtist = DisplayableArtist<"local">;
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
 	switch (getPlatform()) {
@@ -147,7 +146,7 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 
 	const { common, format } = metadata;
 
-	const artists: LocalArtistPreview[] = [];
+	const artists: LocalDisplayableArtist[] = [];
 	if (common.artists?.length) {
 		for (let i = 0; i < common.artists.length; ++i) {
 			const title = common.artists[i]!;
@@ -382,9 +381,9 @@ export class LocalMusicService extends MusicService<"local"> {
 				if (album.title !== song.album) return false;
 
 				return album.artists.some((artist) => {
-					const albumArtist = filledArtistPreview(artist);
+					const albumArtist = filledDisplayableArtist(artist);
 					return song.artists.find(
-						(songArtist) => filledArtistPreview(songArtist).title == albumArtist.title,
+						(songArtist) => filledDisplayableArtist(songArtist).title == albumArtist.title,
 					);
 				});
 			});

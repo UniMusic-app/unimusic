@@ -15,14 +15,14 @@ import LocalImg from "@/components/LocalImg.vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import SkeletonCard from "@/components/SkeletonCard.vue";
-import { AlbumPreview, filledArtistPreview } from "@/services/Music/objects";
+import { Album, AlbumPreview, filledDisplayableArtist } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { formatArtists } from "@/utils/songs";
 import { useSessionStorage } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
 
-const libraryAlbums = useSessionStorage<AlbumPreview[]>("libraryAlbums", []);
+const libraryAlbums = useSessionStorage<(Album | AlbumPreview)[]>("libraryAlbums", []);
 const isLoading = ref(libraryAlbums.value.length === 0);
 onUpdated(async () => {
 	if (!libraryAlbums.value.length) {
@@ -65,7 +65,7 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 							{{ album.title }}
 						</ion-card-title>
 						<ion-card-subtitle class="ion-text-nowrap">
-							{{ formatArtists(album.artists.map(filledArtistPreview)) }}
+							{{ formatArtists(album.artists.map(filledDisplayableArtist)) }}
 						</ion-card-subtitle>
 					</ion-card-header>
 				</ion-card>

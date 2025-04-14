@@ -23,7 +23,7 @@ import LocalImg from "@/components/LocalImg.vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
-import { filledArtistPreview } from "@/services/Music/objects";
+import { filledDisplayableArtist } from "@/services/Music/objects";
 import { formatArtists } from "@/utils/songs";
 import { useWillKeyboard } from "@/utils/vue";
 
@@ -36,7 +36,7 @@ const state = musicPlayer.state;
 const { currentSong, playing } = storeToRefs(state);
 
 const formattedArtists = computed(() =>
-	formatArtists(currentSong.value?.artists?.map(filledArtistPreview)),
+	formatArtists(currentSong.value?.artists?.map(filledDisplayableArtist)),
 );
 
 const contextMenuOpen = ref(false);

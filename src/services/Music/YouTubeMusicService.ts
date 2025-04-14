@@ -16,6 +16,7 @@ import {
 	ArtistKey,
 	ArtistPreview,
 	cache,
+	DisplayableArtist,
 	generateCacheMethod,
 	getKey,
 	Playlist,
@@ -29,10 +30,11 @@ const getCached = generateCacheMethod("youtube");
 type YouTubeAlbum = Album<"youtube">;
 type YouTubeAlbumSong = AlbumSong<"youtube">;
 type YouTubeArtist = Artist<"youtube">;
-type YouTubeArtistPreview<Full extends boolean = boolean> = ArtistPreview<"youtube", Full>;
+type _YouTubeArtistPreview = ArtistPreview<"youtube">;
 type _YouTubeArtistKey = ArtistKey<"youtube">;
 type YouTubeSong = Song<"youtube">;
 type YouTubeSongPreview<HasId extends boolean = false> = SongPreview<"youtube", HasId>;
+type YoutubeDisplayableArtist = DisplayableArtist<"youtube">;
 
 export function youtubeSongPreview(
 	node: YTNodes.MusicResponsiveListItem,
@@ -53,12 +55,17 @@ export function youtubeSongPreview(
 
 	const artwork = node.thumbnails?.[0] && { url: node.thumbnails[0].url };
 
-	const artists: YouTubeArtistPreview[] = [];
-	for (const artist of node.artists ?? node.authors ?? []) {
-		artists.push({
-			id: artist.channel_id,
-			title: artist.name,
-		});
+	const artists: YoutubeDisplayableArtist[] = [];
+	if (node.artists?.length || node.authors?.length) {
+		for (const artist of (node.artists ?? node.authors)!) {
+			artists.push({
+				id: artist.channel_id,
+				title: artist.name,
+			});
+		}
+	} else if (node?.author) {
+		const { name, channel_id } = node.author;
+		artists.push({ id: channel_id, title: name });
 	}
 
 	const available = node.item_type !== "unknown";
@@ -93,6 +100,9 @@ export async function youtubeSong(
 	searchResult?: YouTubeSongPreview,
 ): Promise<YouTubeSong> {
 	const { id, title, duration, thumbnail } = trackInfo.basic_info;
+
+	console.log(title, trackInfo, searchResult);
+
 	if (!id) {
 		throw new Error("Cannot generate YouTubeSong from trackInfo that doesn't have id");
 	}
@@ -149,6 +159,10 @@ export async function youtubeSong(
 		}
 	}
 
+	if (!artists.length && trackInfo.basic_info.author) {
+		artists.push({ title: trackInfo.basic_info.author });
+	}
+
 	// TODO: Genres
 	const genres = searchResult?.genres ?? [];
 
@@ -191,7 +205,7 @@ export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<Yo
 		artwork = { id };
 	}
 
-	const artists: YouTubeArtistPreview[] = [];
+	const artists: YoutubeDisplayableArtist[] = [];
 	const artistText = album.header?.as(YTNodes.MusicResponsiveHeader)?.strapline_text_one?.runs;
 	if (artistText) {
 		for (const run of artistText) {

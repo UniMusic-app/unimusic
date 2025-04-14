@@ -6,7 +6,6 @@ import type { SongKey, SongType } from "./song";
 
 export type ArtistId = string;
 export type ArtistKey<Type extends SongType = SongType> = ItemKey<Artist<Type>>;
-
 export interface Artist<Type extends SongType = SongType> extends Identifiable {
 	type: Type;
 	id: ArtistId;
@@ -19,25 +18,54 @@ export interface Artist<Type extends SongType = SongType> extends Identifiable {
 	songs: SongKey[];
 }
 
-export type ArtistPreview<
-	Type extends SongType = SongType,
-	Full extends true | false = true | false,
-> =
-	| Artist<Type>
-	| (Full extends true ? ArtistKey<Type> : { id?: ArtistId; title: string; artwork?: LocalImage });
+export type ArtistPreviewKey<Type extends SongType = SongType> = ItemKey<ArtistPreview<Type>>;
+export type ArtistPreview<Type extends SongType = SongType> = Identifiable &
+	Partial<Omit<Artist<Type>, "kind">> & {
+		id: ArtistId;
+		kind: "artistPreview";
+		type: Type;
 
-export function filledArtistPreview<Type extends SongType>(
-	artist: ArtistPreview<Type>,
-): Filled<ArtistPreview<Type>> {
+		title: string;
+	};
+
+export interface InlineArtist {
+	title: string;
+	artwork?: LocalImage;
+}
+
+export type DisplayableArtist<Type extends SongType = SongType> =
+	| ArtistKey<Type>
+	| ArtistPreview<Type>
+	| InlineArtist;
+
+export function filledDisplayableArtist(artist: DisplayableArtist): Filled<DisplayableArtist> {
 	if (typeof artist === "object") {
 		return artist;
 	}
 
-	const cached = getCachedFromKey<Artist>(artist);
+	const cached = getCachedFromKey(artist);
 	if (!cached) {
-		const err = new Error(`Tried to retrieve artist ${artist}, but it is not cached`);
-		console.error(err);
-		throw err;
+		throw new Error(`Artist tried to retrieve cached ${cached}, but it is not cached`);
 	}
 	return cached;
+}
+
+export function filledArtist(artist: Artist): Filled<Artist> {
+	return {
+		...artist,
+		albums: artist.albums.map((albumKey) => {
+			const album = getCachedFromKey(albumKey);
+			if (!album) {
+				throw new Error(`Artist tried to retrieve album ${album}, but it is not cached`);
+			}
+			return album;
+		}),
+		songs: artist.songs.map((songKey) => {
+			const song = getCachedFromKey(songKey);
+			if (!song) {
+				throw new Error(`Artist tried to retrieve song ${song}, but it is not cached`);
+			}
+			return song;
+		}),
+	};
 }

@@ -4,8 +4,8 @@ import { createKey, getKey, Identifiable, ItemKey, unpackKey } from "./shared";
 
 import { Maybe } from "@/utils/types";
 import { markRaw, toRaw } from "vue";
-import { Album } from "./album";
-import { Artist } from "./artist";
+import { Album, AlbumPreview } from "./album";
+import { Artist, ArtistPreview } from "./artist";
 import { Song, SongPreview, SongType } from "./song";
 
 // TODO: In the future it would be a good idea to use more organised cache storage
@@ -16,7 +16,9 @@ export const itemCache = useIDBKeyval<Record<ItemKey<any>, Identifiable>>("itemC
 export function generateCacheMethod<const Type extends SongType>(type: Type) {
 	interface ItemMap {
 		album: Album<Type>;
+		albumPreview: AlbumPreview<Type>;
 		artist: Artist<Type>;
+		artistPreview: ArtistPreview<Type>;
 		song: Song<Type>;
 		songPreview: SongPreview<Type, true>;
 	}
@@ -29,7 +31,9 @@ export function generateCacheMethod<const Type extends SongType>(type: Type) {
 	): Maybe<ItemMap[Kind]> => getCached(type as ItemMap[Kind]["type"], id, kind);
 }
 
-export function cache<Item extends Identifiable>(item: Promise<Item>): Promise<Item>;
+export function cache<ItemPromise extends Promise<Identifiable>>(
+	item: ItemPromise,
+): Awaited<ItemPromise>;
 export function cache<Item extends Identifiable>(item: Item): Item;
 export function cache<Item extends Identifiable>(item: Item | Promise<Item>): Item | Promise<Item> {
 	if (item instanceof Promise) {

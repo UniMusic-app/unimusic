@@ -1,5 +1,5 @@
 import type { LocalImage } from "@/stores/local-images";
-import { filledArtistPreview, type ArtistPreview } from "./artist";
+import { DisplayableArtist, filledDisplayableArtist } from "./artist";
 import type { Filled, Identifiable, ItemKey } from "./shared";
 
 type SongTypes = {
@@ -20,7 +20,7 @@ export type Song<Type extends SongType = SongType> = Identifiable & {
 	available: boolean;
 	explicit: boolean;
 
-	artists: ArtistPreview<Type>[];
+	artists: DisplayableArtist<Type>[];
 	genres: string[];
 
 	title?: string;
@@ -43,28 +43,14 @@ export type SongPreview<Type extends SongType = SongType, HasId extends boolean 
 				id?: SongId;
 				kind: "songPreview";
 
-				artists: ArtistPreview<Type>[];
+				artists: DisplayableArtist<Type>[];
 				genres: string[];
 			});
 
 export function filledSong(song: Song): Filled<Song> {
 	return {
 		...song,
-
-		type: song.type,
-		id: song.id,
 		kind: "song",
-
-		available: song.available,
-		explicit: song.explicit,
-
-		artists: song.artists.map(filledArtistPreview),
-		genres: song.genres,
-
-		title: song.title,
-		album: song.album,
-		duration: song.duration,
-		artwork: song.artwork,
-		style: song.style,
+		artists: song.artists.map(filledDisplayableArtist),
 	};
 }

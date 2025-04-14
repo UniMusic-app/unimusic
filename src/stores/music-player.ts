@@ -7,7 +7,6 @@ import { useMusicPlayerState } from "@/stores/music-state";
 
 import type { MusicService } from "@/services/Music/MusicService";
 
-import { filledArtistPreview } from "@/services/Music/objects";
 import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
@@ -122,7 +121,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 						hasSkipForward: false,
 
 						track: currentSong?.title ?? "",
-						artist: formatArtists(currentSong?.artists?.map(filledArtistPreview)),
+						artist: formatArtists(currentSong?.artists),
 						album: currentSong?.album ?? "",
 
 						// FIXME: Local artworks
@@ -196,7 +195,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 			navigator.mediaSession.metadata = new window.MediaMetadata({
 				title: song.title,
-				artist: formatArtists(song.artists.map(filledArtistPreview)),
+				artist: formatArtists(song.artists),
 				album: song.album,
 				artwork: typeof artworkUrl === "string" ? [{ src: artworkUrl }] : undefined,
 			});

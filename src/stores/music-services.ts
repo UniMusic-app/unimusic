@@ -7,7 +7,14 @@ import { LocalMusicService } from "@/services/Music/LocalMusicService";
 import { MusicKitMusicService } from "@/services/Music/MusicKitMusicService";
 import { YouTubeMusicService } from "@/services/Music/YouTubeMusicService";
 
-import { Album, AlbumPreview, Artist, Song, SongPreview } from "@/services/Music/objects";
+import {
+	Album,
+	AlbumPreview,
+	Artist,
+	ArtistPreview,
+	Song,
+	SongPreview,
+} from "@/services/Music/objects";
 import { Maybe } from "@/utils/types";
 
 export const useMusicServices = defineStore("MusicServices", () => {
@@ -62,7 +69,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		});
 	}
 
-	async function* libraryAlbums(): AsyncGenerator<AlbumPreview> {
+	async function* libraryAlbums(): AsyncGenerator<AlbumPreview | Album> {
 		for (const service of enabledServices.value) {
 			if (!service.handleGetLibraryAlbums) continue;
 			yield* service.getLibraryAlbums();
@@ -72,6 +79,19 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	async function refreshLibraryAlbums(): Promise<void> {
 		await withAllServices((service) => {
 			return service.handleRefreshLibraryAlbums && service.refreshLibraryAlbums();
+		});
+	}
+
+	async function* libraryArtists(): AsyncGenerator<ArtistPreview | Artist> {
+		for (const service of enabledServices.value) {
+			if (!service.handleGetLibraryArtists) continue;
+			yield* service.getLibraryArtists();
+		}
+	}
+
+	async function refreshLibraryArtists(): Promise<void> {
+		await withAllServices((service) => {
+			return service.handleRefreshLibraryArtists && service.refreshLibraryArtists();
 		});
 	}
 
@@ -143,5 +163,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		getSongsAlbum,
 
 		getArtist,
+		libraryArtists,
+		refreshLibraryArtists,
 	};
 });

@@ -160,8 +160,8 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 					class="artist"
 					role="link"
 					aria-roledescription="Go to artist"
-					v-for="artist in album.artists"
-					:key="artist.id"
+					v-for="(artist, i) in album.artists"
+					:key="'id' in artist ? artist.id : i"
 				>
 					{{ artist.title }}
 				</a>

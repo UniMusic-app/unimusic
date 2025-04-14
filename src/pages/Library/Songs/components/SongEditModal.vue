@@ -1,5 +1,5 @@
 <script lang="ts">
-import { ArtistPreview, filledArtistPreview, Song } from "@/services/Music/objects";
+import { DisplayableArtist, filledDisplayableArtist, Song } from "@/services/Music/objects";
 import { MetadataOverride } from "@/stores/metadata";
 import { Maybe } from "@/utils/types";
 import { computedAsync } from "@vueuse/core";
@@ -43,7 +43,7 @@ const modal = useTemplateRef("modal");
 const presentingElement = usePresentingElement();
 
 const title = ref(song.title);
-const artists = ref([...song.artists.map(filledArtistPreview).map(({ title }) => title)]);
+const artists = ref([...song.artists.map(filledDisplayableArtist).map(({ title }) => title)]);
 const album = ref(song.album);
 
 const artwork = ref(song.artwork);
@@ -61,7 +61,7 @@ const canEdit = computed(() => !!title.value && modified.value);
 function edit(): void {
 	if (!canEdit.value) return;
 
-	const editedArtists: ArtistPreview[] = artists.value.map((title) => ({
+	const editedArtists: DisplayableArtist[] = artists.value.map((title) => ({
 		title,
 	}));
 

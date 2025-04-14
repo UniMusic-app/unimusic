@@ -14,7 +14,16 @@ import { useMusicServices } from "@/stores/music-services";
 
 import { Maybe } from "@/utils/types";
 
-import { Album, AlbumPreview, Artist, Playlist, Song, SongPreview, SongType } from "./objects";
+import {
+	Album,
+	AlbumPreview,
+	Artist,
+	ArtistPreview,
+	Playlist,
+	Song,
+	SongPreview,
+	SongType,
+} from "./objects";
 
 export interface MusicServiceState {
 	enabled: boolean;
@@ -284,8 +293,8 @@ export abstract class MusicService<
 		localImages.deduplicate();
 	}
 
-	handleGetLibraryAlbums?(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview>;
-	async *getLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview> {
+	handleGetLibraryAlbums?(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview | Album>;
+	async *getLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview | Album> {
 		this.log("getLibraryAlbums");
 		if (!this.handleGetLibraryAlbums) {
 			throw new Error("This service does not support getLibraryAlbums");
@@ -305,6 +314,33 @@ export abstract class MusicService<
 		}
 
 		await this.withErrorHandling(undefined!, this.handleRefreshLibraryAlbums);
+	}
+
+	handleGetLibraryArtists?(options?: {
+		signal?: AbortSignal;
+	}): AsyncGenerator<ArtistPreview | Artist>;
+	async *getLibraryArtists(options?: {
+		signal?: AbortSignal;
+	}): AsyncGenerator<ArtistPreview | Artist> {
+		this.log("getLibraryArtists");
+		if (!this.handleGetLibraryArtists) {
+			throw new Error("This service does not support getLibraryArtists");
+		}
+
+		const artists = await this.withErrorHandling(undefined!, this.handleGetLibraryArtists, options);
+		if (!artists) return;
+
+		yield* artists;
+	}
+
+	handleRefreshLibraryArtists?(): void | Promise<void>;
+	async refreshLibraryArtists(): Promise<void> {
+		this.log("refreshLibraryArtists");
+		if (!this.handleRefreshLibraryArtists) {
+			throw new Error("This service does not support refreshLibraryArtists");
+		}
+
+		await this.withErrorHandling(undefined!, this.handleRefreshLibraryArtists);
 	}
 
 	handleGetSongsAlbum?(song: Song<Type>): Maybe<Album<Type>> | Promise<Maybe<Album<Type>>>;

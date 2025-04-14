@@ -36,7 +36,7 @@ import {
 
 import { useMusicPlayer } from "@/stores/music-player";
 
-import { filledArtistPreview, Song } from "@/services/Music/objects";
+import { filledDisplayableArtist, Song } from "@/services/Music/objects";
 import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
@@ -47,7 +47,7 @@ const state = musicPlayer.state;
 const { currentSong, time, playing, duration } = storeToRefs(state);
 
 const formattedArtists = computed(() =>
-	formatArtists(currentSong.value?.artists?.map(filledArtistPreview)),
+	formatArtists(currentSong.value?.artists?.map(filledDisplayableArtist)),
 );
 const currentTime = computed(() => secondsToMMSS(time.value));
 const timeRemaining = computed(() => secondsToMMSS(musicPlayer.timeRemaining));

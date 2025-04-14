@@ -17,6 +17,7 @@ import {
 	ArtistKey,
 	ArtistPreview,
 	cache,
+	DisplayableArtist,
 	generateCacheMethod,
 	getKey,
 	Playlist,
@@ -30,21 +31,19 @@ type MusicKitAlbum = Album<"musickit">;
 type MusicKitAlbumPreview = AlbumPreview<"musickit">;
 type MusicKitAlbumSong = AlbumSong<"musickit">;
 type MusicKitArtist = Artist<"musickit">;
-type MusicKitArtistPreview<Full extends boolean = boolean> = ArtistPreview<"musickit", Full>;
+type MusicKitArtistPreview = ArtistPreview<"musickit">;
 type MusicKitArtistKey = ArtistKey<"musickit">;
 type MusicKitSong = Song<"musickit">;
 type MusicKitSongPreview = SongPreview<"musickit", true>;
+type MusicKitDisplayableArtist = DisplayableArtist<"musickit">;
 
 export function extractArtists(
 	artists: MusicKit.Artists[] | Maybe<string>,
-): MusicKitArtistPreview[] {
+): MusicKitDisplayableArtist[] {
 	if (!artists) {
 		return [];
 	} else if (typeof artists === "string") {
-		const preview: MusicKitArtistPreview<false> = {
-			title: artists,
-		};
-		return [preview];
+		return [{ title: artists }];
 	}
 
 	const keys: MusicKitArtistKey[] = [];
@@ -158,11 +157,12 @@ export function musicKitSongPreview(
 	);
 
 	return cache<MusicKitSongPreview>({
+		id,
 		type: "musickit",
 		kind: "songPreview",
-		id,
 
 		artists,
+
 		title: attributes?.name,
 		album: attributes?.albumName,
 		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
@@ -180,7 +180,7 @@ export function musicKitSongPreview(
 export async function musicKitPreviewToSong(
 	searchResult: MusicKitSongPreview,
 ): Promise<MusicKitSong> {
-	const { id, title, artists, album, duration, available = false, explicit = false } = searchResult;
+	const { id, title, album, artists, duration, available = false, explicit = false } = searchResult;
 
 	const genres = searchResult.genres ?? [];
 	let artwork: Maybe<LocalImage>;
@@ -269,7 +269,7 @@ export async function musicKitAlbum(album: MusicKit.Albums): Promise<MusicKitAlb
 	if (tracks) {
 		for (const track of tracks) {
 			const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
-			const songPreview = cached ?? musicKitSongPreview(track);
+			const songPreview: MusicKitSongPreview = cached ?? musicKitSongPreview(track);
 
 			songs.push({
 				discNumber: track.attributes?.discNumber,
@@ -315,6 +315,26 @@ export function musicKitAlbumPreview(album: MusicKit.Albums): MusicKitAlbumPrevi
 	};
 }
 
+export function musicKitArtistPreview(artist: MusicKit.LibraryArtists): MusicKitArtistPreview {
+	const { id, attributes, relationships } = artist;
+	const catalogArtist = relationships?.catalog?.data?.[0];
+
+	let artwork: Maybe<LocalImage>;
+	if (catalogArtist?.attributes?.artwork) {
+		const artworkUrl = MusicKit.formatArtworkURL(catalogArtist.attributes.artwork, 256, 256);
+		artwork = { url: artworkUrl };
+	}
+
+	return {
+		id,
+		type: "musickit",
+		kind: "artistPreview",
+
+		title: (attributes?.name ?? catalogArtist?.attributes?.name)!,
+		artwork,
+	};
+}
+
 export function musicKitIdType(id: string): "library" | "catalog" {
 	if (!isNaN(Number(id))) {
 		return "catalog";
@@ -345,6 +365,23 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 		const { terms } = response.data.results;
 		return terms;
+	}
+
+	async *handleGetLibraryArtists(options?: { signal?: AbortSignal }): AsyncGenerator<ArtistPreview> {
+		const response = await this.music!.api.music<
+			MusicKit.LibraryArtistsResponse,
+			MusicKit.LibraryArtistsQuery
+		>(`/v1/me/library/artists`, {
+			include: ["catalog"],
+		});
+
+		const artists = response.data.data;
+		if (!artists.length) return;
+
+		for (const artist of artists) {
+			if (options?.signal?.aborted) return;
+			yield musicKitArtistPreview(artist);
+		}
 	}
 
 	async *handleGetLibraryAlbums(options?: {

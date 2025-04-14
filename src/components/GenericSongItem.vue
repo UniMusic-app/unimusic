@@ -6,7 +6,7 @@ import LocalImg from "@/components/LocalImg.vue";
 import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
 import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
 
-import { filledArtistPreview, Song } from "@/services/Music/objects";
+import { filledDisplayableArtist, Song } from "@/services/Music/objects";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 
 const {
@@ -27,7 +27,7 @@ const {
 	}
 >();
 
-const formattedArtists = computed(() => formatArtists(artists?.map(filledArtistPreview)));
+const formattedArtists = computed(() => formatArtists(artists?.map(filledDisplayableArtist)));
 const displayName = computed(() => songTypeToDisplayName(type));
 
 const emit = defineEmits<{
