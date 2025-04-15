@@ -24,6 +24,7 @@ import {
 	ArtistPreview,
 	cache,
 	DisplayableArtist,
+	Filled,
 	filledDisplayableArtist,
 	generateCacheMethod,
 	getAllCached,
@@ -37,11 +38,11 @@ const getCached = generateCacheMethod("local");
 
 type LocalAlbum = Album<"local">;
 type LocalAlbumSong = AlbumSong<"local">;
-type _LocalArtist = Artist<"local">;
-type _LocalArtistPreview = ArtistPreview<"local">;
+type LocalArtist = Artist<"local">;
+type LocalArtistPreview = ArtistPreview<"local">;
 type _LocalArtistKey = ArtistKey<"local">;
 type LocalSong = Song<"local">;
-type LocalSongPreview = SongPreview<"local">;
+type _LocalSongPreview = SongPreview<"local">;
 type LocalDisplayableArtist = DisplayableArtist<"local">;
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
@@ -150,11 +151,20 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 	if (common.artists?.length) {
 		for (let i = 0; i < common.artists.length; ++i) {
 			const title = common.artists[i]!;
-			const id = common.musicbrainz_artistid?.[i];
-			artists.push({ id, title });
+			// TODO: Is there a better way to identify artists?
+			const id = title;
+
+			const artist = cache<LocalArtistPreview>({
+				id,
+				type: "local",
+				kind: "artistPreview",
+				title,
+			});
+			artists.push(getKey(artist));
 		}
 	}
 
+	const isrc = common.isrc;
 	const album = common.album;
 	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
 	const duration = format.duration;
@@ -196,6 +206,7 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		style: await generateSongStyle(artwork),
 
 		data: {
+			isrc,
 			path,
 			discNumber,
 			trackNumber,
@@ -338,8 +349,93 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 	}
 
-	handleGetSongFromPreview(searchResult: LocalSongPreview): LocalSong {
-		return searchResult as unknown as LocalSong;
+	handleGetSongFromPreview(searchResult: LocalSong): LocalSong {
+		return searchResult;
+	}
+
+	async *handleGetLibraryArtists(options?: {
+		signal?: AbortSignal;
+	}): AsyncGenerator<LocalArtistPreview | LocalArtist> {
+		let iterator = getAllCached<LocalArtistPreview>("local", "artistPreview");
+		const first = iterator.next();
+		if (first.done) {
+			await this.refreshLibraryArtists();
+			iterator = getAllCached<LocalArtistPreview>("local", "artistPreview");
+		} else {
+			yield first.value;
+		}
+
+		for (const album of iterator) {
+			if (options?.signal?.aborted) return;
+			yield album;
+		}
+	}
+
+	handleRefreshLibraryArtists(): void {
+		const artists: (LocalArtist | Filled<LocalArtistPreview>)[] = [];
+
+		for (const song of getAllCached<LocalSong>("local", "song")) {
+			if (!song.artists.length) continue;
+
+			for (const artist of song.artists) {
+				const filledArtist = filledDisplayableArtist<"local">(artist);
+				if (!("id" in filledArtist)) continue;
+
+				if (filledArtist.kind === "artist") {
+					artists.push(filledArtist);
+				} else if (filledArtist.kind === "artistPreview") {
+					artists.push(filledArtist);
+				}
+			}
+		}
+
+		for (const [artist] of Map.groupBy(artists, (artist) => artist.id).values()) {
+			cache(artist!);
+		}
+	}
+
+	async handleGetArtist(id: string): Promise<Maybe<Artist<"local">>> {
+		const cached = getCached("artist", id);
+		if (cached) {
+			return cached;
+		}
+
+		const preview = getCached("artistPreview", id);
+		if (!preview) {
+			return;
+		}
+
+		const artist: LocalArtist = {
+			id: preview.id,
+			type: "local",
+			kind: "artist",
+
+			title: preview.title,
+
+			albums: [],
+			songs: [],
+		};
+
+		const itemHasCurrentArtist = (itemArtist: LocalDisplayableArtist): boolean => {
+			const { title } = filledDisplayableArtist(itemArtist);
+			return title !== artist.title;
+		};
+
+		for (const song of getAllCached<LocalSong>("local", "song")) {
+			if (song.artists.some(itemHasCurrentArtist)) {
+				artist.songs.push(getKey(song));
+			}
+		}
+
+		for await (const album of this.handleGetLibraryAlbums()) {
+			if (album.artists.some(itemHasCurrentArtist)) {
+				artist.albums.push(getKey(album));
+			}
+		}
+
+		console.log(artist);
+
+		return cache(artist);
 	}
 
 	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<LocalAlbum> {

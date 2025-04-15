@@ -14,8 +14,8 @@ export interface Artist<Type extends SongType = SongType> extends Identifiable {
 	title: string;
 	artwork?: LocalImage;
 
-	albums: AlbumKey[];
-	songs: SongKey[];
+	albums: AlbumKey<Type>[];
+	songs: SongKey<Type>[];
 }
 
 export type ArtistPreviewKey<Type extends SongType = SongType> = ItemKey<ArtistPreview<Type>>;
@@ -38,7 +38,9 @@ export type DisplayableArtist<Type extends SongType = SongType> =
 	| ArtistPreview<Type>
 	| InlineArtist;
 
-export function filledDisplayableArtist(artist: DisplayableArtist): Filled<DisplayableArtist> {
+export function filledDisplayableArtist<Type extends SongType = SongType>(
+	artist: DisplayableArtist<Type>,
+): Filled<DisplayableArtist<Type>> {
 	if (typeof artist === "object") {
 		return artist;
 	}

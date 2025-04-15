@@ -5,7 +5,7 @@ import type { Filled, Identifiable, ItemKey } from "./shared";
 type SongTypes = {
 	youtube: { albumId?: string };
 	musickit: { catalogId?: string };
-	local: { path: string; discNumber?: number; trackNumber?: number };
+	local: { path: string; discNumber?: number; trackNumber?: number; isrc?: string[] };
 };
 
 export type SongType = "youtube" | "musickit" | "local";

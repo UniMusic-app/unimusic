@@ -5,7 +5,7 @@ import { type Filled, type Identifiable, type ItemKey } from "./shared";
 import type { SongKey, SongPreview, SongPreviewKey, SongType } from "./song";
 
 export type AlbumId = string;
-export type AlbumKey = ItemKey<Album>;
+export type AlbumKey<Type extends SongType = SongType> = ItemKey<Album<Type>>;
 
 export interface Album<Type extends SongType = SongType> extends Identifiable {
 	type: Type;
