@@ -15,7 +15,7 @@ declare global {
 			attributes?: ArtistsAttributes;
 
 			/** The relationships for the artist. */
-			relationships?: MusicKit.ResourceRelationships;
+			relationships?: ArtistsRelationships;
 			/** The relationship views for the artist. */
 			views?: MusicKit.ResourceViews;
 		}
@@ -33,6 +33,52 @@ declare global {
 			name: string;
 			/** The URL for sharing the artist in Apple Music. */
 			url: string;
+		}
+
+		/**
+		 * The relationships for an artist resource.
+		 * @see https://developer.apple.com/documentation/applemusicapi/artistsresponse
+		 */
+		interface ArtistsRelationships {
+			/**
+			 * The albums associated with the artist. By default, albums includes identifiers only.
+			 * Fetch limits: 25 default, 100 maximum
+			 */
+			albums: ArtistsAlbumsRelationship;
+		}
+
+		/**
+		 * @see https://developer.apple.com/documentation/applemusicapi/artistsresponse
+		 */
+		interface ArtistsAlbumsRelationship {
+			/* A relative location for the relationship. */
+			href?: string;
+			/* A relative cursor to fetch the next paginated collection of resources in the relationship if more exist. */
+			next?: string;
+			/**
+			 * The albums for the artist.
+			 */
+			data: MusicKit.Albums[];
+		}
+
+		interface ArtistsQuery {
+			/** Additional relationships to include in the fetch. */
+			include?: (keyof ArtistsRelationships)[];
+			/** The localization to use, specified by a language tag. The possible values are in the supportedLanguageTags array belonging to the Storefront object specified by storefront. Otherwise, the default is defaultLanguageTag in Storefront. */
+			l?: string;
+			/** The views to activate for the resource. */
+			views?: string[];
+			/** A list of attribute extensions to apply to resources in the response. */
+			extend?: string[];
+		}
+
+		/**
+		 * The response to a  artists request.
+		 * @see https://developer.apple.com/documentation/applemusicapi/artistsresponse
+		 */
+		interface ArtistsResponse {
+			/** The LibraryArtists included in the response for the request. */
+			data: Artists[];
 		}
 
 		/**

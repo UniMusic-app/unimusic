@@ -11,7 +11,9 @@ import { Maybe } from "@/utils/types";
 
 import {
 	Album,
+	AlbumKey,
 	AlbumPreview,
+	AlbumPreviewKey,
 	AlbumSong,
 	Artist,
 	ArtistKey,
@@ -28,16 +30,18 @@ import {
 const getCached = generateCacheMethod("musickit");
 
 type MusicKitAlbum = Album<"musickit">;
+type MusicKitAlbumKey = AlbumKey<"musickit">;
+type MusicKitAlbumPreviewKey = AlbumPreviewKey<"musickit">;
 type MusicKitAlbumPreview = AlbumPreview<"musickit">;
 type MusicKitAlbumSong = AlbumSong<"musickit">;
 type MusicKitArtist = Artist<"musickit">;
 type MusicKitArtistPreview = ArtistPreview<"musickit">;
-type MusicKitArtistKey = ArtistKey<"musickit">;
+type _MusicKitArtistKey = ArtistKey<"musickit">;
 type MusicKitSong = Song<"musickit">;
 type MusicKitSongPreview = SongPreview<"musickit", true>;
 type MusicKitDisplayableArtist = DisplayableArtist<"musickit">;
 
-export function extractArtists(
+export function extractDisplayableArtists(
 	artists: MusicKit.Artists[] | Maybe<string>,
 ): MusicKitDisplayableArtist[] {
 	if (!artists) {
@@ -46,19 +50,22 @@ export function extractArtists(
 		return [{ title: artists }];
 	}
 
-	const keys: MusicKitArtistKey[] = [];
+	const keys: MusicKitDisplayableArtist[] = [];
 	for (const artist of artists) {
 		if (!artist.attributes?.name) continue;
 
-		const item: MusicKitArtist = {
+		let artwork: Maybe<LocalImage>;
+		if (artist.attributes.artwork) {
+			artwork = { url: MusicKit.formatArtworkURL(artist.attributes.artwork, 256, 256) };
+		}
+
+		const item: MusicKitArtistPreview = {
 			type: "musickit",
-			kind: "artist",
+			kind: "artistPreview",
 			id: artist.id,
 
 			title: artist.attributes.name,
-
-			albums: [],
-			songs: [],
+			artwork,
 		};
 		cache(item);
 		keys.push(getKey(item));
@@ -147,7 +154,7 @@ export function musicKitSongPreview(
 		artwork = { url: artworkUrl };
 	}
 
-	const artists = extractArtists(relationships?.artists?.data ?? attributes?.artistName);
+	const artists = extractDisplayableArtists(relationships?.artists?.data ?? attributes?.artistName);
 	const genres = extractGenres(relationships?.genres?.data ?? attributes?.genreNames);
 	const explicit = song.attributes?.contentRating === "explicit";
 	const available = typeof song.attributes?.playParams === "object";
@@ -226,7 +233,7 @@ export async function musicKitSong(
 	const { id, attributes, relationships } = song;
 
 	const artwork = await extractArtwork(id, attributes?.artwork);
-	const artists = extractArtists(relationships?.artists?.data ?? attributes?.artistName);
+	const artists = extractDisplayableArtists(relationships?.artists?.data ?? attributes?.artistName);
 	const genres = extractGenres(relationships?.genres?.data ?? attributes?.genreNames);
 	const explicit = song.attributes?.contentRating === "explicit";
 	const available = typeof song.attributes?.playParams === "object";
@@ -262,7 +269,7 @@ export async function musicKitAlbum(album: MusicKit.Albums): Promise<MusicKitAlb
 
 	const title = attributes?.name ?? "Unknown title";
 	const artwork = await extractArtwork(id, attributes?.artwork);
-	const artists = extractArtists(relationships?.artists?.data ?? attributes?.artistName);
+	const artists = extractDisplayableArtists(relationships?.artists?.data ?? attributes?.artistName);
 
 	const songs: MusicKitAlbumSong[] = [];
 	const tracks = relationships?.tracks?.data;
@@ -296,7 +303,7 @@ export function musicKitAlbumPreview(album: MusicKit.Albums): MusicKitAlbumPrevi
 	const { id, attributes, relationships } = album;
 
 	const title = attributes?.name ?? "Unknown title";
-	const artists = extractArtists(relationships?.artists?.data ?? attributes?.artistName);
+	const artists = extractDisplayableArtists(relationships?.artists?.data ?? attributes?.artistName);
 
 	let artwork: Maybe<LocalImage>;
 	if (attributes?.artwork) {
@@ -332,6 +339,42 @@ export function musicKitArtistPreview(artist: MusicKit.LibraryArtists): MusicKit
 
 		title: (attributes?.name ?? catalogArtist?.attributes?.name)!,
 		artwork,
+	};
+}
+
+export async function musicKitArtist(
+	artist: MusicKit.Artists | MusicKit.LibraryArtists,
+): Promise<MusicKitArtist> {
+	const { id, attributes, relationships } = artist;
+	const catalogArtist =
+		artist.type === "library-artists" ? artist.relationships?.catalog?.data?.[0] : artist;
+
+	const artwork = await extractArtwork(id, catalogArtist?.attributes?.artwork);
+
+	const albums: (MusicKitAlbumKey | MusicKitAlbumPreviewKey)[] = [];
+	const catalogAlbums = relationships?.albums?.data;
+
+	if (catalogAlbums?.length) {
+		for (const album of catalogAlbums) {
+			const albumPreview =
+				getCached("album", album.id) ??
+				getCached("albumPreview", album.id) ??
+				cache(musicKitAlbumPreview(album));
+
+			albums.push(getKey(albumPreview));
+		}
+	}
+
+	return {
+		id,
+		type: "musickit",
+		kind: "artist",
+
+		title: (attributes?.name ?? catalogArtist?.attributes?.name)!,
+		artwork,
+
+		albums,
+		songs: [],
 	};
 }
 
@@ -382,6 +425,30 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			if (options?.signal?.aborted) return;
 			yield musicKitArtistPreview(artist);
 		}
+	}
+
+	async handleGetArtist(id: string): Promise<Maybe<Artist<"musickit">>> {
+		// const cachedArtist = getCached("artist", id);
+		// if (cachedArtist) return cachedArtist;
+
+		const idType = musicKitIdType(id);
+
+		console.log("getArtist", id);
+
+		const response = await this.music!.api.music<
+			MusicKit.LibraryArtistsResponse | MusicKit.ArtistsResponse,
+			MusicKit.LibraryArtistsQuery | MusicKit.ArtistsQuery
+		>(
+			idType === "catalog"
+				? `/v1/catalog/{{storefrontId}}/artists/${id}`
+				: `/v1/me/library/artists/${id}`,
+			{ include: ["catalog", "albums"] },
+		);
+
+		const artist = response.data?.data?.[0];
+		if (!artist) return;
+
+		return cache(await musicKitArtist(artist));
 	}
 
 	async *handleGetLibraryAlbums(options?: {
