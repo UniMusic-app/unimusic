@@ -50,7 +50,6 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 	}
 
 	function setQueue(songs: Song[]): void {
-		console.log(songs);
 		queue.value = songs.map(songToQueueSong);
 	}
 

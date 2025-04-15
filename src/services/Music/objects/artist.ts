@@ -1,8 +1,8 @@
 import type { LocalImage } from "@/stores/local-images";
-import type { AlbumKey } from "./album";
+import type { AlbumKey, AlbumPreviewKey } from "./album";
 import { getCachedFromKey } from "./cache";
 import { Filled, type Identifiable, type ItemKey } from "./shared";
-import type { SongKey, SongType } from "./song";
+import type { SongKey, SongPreviewKey, SongType } from "./song";
 
 export type ArtistId = string;
 export type ArtistKey<Type extends SongType = SongType> = ItemKey<Artist<Type>>;
@@ -14,8 +14,8 @@ export interface Artist<Type extends SongType = SongType> extends Identifiable {
 	title: string;
 	artwork?: LocalImage;
 
-	albums: AlbumKey<Type>[];
-	songs: SongKey<Type>[];
+	albums: (AlbumPreviewKey<Type> | AlbumKey<Type>)[];
+	songs: (SongKey<Type> | SongPreviewKey<Type>)[];
 }
 
 export type ArtistPreviewKey<Type extends SongType = SongType> = ItemKey<ArtistPreview<Type>>;

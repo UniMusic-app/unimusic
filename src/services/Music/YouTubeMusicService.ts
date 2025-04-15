@@ -23,17 +23,21 @@ import {
 	Song,
 	SongKey,
 	SongPreview,
+	SongPreviewKey,
 } from "./objects";
 
 const getCached = generateCacheMethod("youtube");
 
 type YouTubeAlbum = Album<"youtube">;
+type YouTubeAlbumKey = AlbumKey<"youtube">;
 type YouTubeAlbumSong = AlbumSong<"youtube">;
 type YouTubeArtist = Artist<"youtube">;
 type _YouTubeArtistPreview = ArtistPreview<"youtube">;
 type _YouTubeArtistKey = ArtistKey<"youtube">;
 type YouTubeSong = Song<"youtube">;
+type YouTubeSongKey = SongKey<"youtube">;
 type YouTubeSongPreview<HasId extends boolean = false> = SongPreview<"youtube", HasId>;
+type YouTubeSongPreviewKey = SongPreviewKey<"youtube">;
 type YoutubeDisplayableArtist = DisplayableArtist<"youtube">;
 
 export function youtubeSongPreview(
@@ -100,8 +104,6 @@ export async function youtubeSong(
 	searchResult?: YouTubeSongPreview,
 ): Promise<YouTubeSong> {
 	const { id, title, duration, thumbnail } = trackInfo.basic_info;
-
-	console.log(title, trackInfo, searchResult);
 
 	if (!id) {
 		throw new Error("Cannot generate YouTubeSong from trackInfo that doesn't have id");
@@ -476,8 +478,8 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		const artist = await this.innertube!.music.getArtist(id);
 		const title = artist.header?.title?.toString() ?? "Unknown title";
 
-		const songs: SongKey[] = [];
-		const albums: AlbumKey[] = [];
+		const songs: (YouTubeSongKey | YouTubeSongPreviewKey)[] = [];
+		const albums: YouTubeAlbumKey[] = [];
 
 		for (const section of artist.sections) {
 			if (!section.is(YTNodes.MusicCarouselShelf)) continue;

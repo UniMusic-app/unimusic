@@ -6,7 +6,6 @@ import type { SongKey, SongPreview, SongPreviewKey, SongType } from "./song";
 
 export type AlbumId = string;
 export type AlbumKey<Type extends SongType = SongType> = ItemKey<Album<Type>>;
-
 export interface Album<Type extends SongType = SongType> extends Identifiable {
 	type: Type;
 	id: AlbumId;
@@ -19,6 +18,7 @@ export interface Album<Type extends SongType = SongType> extends Identifiable {
 	songs: AlbumSong<Type>[];
 }
 
+export type AlbumPreviewKey<Type extends SongType = SongType> = ItemKey<AlbumPreview<Type>>;
 export type AlbumPreview<Type extends SongType = SongType> = Identifiable &
 	Partial<Omit<Album<Type>, "kind">> & {
 		type: Type;

@@ -6,12 +6,13 @@ import SearchPage from "@/pages/Search/SearchPage.vue";
 
 import AlbumPage from "@/pages/Library/Albums/Album/AlbumPage.vue";
 import AlbumsPage from "@/pages/Library/Albums/AlbumsPage.vue";
+import ArtistPage from "@/pages/Library/Artists/Artist/ArtistPage.vue";
+import ArtistsPage from "@/pages/Library/Artists/ArtistsPage.vue";
 import LibraryPage from "@/pages/Library/LibraryPage.vue";
 import PlaylistPage from "@/pages/Library/Playlists/Playlist/PlaylistPage.vue";
 import PlaylistsPage from "@/pages/Library/Playlists/PlaylistsPage.vue";
 import SongPage from "@/pages/Library/Songs/Song/SongPage.vue";
 import SongsPage from "@/pages/Library/Songs/SongsPage.vue";
-import ArtistsPage from "./Library/Artists/ArtistsPage.vue";
 
 const routes: RouteRecordRaw[] = [
 	{ path: "/", redirect: "/home" },
@@ -24,7 +25,7 @@ const routes: RouteRecordRaw[] = [
 	{ path: "/library/songs/:songType/:songId", name: "Song", component: SongPage },
 
 	{ path: "/library/artists", name: "Artists", component: ArtistsPage },
-	// { path: "/library/artists/:songType/:artistId", name: "Artist", component: SongPage },
+	{ path: "/library/artists/:artistType/:artistId", name: "Artist", component: ArtistPage },
 
 	{ path: "/library/albums", name: "Albums", component: AlbumsPage },
 	// Album page provided as is
