@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computedAsync } from "@vueuse/core";
-import { computed, useTemplateRef, watch } from "vue";
+import { computed, ref, useTemplateRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { IonButton, IonButtons, IonIcon, IonSkeletonText, IonThumbnail } from "@ionic/vue";
@@ -11,10 +10,10 @@ import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import SongEditModal, { SongEditEvent } from "../components/SongEditModal.vue";
 
-import { filledSong, SongType } from "@/services/Music/objects";
+import { Filled, filledSong, Song, SongType } from "@/services/Music/objects";
 import { useSongMetadata } from "@/stores/metadata";
 import { useMusicPlayer } from "@/stores/music-player";
-import { formatArtists } from "@/utils/songs";
+import { watchAsync } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
 const songMetadata = useSongMetadata();
@@ -27,14 +26,22 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const song = computedAsync(async () => {
-	const song = await musicPlayer.services.getSong(
-		route.params.songType as SongType,
-		route.params.songId as string,
-	);
+const song = ref<Filled<Song>>();
+watchAsync(
+	() => [route.params.songType, route.params.songId],
+	async ([songType, songId]) => {
+		if (!songType || !songId) return;
 
-	return song && filledSong(song);
-});
+		const $song = await musicPlayer.services.getSong(
+			route.params.songType as SongType,
+			route.params.songId as string,
+		);
+
+		if (!$song) return;
+		song.value = filledSong($song);
+	},
+	{ immediate: true },
+);
 
 const isSingle = computed(() => !!song.value?.album?.includes("- Single"));
 
@@ -43,7 +50,6 @@ watch(
 	[song, editSongButton],
 	([song, button]) => {
 		if (song && button && route.hash === "#edit") {
-			console.log(button.$el);
 			button.$el.click();
 		}
 	},
@@ -87,10 +93,27 @@ async function playNow(): Promise<void> {
 			<h1 class="ion-text-nowrap">
 				<WrappingMarquee :text="song.title ?? 'Unknown title'" />
 			</h1>
-			<!-- TODO: ARTISTS -->
-			<RouterLink class="artist" :to="`/library`">
-				{{ formatArtists(song.artists) }}
-			</RouterLink>
+
+			<h2>
+				<template v-for="(artist, i) in song.artists">
+					<template v-if="i > 0">&nbsp;&&nbsp;</template>
+
+					<RouterLink
+						v-if="'id' in artist"
+						:key="artist.id"
+						class="artist"
+						role="link"
+						aria-roledescription="Go to artist"
+						:to="`/library/artists/${artist.type}/${artist.id}`"
+					>
+						{{ artist.title }}
+					</RouterLink>
+					<p v-else :key="i" class="artist">
+						{{ artist.title }}
+					</p>
+				</template>
+			</h2>
+
 			<RouterLink v-if="!isSingle" class="album" :to="`/library/albums/song/${song.type}/${song.id}`">
 				{{ song.album }}
 			</RouterLink>
@@ -139,10 +162,19 @@ async function playNow(): Promise<void> {
 		--marquee-align: center;
 	}
 
-	& > .artist,
 	& > .album {
 		display: block;
+	}
 
+	& > h2 {
+		margin: 0;
+		& > .artist {
+			display: inline-block;
+		}
+	}
+
+	& > h2 > .artist,
+	& > .album {
 		color: var(--ion-color-dark-rgb);
 		text-decoration: none;
 

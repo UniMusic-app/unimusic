@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { computedAsync } from "@vueuse/core";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import {
@@ -26,8 +25,9 @@ import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 
-import { AlbumSong, Filled, filledAlbum, SongType } from "@/services/Music/objects";
+import { Album, AlbumSong, Filled, filledAlbum, SongType } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
+import { watchAsync } from "@/utils/vue";
 import AlbumDiscItem from "../components/AlbumDiscSong.vue";
 
 const musicPlayer = useMusicPlayer();
@@ -40,27 +40,25 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const album = computedAsync(
-	async () => {
-		const { albumType, albumId, songType, songId } = route.params;
-
-		if (songType) {
-			const song = await musicPlayer.services.getSong(songType as SongType, songId as string);
-			const album = song && (await musicPlayer.services.getSongsAlbum(song));
-			return album && filledAlbum(album);
+const album = ref<Filled<Album>>();
+watchAsync(
+	() => [route.params.albumType, route.params.albumId, route.params.songType, route.params.songId],
+	async ([albumType, albumId, songType, songId]) => {
+		if (!(albumType && albumId) && !(songType && songId)) {
+			return;
 		}
 
-		const album = await musicPlayer.services.getAlbum(albumType as SongType, albumId as string);
-		const filled = album && filledAlbum(album);
-		return filled;
+		let $album: Album | undefined;
+		if (songType) {
+			const song = await musicPlayer.services.getSong(songType as SongType, songId as string);
+			$album = song && (await musicPlayer.services.getSongsAlbum(song));
+		} else {
+			$album = await musicPlayer.services.getAlbum(albumType as SongType, albumId as string);
+		}
+
+		album.value = $album && filledAlbum($album);
 	},
-	undefined,
-	{
-		onError(error) {
-			console.error(error);
-			throw error;
-		},
-	},
+	{ immediate: true },
 );
 
 const groupedSongs = computed(() => {
@@ -156,15 +154,23 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 			</ion-header>
 
 			<h2>
-				<a
-					class="artist"
-					role="link"
-					aria-roledescription="Go to artist"
-					v-for="(artist, i) in album.artists"
-					:key="'id' in artist ? artist.id : i"
-				>
-					{{ artist.title }}
-				</a>
+				<template v-for="(artist, i) in album.artists">
+					<template v-if="i > 0">&nbsp;&&nbsp;</template>
+
+					<RouterLink
+						v-if="'id' in artist"
+						:key="artist.id"
+						class="artist"
+						role="link"
+						aria-roledescription="Go to artist"
+						:to="`/library/artists/${artist.type}/${artist.id}`"
+					>
+						{{ artist.title }}
+					</RouterLink>
+					<p v-else :key="i" class="artist">
+						{{ artist.title }}
+					</p>
+				</template>
 			</h2>
 
 			<div class="buttons">
@@ -254,9 +260,10 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 		margin-top: 0;
 		margin-inline: auto;
 
-		& > a {
+		& > .artist {
 			cursor: pointer;
 			color: var(--ion-color-dark-rgb);
+			text-decoration: none;
 
 			&:hover {
 				opacity: 80%;
