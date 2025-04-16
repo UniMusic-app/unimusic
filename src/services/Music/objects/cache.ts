@@ -11,6 +11,8 @@ import { Song, SongPreview, SongType } from "./song";
 // TODO: In the future it would be a good idea to use more organised cache storage
 // 		 Since it is possible to categorise items by their id, type and kind
 //       Which would make querying the data much more efficient
+// TODO: Add a way to dynamically retrieve data that IS NOT cached but
+// 		 some other item has it linked, e.g. useMusicServices().retrieveKey(...)
 export const itemCache = useIDBKeyval<Record<ItemKey<any>, Identifiable>>("itemCache", {});
 
 export function generateCacheMethod<const Type extends SongType>(type: Type) {
@@ -49,6 +51,10 @@ export function cache<Item extends Identifiable>(item: Item | Promise<Item>): It
 
 export function removeFromCache(item: Identifiable): boolean {
 	return delete itemCache.data.value[getKey(item)];
+}
+
+export function clearCache(): void {
+	itemCache.data.value = {};
 }
 
 export function* getAllCached<Item extends Identifiable>(
