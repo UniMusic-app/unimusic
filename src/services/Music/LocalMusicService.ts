@@ -418,7 +418,7 @@ export class LocalMusicService extends MusicService<"local"> {
 
 		const itemHasCurrentArtist = (itemArtist: LocalDisplayableArtist): boolean => {
 			const { title } = filledDisplayableArtist(itemArtist);
-			return title !== artist.title;
+			return title === artist.title;
 		};
 
 		for (const song of getAllCached<LocalSong>("local", "song")) {
@@ -432,8 +432,6 @@ export class LocalMusicService extends MusicService<"local"> {
 				artist.albums.push(getKey(album));
 			}
 		}
-
-		console.log(artist);
 
 		return cache(artist);
 	}
