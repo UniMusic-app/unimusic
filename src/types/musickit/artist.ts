@@ -45,6 +45,10 @@ declare global {
 			 * Fetch limits: 25 default, 100 maximum
 			 */
 			albums: ArtistsAlbumsRelationship;
+			/**
+			 * The songs associated with the artist.
+			 */
+			songs: ArtistsSongsRelationship;
 		}
 
 		/**
@@ -59,6 +63,17 @@ declare global {
 			 * The albums for the artist.
 			 */
 			data: MusicKit.Albums[];
+		}
+
+		interface ArtistsSongsRelationship {
+			/* A relative location for the relationship. */
+			href?: string;
+			/* A relative cursor to fetch the next paginated collection of resources in the relationship if more exist. */
+			next?: string;
+			/**
+			 * The songs for the artist.
+			 */
+			data: MusicKit.Songs[];
 		}
 
 		interface ArtistsQuery {

@@ -24,7 +24,9 @@ import {
 	getKey,
 	Playlist,
 	Song,
+	SongKey,
 	SongPreview,
+	SongPreviewKey,
 } from "./objects";
 
 const getCached = generateCacheMethod("musickit");
@@ -38,7 +40,9 @@ type MusicKitArtist = Artist<"musickit">;
 type MusicKitArtistPreview = ArtistPreview<"musickit">;
 type _MusicKitArtistKey = ArtistKey<"musickit">;
 type MusicKitSong = Song<"musickit">;
+type MusicKitSongKey = SongKey<"musickit">;
 type MusicKitSongPreview = SongPreview<"musickit", true>;
+type MusicKitSongPreviewKey = SongPreviewKey<"musickit">;
 type MusicKitDisplayableArtist = DisplayableArtist<"musickit">;
 
 export function extractDisplayableArtists(
@@ -346,6 +350,7 @@ export async function musicKitArtist(
 	artist: MusicKit.Artists | MusicKit.LibraryArtists,
 ): Promise<MusicKitArtist> {
 	const { id, attributes, relationships } = artist;
+
 	const catalogArtist =
 		artist.type === "library-artists" ? artist.relationships?.catalog?.data?.[0] : artist;
 
@@ -353,7 +358,6 @@ export async function musicKitArtist(
 
 	const albums: (MusicKitAlbumKey | MusicKitAlbumPreviewKey)[] = [];
 	const catalogAlbums = relationships?.albums?.data;
-
 	if (catalogAlbums?.length) {
 		for (const album of catalogAlbums) {
 			const albumPreview =
@@ -362,6 +366,18 @@ export async function musicKitArtist(
 				cache(musicKitAlbumPreview(album));
 
 			albums.push(getKey(albumPreview));
+		}
+	}
+
+	const songs: (MusicKitSongKey | MusicKitSongPreviewKey)[] = [];
+	if (relationships && "songs" in relationships) {
+		for (const song of relationships.songs.data) {
+			const songPreview =
+				getCached("song", song.id) ??
+				getCached("songPreview", song.id) ??
+				cache(musicKitSongPreview(song));
+
+			songs.push(getKey(songPreview));
 		}
 	}
 
@@ -374,7 +390,7 @@ export async function musicKitArtist(
 		artwork,
 
 		albums,
-		songs: [],
+		songs,
 	};
 }
 
@@ -435,15 +451,18 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 		console.log("getArtist", id);
 
-		const response = await this.music!.api.music<
-			MusicKit.LibraryArtistsResponse | MusicKit.ArtistsResponse,
-			MusicKit.LibraryArtistsQuery | MusicKit.ArtistsQuery
-		>(
-			idType === "catalog"
-				? `/v1/catalog/{{storefrontId}}/artists/${id}`
-				: `/v1/me/library/artists/${id}`,
-			{ include: ["catalog", "albums"] },
-		);
+		let response: { data: MusicKit.ArtistsResponse | MusicKit.LibraryArtistsResponse };
+		if (idType === "catalog") {
+			response = await this.music!.api.music<MusicKit.ArtistsResponse, MusicKit.ArtistsQuery>(
+				`/v1/catalog/{{storefrontId}}/artists/${id}`,
+				{ include: ["albums", "songs"] },
+			);
+		} else {
+			response = await this.music!.api.music<
+				MusicKit.LibraryArtistsResponse,
+				MusicKit.LibraryArtistsQuery
+			>(`/v1/me/library/artists/${id}`, { include: ["catalog", "albums"] });
+		}
 
 		const artist = response.data?.data?.[0];
 		if (!artist) return;
