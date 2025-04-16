@@ -1,23 +1,13 @@
 <script lang="ts" setup>
-import {
-	IonCard,
-	IonCardHeader,
-	IonCardSubtitle,
-	IonCardTitle,
-	IonRefresher,
-	IonRefresherContent,
-	RefresherCustomEvent,
-} from "@ionic/vue";
+import { IonRefresher, IonRefresherContent, RefresherCustomEvent } from "@ionic/vue";
 import { onUpdated, ref } from "vue";
 
 import AppPage from "@/components/AppPage.vue";
-import LocalImg from "@/components/LocalImg.vue";
 
-import ContextMenu from "@/components/ContextMenu.vue";
+import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
 import SkeletonCard from "@/components/SkeletonCard.vue";
-import { Album, AlbumPreview, filledDisplayableArtist } from "@/services/Music/objects";
+import { Album, AlbumPreview } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
-import { formatArtists } from "@/utils/songs";
 import { useSessionStorage } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
@@ -56,20 +46,15 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 			<SkeletonCard v-for="i in 25" :key="i" />
 		</div>
 		<div v-else class="album-cards">
-			<ContextMenu v-for="album in libraryAlbums" :key="album.id">
-				<ion-card class="album-card" :router-link="`/library/albums/album/${album.type}/${album.id}`">
-					<LocalImg :src="album.artwork" />
-
-					<ion-card-header>
-						<ion-card-title class="ion-text-nowrap">
-							{{ album.title }}
-						</ion-card-title>
-						<ion-card-subtitle class="ion-text-nowrap">
-							{{ formatArtists(album.artists.map(filledDisplayableArtist)) }}
-						</ion-card-subtitle>
-					</ion-card-header>
-				</ion-card>
-			</ContextMenu>
+			<GenericAlbumCard
+				class="album-card"
+				:router-link="`/library/albums/album/${album.type}/${album.id}`"
+				v-for="album in libraryAlbums"
+				:key="album.id"
+				:artwork="album.artwork"
+				:title="album.title"
+				:artists="album.artists"
+			/>
 		</div>
 	</AppPage>
 </template>
@@ -114,32 +99,8 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 	}
 	gap: var(--gap);
 	grid-template-columns: repeat(var(--columns), calc(100% / var(--columns) - var(--gap)));
-
-	.context-menu:not(.closed) > .context-menu-item > ion-card {
-		transition: var(--context-menu-transition);
-
-		--background: var(--context-menu-item-background);
-
-		border-radius: 24px;
-		--border-color: transparent;
-		padding: 12px;
-
-		& > .local-img {
-			border-radius: 12px;
-		}
-	}
-
-	& .context-item-container,
-	:global(& .context-menu-dummy) {
-		display: inline-block;
-	}
 }
 
-.context-menu:not(.closed) > .context-menu-item > .album-card {
-	background: var(--context-menu-item-background);
-}
-
-.album-card,
 .skeleton-card {
 	margin: 0;
 	background: transparent;

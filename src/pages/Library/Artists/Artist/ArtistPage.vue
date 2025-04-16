@@ -1,15 +1,23 @@
 <script lang="ts" setup>
-import { computedAsync } from "@vueuse/core";
-
 import AppPage from "@/components/AppPage.vue";
-import { filledArtist, SongType } from "@/services/Music/objects";
+import {
+	Artist,
+	Filled,
+	filledArtist,
+	Song,
+	SongPreview,
+	SongType,
+} from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute, useRouter } from "vue-router";
 
+import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
+import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
+import { watchAsync } from "@/utils/vue";
 import { IonSkeletonText, IonThumbnail } from "@ionic/vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 const musicPlayer = useMusicPlayer();
 const router = useRouter();
@@ -21,26 +29,84 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const artist = computedAsync(async () => {
-	const artist = await musicPlayer.services.getArtist(
-		route.params.artistType as SongType,
-		route.params.artistId as string,
-	);
+const artist = ref<Filled<Artist>>();
+watchAsync(
+	() => [route.params.artistType, route.params.artistId],
+	async ([artistType, artistId]) => {
+		if (!artistType || !artistId) return;
 
-	return artist && filledArtist(artist);
-});
+		const $artist = await musicPlayer.services.getArtist(
+			route.params.artistType as SongType,
+			route.params.artistId as string,
+		);
+
+		artist.value = $artist && filledArtist($artist);
+	},
+	{ immediate: true },
+);
+
+async function playSong(song: Song | SongPreview<SongType, true>): Promise<void> {
+	await musicPlayer.state.addToQueue(
+		await musicPlayer.services.retrieveSong(song),
+		musicPlayer.state.queueIndex,
+	);
+}
+
+async function goToSong(song: Song | SongPreview<SongType, true>): Promise<void> {
+	await router.push(`/library/songs/${song.type}/${song.id}`);
+}
 </script>
 
 <template>
 	<AppPage :back-button="previousRouteName">
 		<div id="artist-content" v-if="artist">
-			<LocalImg :src="artist.artwork" />
-			<h1 class="ion-text-nowrap">
+			<LocalImg v-if="artist.artwork" :src="artist.artwork" />
+
+			<h1 class="ion-text-nowrap" :class="{ 'no-artwork': !artist.artwork }">
 				<WrappingMarquee :text="artist.title ?? 'Unknown title'" />
 			</h1>
 
-			{{ artist.albums.length }}
-			{{ artist.songs.length }}
+			<section class="top-songs" v-if="artist.songs.length">
+				<!-- TODO: Display all songs of the artist on click -->
+				<h1>Top Songs</h1>
+				<div class="top-songs-container">
+					<!-- TODO: Make this responsive-->
+					<div
+						class="top-songs-items"
+						:style="{ '--top-songs-rows': Math.min(3, Math.ceil(artist.songs.length / 4)) }"
+					>
+						<GenericSongItem
+							@item-click="playSong(song)"
+							@context-menu-click="goToSong(song)"
+							class="song-item"
+							v-for="song in artist.songs"
+							:key="song.id"
+							:title="song.title"
+							:artwork="song.artwork"
+							:available="song.available"
+							:explicit="song.explicit"
+							:duration="song.duration"
+							:album="song.album"
+						/>
+					</div>
+				</div>
+			</section>
+
+			<section class="albums" v-if="artist.albums.length">
+				<h1>Albums</h1>
+				<div class="album-cards-container">
+					<div class="album-cards">
+						<GenericAlbumCard
+							class="album-card"
+							v-for="album in artist.albums"
+							:key="album.id"
+							:title="album.title"
+							:artwork="album.artwork"
+							:router-link="`/library/albums/album/${album.type}/${album.id}`"
+						/>
+					</div>
+				</div>
+			</section>
 		</div>
 		<div id="artist-loading-content" v-else>
 			<ion-thumbnail>
@@ -76,6 +142,9 @@ const artist = computedAsync(async () => {
 
 		margin-top: 0;
 		margin-bottom: 0.25rem;
+		&.no-artwork {
+			margin-top: 1rem;
+		}
 
 		--marquee-duration: 20s;
 		--marquee-align: center;
@@ -130,8 +199,9 @@ const artist = computedAsync(async () => {
 	& > .local-img {
 		margin-inline: auto;
 
-		--img-height: 192px;
 		--img-width: auto;
+		max-width: calc(100% - 24px);
+		max-height: 192px;
 
 		--shadow-color: rgba(var(--ion-color-dark-rgb), 0.1);
 
@@ -143,6 +213,96 @@ const artist = computedAsync(async () => {
 		& > .fallback {
 			--size: 36px;
 			filter: drop-shadow(0 0 12px var(--shadow-color));
+		}
+	}
+
+	& > .top-songs {
+		display: flex;
+		flex-direction: column;
+		align-items: start;
+
+		& > h1 {
+			margin-left: 0.5em;
+			font-weight: bold;
+		}
+
+		& > .top-songs-container {
+			width: 100%;
+
+			overflow-x: scroll;
+			scroll-snap-type: x mandatory;
+			scroll-padding-left: 8px;
+			overscroll-behavior-x: auto;
+
+			scrollbar-width: none;
+			&::-webkit-scrollbar {
+				display: none;
+			}
+
+			& > .top-songs-items {
+				display: grid;
+				grid-template-rows: repeat(var(--top-songs-rows), 1fr);
+				grid-auto-flow: column;
+				grid-auto-columns: min(80vw, 290px);
+
+				width: max-content;
+
+				:global(& .context-menu.closed > .context-menu-item > ion-item) {
+					--padding-start: 8px;
+				}
+
+				& > .song-item {
+					scroll-snap-align: start;
+
+					margin: 0;
+					background: transparent;
+					box-shadow: none;
+
+					:global(& > ion-item) {
+						--padding-start: 8px;
+					}
+				}
+			}
+		}
+	}
+
+	& > .albums {
+		display: flex;
+		flex-direction: column;
+		align-items: start;
+		margin-bottom: 2em;
+
+		& > h1 {
+			margin-left: 0.5em;
+			font-weight: bold;
+		}
+
+		& > .album-cards-container {
+			width: 100%;
+
+			overflow-x: scroll;
+			scroll-snap-type: x mandatory;
+			scroll-padding-left: 8px;
+			overscroll-behavior-x: auto;
+
+			scrollbar-width: none;
+			&::-webkit-scrollbar {
+				display: none;
+			}
+
+			& > .album-cards {
+				display: flex;
+				flex-direction: row;
+				width: max-content;
+
+				gap: 8px;
+				padding-left: 8px;
+
+				& > .album-card {
+					scroll-snap-align: start;
+					width: 128px !important;
+				}
+			}
 		}
 	}
 }
