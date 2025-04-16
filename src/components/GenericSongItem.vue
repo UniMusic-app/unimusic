@@ -8,18 +8,21 @@ import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons
 
 import { filledDisplayableArtist, Song } from "@/services/Music/objects";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
+import { secondsToMMSS } from "@/utils/time";
 
 const {
 	button = true,
 	title,
 	type,
 	artists,
+	album,
 	artwork,
+	duration,
 	reorder,
 	disabled,
 	routerLink,
 } = defineProps<
-	Partial<Song> & {
+	Pick<Partial<Song>, "type" | "duration" | "album" | "artists" | "artwork" | "title"> & {
 		reorder?: boolean;
 		button?: boolean;
 		disabled?: boolean;
@@ -27,8 +30,11 @@ const {
 	}
 >();
 
-const formattedArtists = computed(() => formatArtists(artists?.map(filledDisplayableArtist)));
-const displayName = computed(() => songTypeToDisplayName(type));
+const formattedArtists = computed(
+	() => artists && formatArtists(artists?.map(filledDisplayableArtist)),
+);
+const displayName = computed(() => type && songTypeToDisplayName(type));
+const formattedDuration = computed(() => duration && secondsToMMSS(duration));
 
 const emit = defineEmits<{
 	itemClick: [PointerEvent];
@@ -67,14 +73,22 @@ function emitClick(event: PointerEvent): void {
 			<ion-label>
 				<h1>{{ title ?? "Unknown title" }}</h1>
 				<ion-note>
-					<p>
-						<ion-icon :icon="compassIcon" />
-						{{ displayName }}
-					</p>
-					<p>
-						<ion-icon :icon="musicalNoteIcon" />
-						{{ formattedArtists }}
-					</p>
+					<template v-if="artists && type">
+						<p>
+							<ion-icon :icon="compassIcon" />
+							{{ displayName }}
+						</p>
+						<p>
+							<ion-icon :icon="musicalNoteIcon" />
+							{{ formattedArtists }}
+						</p>
+					</template>
+					<template v-else-if="album">
+						{{ album }}
+					</template>
+					<template v-else-if="duration">
+						{{ formattedDuration }}
+					</template>
 				</ion-note>
 			</ion-label>
 
@@ -152,6 +166,8 @@ ion-item {
 		--img-border-radius: 8px;
 		--img-width: auto;
 		--img-height: 56px;
+
+		border: 0.55px solid #0002;
 	}
 
 	& > ion-label {
