@@ -11,6 +11,8 @@ import { Maybe } from "@/utils/types";
 import {
 	Album,
 	AlbumKey,
+	AlbumPreview,
+	AlbumPreviewKey,
 	AlbumSong,
 	Artist,
 	ArtistKey,
@@ -29,16 +31,40 @@ import {
 const getCached = generateCacheMethod("youtube");
 
 type YouTubeAlbum = Album<"youtube">;
+type YoutubeAlbumPreview = AlbumPreview<"youtube">;
+type YouTubeAlbumPreviewKey = AlbumPreviewKey<"youtube">;
 type YouTubeAlbumKey = AlbumKey<"youtube">;
 type YouTubeAlbumSong = AlbumSong<"youtube">;
 type YouTubeArtist = Artist<"youtube">;
-type _YouTubeArtistPreview = ArtistPreview<"youtube">;
+type YouTubeArtistPreview = ArtistPreview<"youtube">;
 type _YouTubeArtistKey = ArtistKey<"youtube">;
 type YouTubeSong = Song<"youtube">;
 type YouTubeSongKey = SongKey<"youtube">;
 type YouTubeSongPreview<HasId extends boolean = false> = SongPreview<"youtube", HasId>;
 type YouTubeSongPreviewKey = SongPreviewKey<"youtube">;
 type YoutubeDisplayableArtist = DisplayableArtist<"youtube">;
+
+export function youtubeDisplayableArtist(artist: {
+	channel_id?: string;
+	name: string;
+}): YoutubeDisplayableArtist {
+	const id = artist.channel_id;
+	const title = artist.name;
+
+	if (id) {
+		const artistPreview: YouTubeArtistPreview = {
+			id,
+			type: "youtube",
+			kind: "artistPreview",
+
+			title,
+		};
+		cache(artistPreview);
+		return getKey(artistPreview);
+	}
+
+	return { title };
+}
 
 export function youtubeSongPreview(
 	node: YTNodes.MusicResponsiveListItem,
@@ -62,14 +88,10 @@ export function youtubeSongPreview(
 	const artists: YoutubeDisplayableArtist[] = [];
 	if (node.artists?.length || node.authors?.length) {
 		for (const artist of (node.artists ?? node.authors)!) {
-			artists.push({
-				id: artist.channel_id,
-				title: artist.name,
-			});
+			artists.push(youtubeDisplayableArtist(artist));
 		}
 	} else if (node?.author) {
-		const { name, channel_id } = node.author;
-		artists.push({ id: channel_id, title: name });
+		artists.push(youtubeDisplayableArtist(node.author));
 	}
 
 	const available = node.item_type !== "unknown";
@@ -142,10 +164,7 @@ export async function youtubeSong(
 				album = node.album.name;
 
 				if (node.artists) {
-					artists = node.artists?.map(({ name: title, channel_id: id }) => ({
-						id,
-						title,
-					}));
+					artists = node.artists?.map(youtubeDisplayableArtist);
 				}
 
 				break outer;
@@ -190,6 +209,35 @@ export async function youtubeSong(
 	};
 }
 
+export function youtubeAlbumPreview(node: YTNodes.MusicTwoRowItem): YoutubeAlbumPreview {
+	if (!node.id) {
+		throw new Error("Cannot create AlbumPreview from a node without id");
+	}
+
+	const artists: YoutubeDisplayableArtist[] = [];
+	if (node.artists?.length) {
+		for (const artist of node.artists) {
+			artists.push(youtubeDisplayableArtist(artist));
+		}
+	}
+
+	let artwork: Maybe<LocalImage>;
+	if (node.thumbnail?.[0]) {
+		artwork = { url: node.thumbnail[0].url };
+	}
+
+	return {
+		id: node.id!,
+		type: "youtube",
+		kind: "albumPreview",
+
+		title: node.title.toString(),
+
+		artwork,
+		artists,
+	};
+}
+
 export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<YouTubeAlbum> {
 	const title = album.header?.title.toString() ?? "Unknown title";
 
@@ -219,8 +267,19 @@ export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<Yo
 			const cachedArtist = getCached("artist", id);
 			if (cachedArtist) {
 				artists.push(getKey(cachedArtist));
+			} else if (id) {
+				const artistPreview: YouTubeArtistPreview = {
+					id,
+					type: "youtube",
+					kind: "artistPreview",
+
+					title,
+					artwork,
+				};
+				cache(artistPreview);
+				artists.push(getKey(artistPreview));
 			} else {
-				artists.push({ id, title, artwork });
+				artists.push({ title, artwork });
 			}
 		}
 	}
@@ -469,8 +528,8 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		return cache(await youtubeAlbum(id, album));
 	}
 
-	async handleGetArtist(id: string, cache = true): Promise<Maybe<YouTubeArtist>> {
-		if (cache) {
+	async handleGetArtist(id: string, useCache = true): Promise<Maybe<YouTubeArtist>> {
+		if (useCache) {
 			const cachedArtist = getCached("artist", id);
 			if (cachedArtist) return cachedArtist;
 		}
@@ -478,34 +537,53 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		const artist = await this.innertube!.music.getArtist(id);
 		const title = artist.header?.title?.toString() ?? "Unknown title";
 
-		const songs: (YouTubeSongKey | YouTubeSongPreviewKey)[] = [];
-		const albums: YouTubeAlbumKey[] = [];
+		let artwork: Maybe<LocalImage>;
+		console.log(artist);
+		if (artist.header?.is(YTNodes.MusicImmersiveHeader)) {
+			console.log(artist.header.thumbnail?.contents);
+			const thumbnail = artist.header.thumbnail?.contents?.[0];
+			if (thumbnail) {
+				const localImages = useLocalImages();
+				const artworkBlob = await (await fetch(thumbnail.url)).blob();
+				await localImages.associateImage(id, artworkBlob, {
+					maxWidth: 512,
+					maxHeight: 512,
+				});
+				artwork = { id };
+			}
+		}
 
+		const songs: (YouTubeSongKey | YouTubeSongPreviewKey)[] = [];
+		const albums: (YouTubeAlbumKey | YouTubeAlbumPreviewKey)[] = [];
 		for (const section of artist.sections) {
-			if (!section.is(YTNodes.MusicCarouselShelf)) continue;
+			if (!section.is(YTNodes.MusicCarouselShelf) && !section.is(YTNodes.MusicShelf)) continue;
 
 			for (const node of section.contents) {
-				// Song
 				if (node.is(YTNodes.MusicResponsiveListItem) && node.id) {
-					const searchResult = youtubeSongPreview(node, node.id);
+					const searchResult = cache(youtubeSongPreview(node, node.id));
 					songs.push(getKey(searchResult));
-				} else if (node.is(YTNodes.MusicTwoRowItem) && node.item_type === "album") {
-					// TODO: Artist Albums
-					//albums.push();
+				} else if (node.is(YTNodes.MusicTwoRowItem) && node.item_type === "album" && node.id) {
+					const albumPreview =
+						getCached("album", node.id) ??
+						getCached("albumPreview", node.id) ??
+						cache(youtubeAlbumPreview(node));
+
+					albums.push(getKey(albumPreview));
 				}
 			}
 		}
 
-		return {
+		return cache<YouTubeArtist>({
+			id,
 			type: "youtube",
 			kind: "artist",
-			id,
 
 			title,
+			artwork,
 
 			songs,
 			albums,
-		};
+		});
 	}
 
 	async handleGetPlaylist(idOrUrl: URL): Promise<Maybe<Playlist>> {
