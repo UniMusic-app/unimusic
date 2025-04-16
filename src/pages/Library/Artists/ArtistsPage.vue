@@ -52,4 +52,12 @@ async function refreshArtistLibrary(event: RefresherCustomEvent): Promise<void> 
 	</AppPage>
 </template>
 
-<style></style>
+<style>
+.songs-list {
+	& > .skeleton-item {
+		& > ion-thumbnail {
+			--border-radius: 9999px;
+		}
+	}
+}
+</style>
