@@ -28,6 +28,7 @@ import {
 	filledDisplayableArtist,
 	generateCacheMethod,
 	getAllCached,
+	getCachedFromKey,
 	getKey,
 	removeFromCache,
 	Song,
@@ -42,7 +43,7 @@ type LocalArtist = Artist<"local">;
 type LocalArtistPreview = ArtistPreview<"local">;
 type _LocalArtistKey = ArtistKey<"local">;
 type LocalSong = Song<"local">;
-type _LocalSongPreview = SongPreview<"local">;
+type LocalSongPreview = SongPreview<"local">;
 type LocalDisplayableArtist = DisplayableArtist<"local">;
 
 async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
@@ -434,6 +435,27 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 
 		return cache(artist);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async *handleGetArtistsSongs(
+		artist: LocalArtist | Filled<LocalArtist>,
+		offset: number,
+		options?: { signal?: AbortSignal },
+	): AsyncGenerator<LocalSong | LocalSongPreview> {
+		if (offset > 0 || options?.signal?.aborted) return;
+
+		for (const song of artist.songs) {
+			if (typeof song === "object") {
+				if (options?.signal?.aborted) return;
+
+				yield song;
+				continue;
+			}
+
+			const cached = getCachedFromKey(song);
+			if (cached) yield cached;
+		}
 	}
 
 	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<LocalAlbum> {
