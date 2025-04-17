@@ -17,6 +17,7 @@ import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import { watchAsync } from "@/utils/vue";
 import { IonSkeletonText, IonThumbnail } from "@ionic/vue";
+import { useWindowSize } from "@vueuse/core";
 import { computed, ref } from "vue";
 
 const musicPlayer = useMusicPlayer();
@@ -55,6 +56,8 @@ async function playSong(song: Song | SongPreview<SongType, true>): Promise<void>
 async function goToSong(song: Song | SongPreview<SongType, true>): Promise<void> {
 	await router.push(`/library/songs/${song.type}/${song.id}`);
 }
+
+const { width: windowWidth } = useWindowSize();
 </script>
 
 <template>
@@ -70,10 +73,11 @@ async function goToSong(song: Song | SongPreview<SongType, true>): Promise<void>
 				<!-- TODO: Display all songs of the artist on click -->
 				<h1>Top Songs</h1>
 				<div class="top-songs-container">
-					<!-- TODO: Make this responsive-->
 					<div
 						class="top-songs-items"
-						:style="{ '--top-songs-rows': Math.min(3, Math.ceil(artist.songs.length / 4)) }"
+						:style="{
+							'--top-songs-rows': Math.min(3, Math.floor((artist.songs.length * 280) / windowWidth)),
+						}"
 					>
 						<GenericSongItem
 							@item-click="playSong(song)"
@@ -242,7 +246,7 @@ async function goToSong(song: Song | SongPreview<SongType, true>): Promise<void>
 			& > .top-songs-items {
 				display: grid;
 				grid-template-rows: repeat(var(--top-songs-rows), 1fr);
-				grid-auto-flow: column;
+				grid-auto-flow: column dense;
 				grid-auto-columns: min(80vw, 290px);
 
 				width: max-content;
