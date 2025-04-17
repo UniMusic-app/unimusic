@@ -153,7 +153,9 @@ async function playNow(): Promise<void> {
 		font-size: min(2.125rem, 61.2px);
 		font-weight: bold;
 
-		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+		& .wrapping {
+			mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+		}
 
 		margin-top: 0;
 		margin-bottom: 0.25rem;

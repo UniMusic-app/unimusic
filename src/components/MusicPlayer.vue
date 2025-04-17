@@ -569,7 +569,7 @@ function dismiss(): void {
 					--marquee-duration: 20s;
 					--marquee-gap: 12px;
 
-					.wrapping {
+					& .wrapping {
 						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 					}
 
@@ -580,7 +580,7 @@ function dismiss(): void {
 
 				& > h2 {
 					overflow: hidden;
-					.wrapping {
+					& .wrapping {
 						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 					}
 

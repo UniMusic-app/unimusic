@@ -171,7 +171,10 @@ function goToSong(song: Song): void {
 		width: max-content;
 		max-width: 100%;
 		margin-inline: auto;
-		mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+
+		& .wrapping {
+			mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+		}
 
 		& ion-title {
 			transform-origin: top center;
