@@ -178,14 +178,17 @@ async function playNow(): Promise<void> {
 	& > h2 > .artist,
 	& > .album {
 		color: var(--ion-color-dark-rgb);
-		text-decoration: none;
 
 		width: max-content;
 
 		margin-top: 0;
 		margin-bottom: 10px;
 		margin-inline: auto;
+	}
 
+	& > h2 > a.artist,
+	& > .album {
+		text-decoration: none;
 		cursor: pointer;
 		&:hover {
 			opacity: 80%;

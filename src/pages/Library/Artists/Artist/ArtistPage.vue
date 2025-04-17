@@ -11,12 +11,14 @@ import {
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute, useRouter } from "vue-router";
 
+import { IonIcon, IonSkeletonText, IonThumbnail } from "@ionic/vue";
+import { chevronForward as chevronForwardIcon } from "ionicons/icons";
+
 import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import { watchAsync } from "@/utils/vue";
-import { IonSkeletonText, IonThumbnail } from "@ionic/vue";
 import { useWindowSize } from "@vueuse/core";
 import { computed, ref } from "vue";
 
@@ -71,7 +73,11 @@ const { width: windowWidth } = useWindowSize();
 
 			<section class="top-songs" v-if="artist.songs.length">
 				<!-- TODO: Display all songs of the artist on click -->
-				<h1>Top Songs</h1>
+				<h1>
+					<RouterLink :to="`/library/artists/${artist.type}/${artist.id}/songs`">Top Songs</RouterLink>
+					<ion-icon :icon="chevronForwardIcon" />
+				</h1>
+
 				<div class="top-songs-container">
 					<div
 						class="top-songs-items"
@@ -228,8 +234,19 @@ const { width: windowWidth } = useWindowSize();
 		align-items: start;
 
 		& > h1 {
+			display: inline-flex;
+			align-items: center;
 			margin-left: 0.5em;
 			font-weight: bold;
+
+			& > a {
+				color: var(--ion-color-dark-rgb);
+				text-decoration: none;
+			}
+
+			& > ion-icon {
+				color: var(--ion-color-medium);
+			}
 		}
 
 		& > .top-songs-container {

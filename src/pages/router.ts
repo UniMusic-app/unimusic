@@ -13,6 +13,7 @@ import PlaylistPage from "@/pages/Library/Playlists/Playlist/PlaylistPage.vue";
 import PlaylistsPage from "@/pages/Library/Playlists/PlaylistsPage.vue";
 import SongPage from "@/pages/Library/Songs/Song/SongPage.vue";
 import SongsPage from "@/pages/Library/Songs/SongsPage.vue";
+import ArtistsSongsPage from "./Library/Artists/Artist/ArtistsSongsPage.vue";
 
 const routes: RouteRecordRaw[] = [
 	{ path: "/", redirect: "/home" },
@@ -26,6 +27,11 @@ const routes: RouteRecordRaw[] = [
 
 	{ path: "/library/artists", name: "Artists", component: ArtistsPage },
 	{ path: "/library/artists/:artistType/:artistId", name: "Artist", component: ArtistPage },
+	{
+		path: "/library/artists/:artistType/:artistId/songs",
+		name: "Artists Songs",
+		component: ArtistsSongsPage,
+	},
 
 	{ path: "/library/albums", name: "Albums", component: AlbumsPage },
 	// Album page provided as is

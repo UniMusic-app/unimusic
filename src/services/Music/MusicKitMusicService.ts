@@ -16,6 +16,7 @@ import {
 	AlbumPreviewKey,
 	AlbumSong,
 	Artist,
+	ArtistId,
 	ArtistKey,
 	ArtistPreview,
 	cache,
@@ -426,7 +427,9 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return terms;
 	}
 
-	async *handleGetLibraryArtists(options?: { signal?: AbortSignal }): AsyncGenerator<ArtistPreview> {
+	async *handleGetLibraryArtists(options?: {
+		signal?: AbortSignal;
+	}): AsyncGenerator<MusicKitArtistPreview> {
 		const response = await this.music!.api.music<
 			MusicKit.LibraryArtistsResponse,
 			MusicKit.LibraryArtistsQuery
@@ -444,12 +447,10 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	}
 
 	async handleGetArtist(id: string): Promise<Maybe<Artist<"musickit">>> {
-		// const cachedArtist = getCached("artist", id);
-		// if (cachedArtist) return cachedArtist;
+		const cachedArtist = getCached("artist", id);
+		if (cachedArtist) return cachedArtist;
 
 		const idType = musicKitIdType(id);
-
-		console.log("getArtist", id);
 
 		let response: { data: MusicKit.ArtistsResponse | MusicKit.LibraryArtistsResponse };
 		if (idType === "catalog") {
@@ -468,6 +469,44 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		if (!artist) return;
 
 		return cache(await musicKitArtist(artist));
+	}
+
+	// TODO: Make a unified way to handle pagination in MusicKit, that uses "next" instead of calculating it manually
+	#artistsSongsPagination: Record<ArtistId, { maxOffset?: number; pages: string[] }> = {};
+	async *handleGetArtistsSongs(
+		id: ArtistId,
+		offset: number,
+		options?: { signal?: AbortSignal },
+	): AsyncGenerator<MusicKitSong | MusicKitSongPreview> {
+		const pagination = (this.#artistsSongsPagination[id] ??= { pages: [] });
+
+		if (options?.signal?.aborted || (pagination.maxOffset && offset > pagination.maxOffset)) {
+			return;
+		}
+
+		const response = await this.music!.api.music<MusicKit.SongsResponse>(
+			`/v1/catalog/{{storefrontId}}/artists/${id}/view/top-songs`,
+			{ offset: offset * 25, limit: 25 },
+		);
+
+		if (!response?.data?.next) {
+			pagination.maxOffset = offset;
+		}
+
+		if (!response?.data?.data || options?.signal?.aborted) {
+			return;
+		}
+
+		for (const song of response.data.data) {
+			if (options?.signal?.aborted) return;
+
+			const songPreview =
+				getCached("song", song.id) ??
+				getCached("songPreview", song.id) ??
+				cache(musicKitSongPreview(song));
+
+			yield songPreview;
+		}
 	}
 
 	async *handleGetLibraryAlbums(options?: {
@@ -514,7 +553,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return cache(await musicKitAlbum(album));
 	}
 
-	async handleGetAlbum(id: string, useCache = true): Promise<Maybe<Album>> {
+	async handleGetAlbum(id: string, useCache = true): Promise<Maybe<MusicKitAlbum>> {
 		if (useCache) {
 			const cachedAlbum = getCached("album", id);
 			if (cachedAlbum) return cachedAlbum;

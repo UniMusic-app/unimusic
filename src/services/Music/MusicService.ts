@@ -18,6 +18,7 @@ import {
 	Album,
 	AlbumPreview,
 	Artist,
+	ArtistId,
 	ArtistPreview,
 	Playlist,
 	Song,
@@ -293,8 +294,12 @@ export abstract class MusicService<
 		localImages.deduplicate();
 	}
 
-	handleGetLibraryAlbums?(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview | Album>;
-	async *getLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<AlbumPreview | Album> {
+	handleGetLibraryAlbums?(options?: {
+		signal?: AbortSignal;
+	}): AsyncGenerator<AlbumPreview<Type> | Album<Type>>;
+	async *getLibraryAlbums(options?: {
+		signal?: AbortSignal;
+	}): AsyncGenerator<AlbumPreview<Type> | Album<Type>> {
 		this.log("getLibraryAlbums");
 		if (!this.handleGetLibraryAlbums) {
 			throw new Error("This service does not support getLibraryAlbums");
@@ -318,10 +323,10 @@ export abstract class MusicService<
 
 	handleGetLibraryArtists?(options?: {
 		signal?: AbortSignal;
-	}): AsyncGenerator<ArtistPreview | Artist>;
+	}): AsyncGenerator<ArtistPreview<Type> | Artist<Type>>;
 	async *getLibraryArtists(options?: {
 		signal?: AbortSignal;
-	}): AsyncGenerator<ArtistPreview | Artist> {
+	}): AsyncGenerator<ArtistPreview<Type> | Artist<Type>> {
 		this.log("getLibraryArtists");
 		if (!this.handleGetLibraryArtists) {
 			throw new Error("This service does not support getLibraryArtists");
@@ -354,8 +359,8 @@ export abstract class MusicService<
 		return album;
 	}
 
-	handleGetAlbum?(id: string): Maybe<Album> | Promise<Maybe<Album>>;
-	async getAlbum(id: string): Promise<Maybe<Album>> {
+	handleGetAlbum?(id: string): Maybe<Album<Type>> | Promise<Maybe<Album<Type>>>;
+	async getAlbum(id: string): Promise<Maybe<Album<Type>>> {
 		this.log("getAlbum");
 		await this.initialize();
 
@@ -387,6 +392,33 @@ export abstract class MusicService<
 
 		const artist = await this.withErrorHandling(undefined, this.handleGetArtist, id);
 		return artist;
+	}
+
+	handleGetArtistsSongs?(
+		id: ArtistId,
+		offset: number,
+		options?: { signal?: AbortSignal },
+	): AsyncGenerator<Song<Type> | SongPreview<Type>>;
+	async *getArtistsSongs(
+		id: ArtistId,
+		offset = 0,
+		options?: { signal?: AbortSignal },
+	): AsyncGenerator<Song<Type> | SongPreview<Type>> {
+		this.log("getArtistsSongs");
+		if (!this.handleGetArtistsSongs) {
+			throw new Error("This service does not support getArtistsSongs");
+		}
+
+		const songs = await this.withErrorHandling(
+			undefined!,
+			this.handleGetArtistsSongs,
+			id,
+			offset,
+			options,
+		);
+		if (!songs) return;
+
+		yield* songs;
 	}
 
 	abstract handleGetSong(songId: string): Maybe<Song<Type>> | Promise<Maybe<Song<Type>>>;

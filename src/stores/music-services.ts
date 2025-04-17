@@ -11,6 +11,7 @@ import {
 	Album,
 	AlbumPreview,
 	Artist,
+	ArtistId,
 	ArtistPreview,
 	Song,
 	SongPreview,
@@ -131,6 +132,13 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	async function getArtist(type: Song["type"], id: string): Promise<Maybe<Artist>> {
 		return await getService(type)?.getArtist(id);
 	}
+
+	async function* getArtistsSongs(id: ArtistId, offset: number): AsyncGenerator<Song | SongPreview> {
+		for (const service of enabledServices.value) {
+			if (!service.handleGetArtistsSongs) continue;
+			yield* service.getArtistsSongs(id, offset);
+		}
+	}
 	// #endregion
 
 	registerService(new MusicKitMusicService());
@@ -163,6 +171,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		getSongsAlbum,
 
 		getArtist,
+		getArtistsSongs,
 		libraryArtists,
 		refreshLibraryArtists,
 	};

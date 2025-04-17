@@ -68,6 +68,8 @@ declare global {
 		interface SongsResponse {
 			/** The Songs included in the response for the request. */
 			data: MusicKit.Songs[];
+			/* A relative cursor to fetch the next paginated collection of resources if more exist. */
+			next?: string;
 		}
 
 		/**
