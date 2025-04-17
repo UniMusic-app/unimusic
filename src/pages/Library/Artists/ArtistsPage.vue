@@ -43,17 +43,17 @@ async function refreshArtistLibrary(event: RefresherCustomEvent): Promise<void> 
 			<ion-refresher-content />
 		</ion-refresher>
 
-		<ion-list v-if="isLoading" class="songs-list">
+		<ion-list v-if="isLoading" class="artists-list">
 			<SkeletonItem v-for="i in 25" :key="i" />
 		</ion-list>
-		<ion-list v-else class="songs-list">
+		<ion-list v-else class="artists-list">
 			<ArtistItem v-for="artist in libraryArtists" :artist :key="artist.id" />
 		</ion-list>
 	</AppPage>
 </template>
 
 <style>
-.songs-list {
+.artists-list {
 	& > .skeleton-item {
 		& > ion-thumbnail {
 			--border-radius: 9999px;
