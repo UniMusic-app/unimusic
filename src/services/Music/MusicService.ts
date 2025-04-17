@@ -18,8 +18,8 @@ import {
 	Album,
 	AlbumPreview,
 	Artist,
-	ArtistId,
 	ArtistPreview,
+	Filled,
 	Playlist,
 	Song,
 	SongPreview,
@@ -395,12 +395,12 @@ export abstract class MusicService<
 	}
 
 	handleGetArtistsSongs?(
-		id: ArtistId,
+		artist: Artist | Filled<Artist>,
 		offset: number,
 		options?: { signal?: AbortSignal },
 	): AsyncGenerator<Song<Type> | SongPreview<Type>>;
 	async *getArtistsSongs(
-		id: ArtistId,
+		artist: Artist | Filled<Artist>,
 		offset = 0,
 		options?: { signal?: AbortSignal },
 	): AsyncGenerator<Song<Type> | SongPreview<Type>> {
@@ -412,7 +412,7 @@ export abstract class MusicService<
 		const songs = await this.withErrorHandling(
 			undefined!,
 			this.handleGetArtistsSongs,
-			id,
+			artist,
 			offset,
 			options,
 		);

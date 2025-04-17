@@ -21,6 +21,7 @@ import {
 	ArtistPreview,
 	cache,
 	DisplayableArtist,
+	Filled,
 	generateCacheMethod,
 	getKey,
 	Playlist,
@@ -474,18 +475,18 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	// TODO: Make a unified way to handle pagination in MusicKit, that uses "next" instead of calculating it manually
 	#artistsSongsPagination: Record<ArtistId, { maxOffset?: number; pages: string[] }> = {};
 	async *handleGetArtistsSongs(
-		id: ArtistId,
+		artist: MusicKitArtist | Filled<MusicKitArtist>,
 		offset: number,
 		options?: { signal?: AbortSignal },
 	): AsyncGenerator<MusicKitSong | MusicKitSongPreview> {
-		const pagination = (this.#artistsSongsPagination[id] ??= { pages: [] });
+		const pagination = (this.#artistsSongsPagination[artist.id] ??= { pages: [] });
 
 		if (options?.signal?.aborted || (pagination.maxOffset && offset > pagination.maxOffset)) {
 			return;
 		}
 
 		const response = await this.music!.api.music<MusicKit.SongsResponse>(
-			`/v1/catalog/{{storefrontId}}/artists/${id}/view/top-songs`,
+			`/v1/catalog/{{storefrontId}}/artists/${artist.id}/view/top-songs`,
 			{ offset: offset * 25, limit: 25 },
 		);
 

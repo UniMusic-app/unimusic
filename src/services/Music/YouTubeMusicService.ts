@@ -19,6 +19,7 @@ import {
 	ArtistPreview,
 	cache,
 	DisplayableArtist,
+	Filled,
 	generateCacheMethod,
 	getKey,
 	Playlist,
@@ -436,6 +437,8 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 			visitor_data: visitorData,
 			generate_session_locally: false,
 			user_agent: USER_AGENT,
+			// Some Innertube methods are hardcoded to use strings with english locale
+			lang: "en-US",
 			fetch,
 		});
 
@@ -444,6 +447,7 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 
 	handleDeinitialization(): void {}
 
+	// TODO: Add a unified way to handle pagination
 	#search = {
 		term: "",
 		pages: [] as (YTMusic.Search | Awaited<ReturnType<YTMusic.Search["getContinuation"]>>)[],
@@ -584,6 +588,36 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 			songs,
 			albums,
 		});
+	}
+
+	async *handleGetArtistsSongs(
+		artist: YouTubeArtist | Filled<YouTubeArtist>,
+		offset: number,
+		options?: { signal?: AbortSignal },
+	): AsyncGenerator<YouTubeSong | YouTubeSongPreview> {
+		// continuation seems to be always null, so there's no reason to paginate
+		if (options?.signal?.aborted || offset > 0) return;
+
+		const ytArtist = await this.innertube!.music.getArtist(artist.id);
+		const songs = await ytArtist.getAllSongs();
+
+		if (!songs?.contents) return;
+
+		for (const song of songs?.contents) {
+			if (options?.signal?.aborted) return;
+			if (!song.is(YTNodes.MusicResponsiveListItem)) continue;
+
+			if (!song.id) {
+				yield youtubeSongPreview(song, song.id);
+				continue;
+			}
+
+			const songPreview =
+				getCached("song", song.id) ??
+				getCached("songPreview", song.id) ??
+				cache(youtubeSongPreview(song, song.id));
+			yield songPreview;
+		}
 	}
 
 	async handleGetPlaylist(idOrUrl: URL): Promise<Maybe<Playlist>> {

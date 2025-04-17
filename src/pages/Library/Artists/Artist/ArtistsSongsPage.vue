@@ -61,7 +61,7 @@ watchAsync(artist, async (artist) => {
 	if (!artist) return;
 
 	isLoading.value = true;
-	for await (const song of musicPlayer.services.getArtistsSongs(artist.id, 0)) {
+	for await (const song of musicPlayer.services.getArtistsSongs(artist, 0)) {
 		songs.push(song);
 	}
 	isLoading.value = false;
@@ -70,7 +70,7 @@ watchAsync(artist, async (artist) => {
 async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 	if (!artist.value) return;
 	offset.value += 1;
-	for await (const song of musicPlayer.services.getArtistsSongs(artist.value.id, offset.value)) {
+	for await (const song of musicPlayer.services.getArtistsSongs(artist.value, offset.value)) {
 		songs.push(song);
 	}
 	await event.target.complete();

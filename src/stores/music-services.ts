@@ -11,8 +11,8 @@ import {
 	Album,
 	AlbumPreview,
 	Artist,
-	ArtistId,
 	ArtistPreview,
+	Filled,
 	Song,
 	SongPreview,
 } from "@/services/Music/objects";
@@ -133,11 +133,14 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return await getService(type)?.getArtist(id);
 	}
 
-	async function* getArtistsSongs(id: ArtistId, offset: number): AsyncGenerator<Song | SongPreview> {
-		for (const service of enabledServices.value) {
-			if (!service.handleGetArtistsSongs) continue;
-			yield* service.getArtistsSongs(id, offset);
-		}
+	async function* getArtistsSongs(
+		artist: Artist | Filled<Artist>,
+		offset: number,
+	): AsyncGenerator<Song | SongPreview> {
+		const service = getService(artist.type);
+		if (!service?.handleGetArtistsSongs) return;
+
+		yield* service.getArtistsSongs(artist, offset);
 	}
 	// #endregion
 
