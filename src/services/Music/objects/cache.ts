@@ -41,7 +41,7 @@ export function cache<Item extends Identifiable>(item: Item | Promise<Item>): It
 	if (item instanceof Promise) {
 		return item.then((item) => {
 			itemCache.data.value[getKey(item)] = item;
-			return item;
+			return markRaw(item);
 		});
 	}
 
