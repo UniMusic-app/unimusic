@@ -42,7 +42,13 @@ const artist = ref<Filled<Artist>>();
 watchAsync(
 	() => [route.params.artistType, route.params.artistId],
 	async ([artistType, artistId]) => {
-		if (!artistType || !artistId) return;
+		if (!artistType || !artistId) {
+			return;
+		}
+
+		if (artist.value?.id === artistId && artist.value?.type === artistType) {
+			return;
+		}
 
 		const $artist = await musicPlayer.services.getArtist(
 			route.params.artistType as SongType,
