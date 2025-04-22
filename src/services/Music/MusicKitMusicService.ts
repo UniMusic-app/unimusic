@@ -80,7 +80,12 @@ export function extractDisplayableArtists(
 }
 
 export function extractCatalogId(
-	data?: string | MusicKit.Songs | MusicKit.LibrarySongs | MusicKit.LibrarySongsRelationships,
+	data?:
+		| string
+		| MusicKit.Songs
+		| MusicKit.LibrarySongs
+		| MusicKit.MusicVideos
+		| MusicKit.LibrarySongsRelationships,
 ): Maybe<string> {
 	if (!data) {
 		return;
@@ -150,7 +155,7 @@ export async function extractArtwork(
 }
 
 export function musicKitSongPreview(
-	song: MusicKit.Songs | MusicKit.LibrarySongs,
+	song: MusicKit.Songs | MusicKit.LibrarySongs | MusicKit.MusicVideos,
 ): MusicKitSongPreview {
 	const { id, attributes, relationships } = song;
 
@@ -186,7 +191,10 @@ export function musicKitSongPreview(
 
 		artwork,
 
-		data: { catalogId },
+		data: {
+			catalogId,
+			musicVideo: song.type === "music-videos",
+		},
 	});
 }
 
@@ -229,12 +237,15 @@ export async function musicKitPreviewToSong(
 		artwork,
 		style: await generateSongStyle(artwork),
 
-		data: { catalogId },
+		data: {
+			catalogId,
+			musicVideo: searchResult.data?.musicVideo,
+		},
 	};
 }
 
 export async function musicKitSong(
-	song: MusicKit.Songs | MusicKit.LibrarySongs,
+	song: MusicKit.Songs | MusicKit.LibrarySongs | MusicKit.MusicVideos,
 ): Promise<MusicKitSong> {
 	const { id, attributes, relationships } = song;
 
@@ -266,7 +277,10 @@ export async function musicKitSong(
 		artwork,
 		style: await generateSongStyle(artwork),
 
-		data: { catalogId },
+		data: {
+			catalogId,
+			musicVideo: song.type === "music-videos",
+		},
 	});
 }
 
@@ -538,10 +552,18 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		}
 
 		// We want to retrieve catalog album
-		const response = await this.music!.api.music<MusicKit.AlbumsResponse, MusicKit.AlbumsQuery>(
-			`/v1/catalog/{{storefrontId}}/songs/${catalogId}/albums`,
-			{ include: ["artists", "tracks"] },
-		);
+		let response: { data: MusicKit.AlbumsResponse };
+		if (song.data.musicVideo) {
+			response = await this.music!.api.music<MusicKit.AlbumsResponse, MusicKit.AlbumsQuery>(
+				`/v1/catalog/{{storefrontId}}/music-videos/${catalogId}/albums`,
+				{ include: ["artists", "tracks"] },
+			);
+		} else {
+			response = await this.music!.api.music<MusicKit.AlbumsResponse, MusicKit.AlbumsQuery>(
+				`/v1/catalog/{{storefrontId}}/songs/${catalogId}/albums`,
+				{ include: ["artists", "tracks"] },
+			);
+		}
 
 		const album = response.data?.data?.[0];
 		if (!album) return;
@@ -670,7 +692,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	}
 
 	async handleGetSongFromPreview(searchResult: MusicKitSongPreview): Promise<MusicKitSong> {
-		return await musicKitPreviewToSong(searchResult);
+		return cache(await musicKitPreviewToSong(searchResult));
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {
@@ -780,7 +802,12 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			if (!music || !song) return;
 
 			await music.stop();
-			await music.setQueue({ song: song.id, startPlaying: true, startTime: 0 });
+
+			if (song.data.musicVideo) {
+				await music.setQueue({ musicVideo: song.id, startPlaying: true, startTime: 0 });
+			} else {
+				await music.setQueue({ song: song.id, startPlaying: true, startTime: 0 });
+			}
 		} catch (error) {
 			console.log("err:", error);
 

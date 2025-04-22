@@ -1,6 +1,6 @@
 declare global {
 	namespace MusicKit {
-		interface LibrarySongsQuery {
+		interface MusicVideosQuery {
 			/** Additional relationships to include in the fetch. */
 			include?: string[];
 			/** The localization to use, specified by a language tag. The possible values are in the supportedLanguageTags array belonging to the Storefront object specified by storefront. Otherwise, the default is defaultLanguageTag in Storefront. */
@@ -14,37 +14,37 @@ declare global {
 		}
 
 		/**
-		 * The response to a library songs request.
-		 * @see https://developer.apple.com/documentation/applemusicapi/librarysongsresponse
+		 * The response to a music videos request.
+		 * @see https://developer.apple.com/documentation/applemusicapi/musicvideosresponse
 		 */
-		interface LibrarySongsResponse {
-			/** The LibrarySongs included in the response for the request. */
-			data: LibrarySongs[];
+		interface MusicVideosResponse {
+			/** The MusicVideos included in the response for the request. */
+			data: MusicVideos[];
 		}
 
 		/**
-		 * A resource object that represents a library song.
-		 * @see https://developer.apple.com/documentation/applemusicapi/librarysongs
+		 * A resource object that represents a music video.
+		 * @see https://developer.apple.com/documentation/applemusicapi/musicvideos
 		 */
-		interface LibrarySongs {
-			/** The identifier for the library song. */
+		interface MusicVideos {
+			/** The identifier for the music video. */
 			id: string;
-			/** This value is always library-songs. */
-			type: "library-songs";
-			/** The relative location for the library song resource. */
+			/** This value is always songs. */
+			type: "music-videos";
+			/** The relative location for the album resource. */
 			href: string;
-			/** The attributes for the library song. */
-			attributes?: LibrarySongsAttributes;
+			/** The attributes for the music video. */
+			attributes?: MusicVideosAttributes;
 
-			/** The relationships for the library song. */
-			relationships?: MusicKit.LibrarySongsRelationships;
+			/** The relationships for the music video. */
+			relationships?: MusicKit.MusicVideosRelationships;
 		}
 
 		/**
 		 * The relationships for a song resource.
-		 * @see https://developer.apple.com/documentation/applemusicapi/librarysongs/relationships-data.dictionary
+		 * @see https://developer.apple.com/documentation/applemusicapi/musicvideos/relationships-data.dictionary
 		 */
-		interface LibrarySongsRelationships {
+		interface MusicVideosRelationships {
 			/**
 			 * The artists associated with the song. By default, artists includes identifiers only.
 			 * Fetch limits: 10 default, 10 maximum
@@ -56,30 +56,30 @@ declare global {
 			 */
 			genres: MusicKit.SongsGenresRelationships;
 			/**
-			 * The song in the Apple Music catalog the library song is associated with, when known.
-			 * Fetch limits: None.
+			 * The songs associated with the music video.
+			 * Fetch limits: 10 default, 10 maximum.
 			 */
-			catalog: LibrarySongsCatalogRelationship;
+			songs: MusicVideosSongsRelationship;
 		}
 
 		/**
-		 * A relationship from the library song to its associated catalog content.
-		 * @see https://developer.apple.com/documentation/applemusicapi/librarysongs/relationships-data.dictionary/librarysongscatalogrelationship
+		 * A relationship from the music video to its associated catalog content.
+		 * @see https://developer.apple.com/documentation/applemusicapi/musicvideos/relationships-data.dictionary/musicvideossongsrelationship
 		 */
-		interface LibrarySongsCatalogRelationship {
+		interface MusicVideosSongsRelationship {
 			/* A relative location for the relationship. */
 			href?: string;
 			/* A relative cursor to fetch the next paginated collection of resources in the relationship if more exist. */
 			next?: string;
-			/** The song from the Apple Music catalog associated with the library song, if any. */
+			/** The songs associated with the music video. */
 			data: MusicKit.Songs[];
 		}
 
 		/**
-		 * The attributes for a library song resource.
-		 * @see https://developer.apple.com/documentation/applemusicapi/librarysongs/attributes
+		 * The attributes for a music video resource.
+		 * @see https://developer.apple.com/documentation/applemusicapi/musicvideos/attributes-data.dictionary
 		 */
-		interface LibrarySongsAttributes {
+		interface MusicVideosAttributes {
 			/** The name of the album the song appears on. */
 			albumName: string;
 			/** The artist’s name. */
