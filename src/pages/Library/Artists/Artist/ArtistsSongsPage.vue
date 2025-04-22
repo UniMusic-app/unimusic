@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, inject, reactive, ref, Ref, watch } from "vue";
+import { computed, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import {
 	InfiniteScrollCustomEvent,
 	IonInfiniteScroll,
 	IonInfiniteScrollContent,
-	IonItem,
 	IonList,
 } from "@ionic/vue";
 
@@ -81,6 +80,17 @@ async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 	}
 	await event.target.complete();
 }
+
+async function playSong(song: Song | SongPreview<SongType>): Promise<void> {
+	await musicPlayer.state.addToQueue(
+		await musicPlayer.services.retrieveSong(song),
+		musicPlayer.state.queueIndex,
+	);
+}
+
+async function goToSong(song: Song | SongPreview<SongType>): Promise<void> {
+	await router.push(`/library/songs/${song.type}/${song.id}`);
+}
 </script>
 
 <template>
@@ -91,6 +101,8 @@ async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 		<ion-list v-else-if="artist">
 			<GenericSongItem
 				v-for="song in songs"
+				@item-click="playSong(song)"
+				@context-menu-click="goToSong(song)"
 				:key="song.id"
 				:title="song.title"
 				:album="song.album"
