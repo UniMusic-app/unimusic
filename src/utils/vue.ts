@@ -1,6 +1,26 @@
 import { MaybeRefOrGetter } from "@vueuse/core";
 import { useIDBKeyval, UseIDBOptions } from "@vueuse/integrations/useIDBKeyval.mjs";
-import { computed, onMounted, ref, Ref, watch, WatchHandle, WatchOptions, WatchSource } from "vue";
+import {
+	computed,
+	markRaw,
+	onMounted,
+	ref,
+	Ref,
+	watch,
+	WatchHandle,
+	WatchOptions,
+	WatchSource,
+} from "vue";
+
+export function markRawDeep<T extends object>(object: T): T {
+	markRaw(object);
+	for (const value of Object.values(object)) {
+		if (typeof value === "object") {
+			markRaw(value);
+		}
+	}
+	return object;
+}
 
 export async function useIDBKeyvalAsync<T>(
 	key: IDBValidKey,
