@@ -104,7 +104,7 @@ async function playNow(): Promise<void> {
 						class="artist"
 						role="link"
 						aria-roledescription="Go to artist"
-						:to="`/library/artists/${artist.type}/${artist.id}`"
+						:to="`/items/artists/${artist.type}/${artist.id}`"
 					>
 						{{ artist.title }}
 					</RouterLink>
@@ -114,7 +114,7 @@ async function playNow(): Promise<void> {
 				</template>
 			</h2>
 
-			<RouterLink v-if="!isSingle" class="album" :to="`/library/albums/song/${song.type}/${song.id}`">
+			<RouterLink v-if="!isSingle" class="album" :to="`/items/albums/song/${song.type}/${song.id}`">
 				{{ song.album }}
 			</RouterLink>
 

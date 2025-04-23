@@ -21,7 +21,7 @@ const contextMenuOpen = ref(false);
 
 async function click(): Promise<void> {
 	if (contextMenuOpen.value) {
-		router.push(`/library/songs/${albumSong.song.type}/${albumSong.song.id}`);
+		router.push(`/items/songs/${albumSong.song.type}/${albumSong.song.id}`);
 	} else {
 		await playAlbumSong();
 	}
@@ -29,8 +29,7 @@ async function click(): Promise<void> {
 
 async function playAlbumSong(): Promise<void> {
 	const song = await musicPlayer.services.retrieveSong(albumSong.song);
-	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
-	musicPlayer.state.queueIndex = musicPlayer.state.queueIndex + 1;
+	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
 }
 </script>
 

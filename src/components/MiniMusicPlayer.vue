@@ -49,7 +49,7 @@ async function openModal(): Promise<void> {
 function goToSong(): void {
 	const song = currentSong.value;
 	if (!song) return;
-	router.push(`/library/songs/${song.type}/${song.id}`);
+	router.push(`/items/songs/${song.type}/${song.id}`);
 }
 </script>
 

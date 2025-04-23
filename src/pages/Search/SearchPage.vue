@@ -99,7 +99,7 @@ async function addToQueue(searchResult: SearchResult): Promise<void> {
 const router = useIonRouter();
 function goToSong(searchResult: SearchResult): void {
 	if (!searchResult) return;
-	router.push(`/library/songs/${searchResult.type}/${searchResult.id}`);
+	router.push(`/items/songs/${searchResult.type}/${searchResult.id}`);
 }
 </script>
 

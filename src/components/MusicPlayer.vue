@@ -91,7 +91,7 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 
 function goToSong(song: Song, hash?: string): void {
 	dismiss();
-	router.push(`/library/songs/${song.type}/${song.id}` + (hash ? `#${hash}` : ""));
+	router.push(`/items/songs/${song.type}/${song.id}` + (hash ? `#${hash}` : ""));
 }
 
 function dismiss(): void {

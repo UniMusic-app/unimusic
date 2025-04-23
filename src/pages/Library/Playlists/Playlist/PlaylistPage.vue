@@ -86,7 +86,7 @@ async function addSongToQueue(song: Song): Promise<void> {
 }
 
 function goToSong(song: Song): void {
-	router.push(`/library/songs/${song.type}/${song.id}`);
+	router.push(`/items/songs/${song.type}/${song.id}`);
 }
 </script>
 

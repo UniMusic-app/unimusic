@@ -23,24 +23,24 @@ const routes: RouteRecordRaw[] = [
 	{ path: "/library", name: "Library", component: LibraryPage },
 
 	{ path: "/library/songs", name: "Songs", component: SongsPage },
-	{ path: "/library/songs/:songType/:songId", name: "Song", component: SongPage },
+	{ path: "/items/songs/:songType/:songId", name: "Song", component: SongPage },
 
 	{ path: "/library/artists", name: "Artists", component: ArtistsPage },
-	{ path: "/library/artists/:artistType/:artistId", name: "Artist", component: ArtistPage },
+	{ path: "/items/artists/:artistType/:artistId", name: "Artist", component: ArtistPage },
 	{
-		path: "/library/artists/:artistType/:artistId/songs",
+		path: "/items/artists/:artistType/:artistId/songs",
 		name: "Artists Songs",
 		component: ArtistsSongsPage,
 	},
 
 	{ path: "/library/albums", name: "Albums", component: AlbumsPage },
 	// Album page provided as is
-	{ path: "/library/albums/album/:albumType/:albumId", name: "Album", component: AlbumPage },
+	{ path: "/items/albums/album/:albumType/:albumId", name: "Album", component: AlbumPage },
 	// Album page provided by song
-	{ path: "/library/albums/song/:songType/:songId", name: "Songs Album", component: AlbumPage },
+	{ path: "/items/albums/song/:songType/:songId", name: "Songs Album", component: AlbumPage },
 
 	{ path: "/library/playlists", name: "Playlists", component: PlaylistsPage },
-	{ path: "/library/playlists/:id", name: "Playlist", component: PlaylistPage },
+	{ path: "/items/playlists/:id", name: "Playlist", component: PlaylistPage },
 ];
 
 const router = createRouter({

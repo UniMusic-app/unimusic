@@ -12,7 +12,7 @@ const { artist } = defineProps<{ artist: Artist | ArtistPreview }>();
 
 <template>
 	<ContextMenu ref="contextMenu">
-		<ion-item :router-link="`/library/artists/${artist.type}/${artist.id}`">
+		<ion-item :router-link="`/items/artists/${artist.type}/${artist.id}`">
 			<LocalImg
 				v-if="artist.artwork"
 				slot="start"

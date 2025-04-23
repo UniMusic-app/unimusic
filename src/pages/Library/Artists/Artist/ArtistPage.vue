@@ -56,7 +56,7 @@ async function playSong(song: Song | SongPreview<SongType, true>): Promise<void>
 }
 
 async function goToSong(song: Song | SongPreview<SongType, true>): Promise<void> {
-	await router.push(`/library/songs/${song.type}/${song.id}`);
+	await router.push(`/items/songs/${song.type}/${song.id}`);
 }
 
 const { width: windowWidth } = useWindowSize();
@@ -74,7 +74,7 @@ const { width: windowWidth } = useWindowSize();
 			<section class="top-songs" v-if="artist.songs.length">
 				<!-- TODO: Display all songs of the artist on click -->
 				<h1>
-					<RouterLink :to="`/library/artists/${artist.type}/${artist.id}/songs`">Top Songs</RouterLink>
+					<RouterLink :to="`/items/artists/${artist.type}/${artist.id}/songs`">Top Songs</RouterLink>
 					<ion-icon :icon="chevronForwardIcon" />
 				</h1>
 
@@ -112,7 +112,7 @@ const { width: windowWidth } = useWindowSize();
 							:key="album.id"
 							:title="album.title"
 							:artwork="album.artwork"
-							:router-link="`/library/albums/album/${album.type}/${album.id}`"
+							:router-link="`/items/albums/album/${album.type}/${album.id}`"
 						/>
 					</div>
 				</div>

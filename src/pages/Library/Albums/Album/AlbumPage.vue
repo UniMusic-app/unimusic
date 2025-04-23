@@ -74,9 +74,6 @@ async function playAlbum(shuffle = false): Promise<void> {
 		album.value.songs.map(({ song }) => song),
 	);
 
-	console.log("Album songs:", album.value.songs);
-	console.log("Set songs:", songs);
-
 	musicPlayer.state.setQueue(songs);
 
 	if (shuffle) {
@@ -163,7 +160,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 						class="artist"
 						role="link"
 						aria-roledescription="Go to artist"
-						:to="`/library/artists/${artist.type}/${artist.id}`"
+						:to="`/items/artists/${artist.type}/${artist.id}`"
 					>
 						{{ artist.title }}
 					</RouterLink>

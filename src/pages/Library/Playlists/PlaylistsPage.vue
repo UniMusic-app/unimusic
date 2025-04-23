@@ -41,7 +41,7 @@ const musicPlayer = useMusicPlayer();
 			<ion-item
 				v-for="playlist in musicPlayer.state.playlists"
 				:key="playlist.id"
-				:router-link="`/library/playlists/${playlist.id}`"
+				:router-link="`/items/playlists/${playlist.id}`"
 			>
 				<ion-thumbnail slot="start">
 					<LocalImg :src="playlist.artwork" :alt="`Artwork for playlist '${playlist.title}'`" />

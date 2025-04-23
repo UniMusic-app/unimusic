@@ -48,7 +48,7 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 		<div v-else class="album-cards">
 			<GenericAlbumCard
 				class="album-card"
-				:router-link="`/library/albums/album/${album.type}/${album.id}`"
+				:router-link="`/items/albums/album/${album.type}/${album.id}`"
 				v-for="album in libraryAlbums"
 				:key="album.id"
 				:artwork="album.artwork"

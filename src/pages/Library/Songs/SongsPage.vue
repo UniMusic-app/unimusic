@@ -49,7 +49,7 @@ async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 			<GenericSongItem
 				v-for="song in librarySongs"
 				:key="song.id"
-				:router-link="`/library/songs/${song.type}/${song.id}`"
+				:router-link="`/items/songs/${song.type}/${song.id}`"
 				:title="song.title"
 				:artists="song.artists"
 				:artwork="song.artwork"

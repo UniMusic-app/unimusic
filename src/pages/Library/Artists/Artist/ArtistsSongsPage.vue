@@ -89,7 +89,7 @@ async function playSong(song: Song | SongPreview<SongType>): Promise<void> {
 }
 
 async function goToSong(song: Song | SongPreview<SongType>): Promise<void> {
-	await router.push(`/library/songs/${song.type}/${song.id}`);
+	await router.push(`/items/songs/${song.type}/${song.id}`);
 }
 </script>
 
