@@ -27,20 +27,14 @@ Development is currently prioritized for iOS and macOS, however first stable rel
 | Jellyfin    |   ❓   |
 | Funkwhale   |   ❓   |
 
-| Feature               | Status | Notes                                   |
-| --------------------- | :----: | --------------------------------------- |
-| Unified search        |   ✅   |                                         |
-| Unified playlists     |   🟧   | Missing UI for adding songs to playlist |
-| Unified library       |   🟧   | Missing album support (WIP)             |
-| Metadata tagging      |   🟥   | Manual metadata edition is supported    |
-| Media synchronisation |   🟥   |                                         |
-| Lyrics                |   🟥   |                                         |
-
-Dates attributed to each features are a subject to change as they are a very rough estimates at a very early point in development.
-Debugging, life-related things, app design and such might affect them.
-I will try to update the roadmap as the development progresses.
-
-\* – Features considered "optional", unclear whether they will materialize
+| Feature               | Status | Notes                                       |
+| --------------------- | :----: | ------------------------------------------- |
+| Unified search        |   🟧   | Missing filters, only songs right now       |
+| Unified library       |   🟧   | Missing YouTube support and UI to add items |
+| Unified playlists     |   🟧   | Missing UI for adding songs to playlist     |
+| Metadata tagging      |   🟥   | Manual metadata edition is supported        |
+| Media synchronisation |   🟥   |                                             |
+| Lyrics                |   🟥   |                                             |
 
 ## Development
 
