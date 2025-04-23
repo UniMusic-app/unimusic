@@ -42,7 +42,22 @@ const isLoading = ref(false);
 watchDebounced(
 	searchTerm,
 	async (searchTerm) => {
-		searchSuggestions.value = await musicPlayer.services.searchHints(searchTerm);
+		if (!searchTerm) {
+			searchSuggestions.value.length = 0;
+			return;
+		}
+
+		let hitFirstSuggestion = false;
+		for await (const hint of musicPlayer.services.searchHints(searchTerm)) {
+			// Only clear the suggestions if at least one new one popped up
+			// This makes it so that the suggestions don't jitter when searching
+			if (!hitFirstSuggestion) {
+				searchSuggestions.value.length = 0;
+				hitFirstSuggestion = true;
+			}
+
+			searchSuggestions.value.push(hint);
+		}
 	},
 	{ debounce: 150, maxWait: 500 },
 );
@@ -121,7 +136,7 @@ function goToSong(searchResult: SearchResult): void {
 		</template>
 
 		<div>
-			<ion-list v-if="!(searched || isLoading)" id="search-suggestions">
+			<ion-list v-if="searchTerm && !(searched || isLoading)" id="search-suggestions">
 				<ion-item
 					button
 					class="search-suggestion"

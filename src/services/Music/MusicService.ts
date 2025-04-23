@@ -260,11 +260,18 @@ export abstract class MusicService<
 		return await this.withUnrecoverableErrorHandling(this.handleGetSongFromPreview, searchResult);
 	}
 
-	abstract handleSearchHints(term: string): string[] | Promise<string[]>;
-	async searchHints(term: string): Promise<string[]> {
-		this.log("searchHints");
+	handleGetSearchHints?(term: string): AsyncGenerator<string>;
+	async *getSearchHints(term: string): AsyncGenerator<string> {
+		this.log("getSearchHints");
 		await this.initialize();
-		return await this.withErrorHandling([], this.handleSearchHints, term);
+		if (!this.handleGetSearchHints) {
+			throw new Error("This service does not support getSearchHints");
+		}
+
+		const searchHints = await this.withErrorHandling(undefined!, this.handleGetSearchHints, term);
+		if (!searchHints) return;
+
+		yield* searchHints;
 	}
 
 	handleGetLibrarySongs?(offset: number): AsyncGenerator<Song<Type>>;

@@ -296,10 +296,6 @@ export class LocalMusicService extends MusicService<"local"> {
 
 	handleDeinitialization(): void {}
 
-	handleSearchHints(_term: string): string[] {
-		return [];
-	}
-
 	handleGetSongsAlbum(song: LocalSong): Maybe<LocalAlbum> {
 		const songKey = getKey(song);
 		return getAllCached<LocalAlbum>("local", "album").find(({ songs }) =>

@@ -504,16 +504,14 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		return song;
 	}
 
-	async handleSearchHints(term: string): Promise<string[]> {
+	async *handleGetSearchHints(term: string): AsyncGenerator<string> {
 		const sections = await this.innertube!.music.getSearchSuggestions(term);
-		const hints: string[] = [];
 		for (const section of sections) {
 			for (const suggestion of section.contents) {
 				if (!suggestion.is(YTNodes.SearchSuggestion)) continue;
-				hints.push(suggestion.suggestion.toString());
+				yield suggestion.suggestion.toString();
 			}
 		}
-		return hints;
 	}
 
 	async handleGetSongsAlbum(song: YouTubeSong, cache = true): Promise<Maybe<YouTubeAlbum>> {

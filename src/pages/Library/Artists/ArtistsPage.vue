@@ -18,7 +18,6 @@ onUpdated(async () => {
 	if (!libraryArtists.value.length) {
 		isLoading.value = true;
 		for await (const artist of musicPlayer.services.libraryArtists()) {
-			console.log(artist);
 			libraryArtists.value.push(artist);
 		}
 		isLoading.value = false;

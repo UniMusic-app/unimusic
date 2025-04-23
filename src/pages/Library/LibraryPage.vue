@@ -1,3 +1,21 @@
+<script setup lang="ts">
+import AppPage from "@/components/AppPage.vue";
+
+import { IonIcon, IonItem, IonLabel } from "@ionic/vue";
+import {
+	albumsOutline as albumsIcon,
+	peopleOutline as artistsIcon,
+	musicalNotesOutline as playlistsIcon,
+	musicalNoteOutline as songsIcon,
+} from "ionicons/icons";
+</script>
+
+<style>
+.padded-icon {
+	padding: 4px;
+}
+</style>
+
 <template>
 	<AppPage title="Library">
 		<ion-item router-link="/library/playlists">
@@ -21,21 +39,3 @@
 		</ion-item>
 	</AppPage>
 </template>
-
-<script setup lang="ts">
-import AppPage from "@/components/AppPage.vue";
-
-import { IonIcon, IonItem, IonLabel } from "@ionic/vue";
-import {
-	albumsOutline as albumsIcon,
-	peopleOutline as artistsIcon,
-	musicalNotesOutline as playlistsIcon,
-	musicalNoteOutline as songsIcon,
-} from "ionicons/icons";
-</script>
-
-<style>
-.padded-icon {
-	padding: 4px;
-}
-</style>

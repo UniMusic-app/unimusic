@@ -430,7 +430,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		super();
 	}
 
-	async handleSearchHints(term: string): Promise<string[]> {
+	async *handleGetSearchHints(term: string): AsyncGenerator<string> {
 		if (!term) return [];
 
 		const response = await this.music!.api.music<{ results: { terms: string[] } }>(
@@ -439,7 +439,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		);
 
 		const { terms } = response.data.results;
-		return terms;
+		yield* terms;
 	}
 
 	async *handleGetLibraryArtists(options?: {
