@@ -41,7 +41,7 @@ const musicPlayer = useMusicPlayer();
 			<ion-item
 				v-for="playlist in musicPlayer.state.playlists"
 				:key="playlist.id"
-				:router-link="`/library/playlists/${playlist.id}`"
+				:router-link="`/items/playlists/${playlist.id}`"
 			>
 				<ion-thumbnail slot="start">
 					<LocalImg :src="playlist.artwork" :alt="`Artwork for playlist '${playlist.title}'`" />
@@ -64,22 +64,12 @@ const musicPlayer = useMusicPlayer();
 		--background: transparent;
 		min-height: 60px;
 
-		& > ion-thumbnail > .song-img {
-			border-radius: 8px;
-		}
-	}
-}
+		& > ion-thumbnail {
+			display: flex;
+			align-items: center;
 
-#playlist-add-modal-content {
-	& > ion-list {
-		background: transparent;
-		& > ion-item {
-			--background: transparent;
-
-			& > ion-input {
-				font-weight: 600;
-				font-size: 1.25rem;
-				text-align: center;
+			& > .local-img {
+				border-radius: 8px;
 			}
 		}
 	}

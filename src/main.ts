@@ -48,7 +48,7 @@ async function main(): Promise<void> {
 		await import("./mobile");
 	}
 
-	const app = createApp(App).use(IonicVue).use(pinia).use(router);
+	const app = createApp(App).use(IonicVue).use(router).use(pinia);
 
 	await router.isReady().then(() => {
 		app.mount("#app");
