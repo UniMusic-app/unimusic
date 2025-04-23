@@ -41,7 +41,12 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		get: () => $queue.data.value,
 		set: (value) => ($queue.data.value = value),
 	});
-	const queueIndex = useLocalStorage("queueIndex", 0);
+
+	const $queueIndex = useLocalStorage("queueIndex", 0);
+	const queueIndex = computed<number>({
+		get: () => $queueIndex.value,
+		set: (value) => ($queueIndex.value = Math.max(0, Math.min(value, queue.value.length - 1))),
+	});
 
 	const currentQueueSong = shallowRef<QueueSong>();
 	watch(
