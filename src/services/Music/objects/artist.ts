@@ -47,7 +47,7 @@ export function filledDisplayableArtist<Type extends SongType = SongType>(
 
 	const cached = getCachedFromKey(artist);
 	if (!cached) {
-		throw new Error(`Artist tried to retrieve cached ${cached}, but it is not cached`);
+		throw new Error(`Artist tried to retrieve cached ${artist}, but it is not cached`);
 	}
 	return cached;
 }

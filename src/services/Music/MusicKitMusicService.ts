@@ -444,7 +444,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 	async *handleGetLibraryArtists(options?: {
 		signal?: AbortSignal;
-	}): AsyncGenerator<MusicKitArtistPreview> {
+	}): AsyncGenerator<MusicKitArtistPreview | MusicKitArtist> {
 		const response = await this.music!.api.music<
 			MusicKit.LibraryArtistsResponse,
 			MusicKit.LibraryArtistsQuery
@@ -457,7 +457,9 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 		for (const artist of artists) {
 			if (options?.signal?.aborted) return;
-			yield musicKitArtistPreview(artist);
+			yield getCached("artist", artist.id) ??
+				getCached("artistPreview", artist.id) ??
+				cache(musicKitArtistPreview(artist));
 		}
 	}
 
@@ -687,7 +689,9 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			if (options?.signal?.aborted) {
 				return;
 			}
-			yield musicKitSongPreview(song);
+			yield getCached("song", song.id) ??
+				getCached("songPreview", song.id) ??
+				cache(musicKitSongPreview(song));
 		}
 	}
 

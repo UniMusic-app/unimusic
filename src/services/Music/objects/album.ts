@@ -72,7 +72,7 @@ export function filledAlbum(album: Album): Filled<Album> {
 
 			const cached = getCachedFromKey(artist);
 			if (!cached) {
-				throw new Error(`Album tried to retrieve artist ${cached}, but it is not cached`);
+				throw new Error(`Album tried to retrieve artist ${artist}, but it is not cached`);
 			}
 			return cached;
 		}),
