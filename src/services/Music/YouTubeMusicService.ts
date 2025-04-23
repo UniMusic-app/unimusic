@@ -456,7 +456,7 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		term: string,
 		offset: number,
 		options?: { signal: AbortSignal },
-	): AsyncGenerator<YouTubeSongPreview> {
+	): AsyncGenerator<YouTubeSong | YouTubeSongPreview> {
 		let contents;
 		if (this.#search.term === term && offset !== 0) {
 			const lastPage = this.#search.pages.at(-1);
@@ -483,7 +483,9 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 			}
 
 			if (!result.id) continue;
-			yield youtubeSongPreview(result);
+			yield getCached("song", result.id!) ??
+				getCached("songPreview", result.id!) ??
+				cache(youtubeSongPreview(result, result.id));
 		}
 	}
 
