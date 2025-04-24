@@ -8,36 +8,34 @@ import {
 	IonLabel,
 	IonList,
 	IonSearchbar,
+	IonSegment,
+	IonSegmentButton,
 	IonToolbar,
-	useIonRouter,
 } from "@ionic/vue";
 import { watchDebounced } from "@vueuse/core";
-import {
-	addOutline as addIcon,
-	hourglassOutline as hourglassIcon,
-	playOutline as playIcon,
-	search as searchIcon,
-} from "ionicons/icons";
+import { search as searchIcon } from "ionicons/icons";
 import { ref } from "vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
 import AppPage from "@/components/AppPage.vue";
-import GenericSongItem from "@/components/GenericSongItem.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
-import { Song, SongPreview } from "@/services/Music/objects";
+import { SearchFilter, SearchResult } from "@/services/Music/MusicService";
+import AlbumSearchResult from "./components/AlbumSearchResult.vue";
+import ArtistSearchResult from "./components/ArtistSearchResult.vue";
+import SongSearchResult from "./components/SongSearchResult.vue";
 
 const musicPlayer = useMusicPlayer();
 
 const searchTerm = ref("");
 const searchSuggestions = ref<string[]>([]);
 
-type SearchResult = SongPreview | Song;
 const searchResults = ref<SearchResult[]>([]);
 
 const offset = ref(0);
 const searched = ref(false);
 const isLoading = ref(false);
+const filter = ref<SearchFilter>("top-results");
 
 watchDebounced(
 	searchTerm,
@@ -62,8 +60,17 @@ watchDebounced(
 	{ debounce: 150, maxWait: 500 },
 );
 
+watchDebounced(filter, async () => await searchFor(searchTerm.value), {
+	debounce: 150,
+	maxWait: 500,
+});
+
 async function fetchResults(term: string, offset: number, signal: AbortSignal): Promise<void> {
-	for await (const result of musicPlayer.services.searchSongs(term, offset, { signal })) {
+	for await (const result of musicPlayer.services.searchForItems(term, {
+		filter: filter.value,
+		signal,
+		offset,
+	})) {
 		searchResults.value.push(result);
 	}
 }
@@ -95,33 +102,13 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 	await fetchResults(searchTerm.value, ++offset.value, controller.signal);
 	await event.target.complete();
 }
-
-async function playNow(searchResult: SearchResult): Promise<void> {
-	const song = await musicPlayer.services.retrieveSong(searchResult);
-	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
-}
-
-async function playNext(searchResult: SearchResult): Promise<void> {
-	const song = await musicPlayer.services.retrieveSong(searchResult);
-	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
-}
-
-async function addToQueue(searchResult: SearchResult): Promise<void> {
-	const song = await musicPlayer.services.retrieveSong(searchResult);
-	await musicPlayer.state.addToQueue(song);
-}
-
-const router = useIonRouter();
-function goToSong(searchResult: SearchResult): void {
-	if (!searchResult) return;
-	router.push(`/items/songs/${searchResult.type}/${searchResult.id}`);
-}
 </script>
 
 <template>
 	<AppPage title="Search">
+		<!-- FIXME: Search header being offset by those toolbars -->
 		<template #header-trailing>
-			<ion-toolbar class="searchbar">
+			<ion-toolbar>
 				<ion-searchbar
 					:debounce="50"
 					v-model="searchTerm"
@@ -129,9 +116,18 @@ function goToSong(searchResult: SearchResult): void {
 					show-cancel-button="focus"
 					inputmode="search"
 					enterkeyhint="search"
+					class="searchbar"
 					@ion-input="searched = false"
-					@keydown.enter="searchFor(searchTerm)"
+					@keydown.enter="searchFor($event.target.value)"
 				/>
+			</ion-toolbar>
+			<ion-toolbar class="filters">
+				<ion-segment v-model="filter">
+					<ion-segment-button value="top-results">Top Results</ion-segment-button>
+					<ion-segment-button value="songs">Songs</ion-segment-button>
+					<ion-segment-button value="artists">Artists</ion-segment-button>
+					<ion-segment-button value="albums">Albums</ion-segment-button>
+				</ion-segment>
 			</ion-toolbar>
 		</template>
 
@@ -151,35 +147,21 @@ function goToSong(searchResult: SearchResult): void {
 					</ion-label>
 				</ion-item>
 			</ion-list>
-
 			<ion-list v-else id="search-song-items">
-				<GenericSongItem
-					v-for="(searchResult, i) of searchResults"
-					:key="i"
-					:title="searchResult.title"
-					:artists="searchResult.artists"
-					:artwork="searchResult.artwork"
-					:type="searchResult.type"
-					@item-click="playNow(searchResult)"
-					@context-menu-click="goToSong(searchResult)"
-				>
-					<template #options>
-						<ion-item :button="true" :detail="false" @click="playNow(searchResult)">
-							<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
-							Play now
-						</ion-item>
-
-						<ion-item :button="true" :detail="false" @click="playNext(searchResult)">
-							<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
-							Play next
-						</ion-item>
-
-						<ion-item :button="true" :detail="false" @click="addToQueue(searchResult)">
-							<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
-							Add to queue
-						</ion-item>
-					</template>
-				</GenericSongItem>
+				<template v-for="(searchResult, i) of searchResults" :key="searchResult.id ?? i">
+					<SongSearchResult
+						v-if="searchResult.kind === 'song' || searchResult.kind === 'songPreview'"
+						:search-result
+					/>
+					<ArtistSearchResult
+						v-else-if="searchResult.kind === 'artist' || searchResult.kind === 'artistPreview'"
+						:search-result
+					/>
+					<AlbumSearchResult
+						v-else-if="searchResult.kind === 'album' || searchResult.kind === 'albumPreview'"
+						:search-result
+					/>
+				</template>
 			</ion-list>
 			<ion-list v-if="isLoading && searchResults.length < 25">
 				<SkeletonItem v-for="i in 25 - searchResults.length" :key="i + searchResults.length" />
@@ -207,14 +189,27 @@ ion-header:not(#search) {
 	height: calc(var(--min-height) + 8px);
 	transform-origin: top center;
 	transform: scaleY(var(--opacity-scale));
+	padding-block: 0;
 }
 
-.header-collapse-condense-inactive > .searchbar {
-	height: 0;
+.filters {
+	transition: opacity, height, 150ms;
+	opacity: var(--opacity-scale);
+	transform-origin: top center;
+	transform: scaleY(var(--opacity-scale));
+	padding-inline: 12px;
 }
 
-:not(.header-collapse-condense-inactive) > .searchbar {
-	ion-searchbar {
+.header-collapse-condense-inactive {
+	& > .searchbar,
+	& > .filters {
+		height: 0;
+		opacity: 0;
+	}
+}
+
+:not(.header-collapse-condense-inactive) {
+	& > .searchbar {
 		& ion-icon {
 			font-size: 0.1em;
 		}

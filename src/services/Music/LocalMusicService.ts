@@ -154,13 +154,13 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 			// TODO: Is there a better way to identify artists?
 			const id = title;
 
-			const artist = cache<LocalArtistPreview>({
+			const artistPreview = cache<LocalArtistPreview>({
 				id,
 				type: "local",
 				kind: "artistPreview",
 				title,
 			});
-			artists.push(getKey(artist));
+			artists.push(getKey(artistPreview));
 		}
 	}
 

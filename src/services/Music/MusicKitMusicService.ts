@@ -3,10 +3,15 @@ import { alertController } from "@ionic/vue";
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 
 import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
-import { MusicService, MusicServiceEvent, SilentError } from "@/services/Music/MusicService";
+import {
+	MusicService,
+	MusicServiceEvent,
+	SearchForItemsOptions,
+	SearchResult,
+	SilentError,
+} from "@/services/Music/MusicService";
 
 import { generateUUID } from "@/utils/crypto";
-import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
 
 import {
@@ -440,6 +445,15 @@ export function musicKitIdType(id: string): "library" | "catalog" {
 	return "library";
 }
 
+const paginations = new Map();
+async function paginatedRequest<Response = unknown, Query = Record<string, unknown>>(
+	music: MusicKit.MusicKitInstance,
+	path: "/v1/catalog/{{storefrontId}}/search",
+	options: { offset: number } & Query,
+): Promise<void> {
+	const response = await music.api.music<Response, Query>(path, options);
+}
+
 export class MusicKitMusicService extends MusicService<"musickit"> {
 	logName = "MusicKitMusicService";
 	logColor = "#cc80dd";
@@ -690,31 +704,80 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		};
 	}
 
-	async *handleSearchSongs(
+	async *handleSearchForItems(
 		term: string,
-		offset: number,
-		options?: { signal: AbortSignal },
-	): AsyncGenerator<MusicKitSongPreview> {
+		options: SearchForItemsOptions,
+	): AsyncGenerator<SearchResult<"musickit">> {
+		const query: MusicKit.CatalogSearchQuery = {
+			term,
+			types: [],
+			limit: 25,
+			offset: 0,
+		};
+
+		switch (options.filter) {
+			case "top-results":
+				query.types.push("songs", "music-videos", "artists", "albums");
+				query.with = ["topResults"];
+				break;
+			case "songs":
+				query.types.push("songs", "music-videos");
+				break;
+			case "albums":
+				query.types.push("albums");
+				break;
+			case "artists":
+				query.types.push("artists");
+				break;
+		}
+
 		const response = await this.music!.api.music<
 			MusicKit.SearchResponse,
 			MusicKit.CatalogSearchQuery
-		>("/v1/catalog/{{storefrontId}}/search", {
-			term,
-			types: ["songs", "music-videos"],
-			limit: 25,
-			offset: offset * 25 + 1,
-		});
+		>("/v1/catalog/{{storefrontId}}/search", query);
 
-		const songs = response?.data?.results?.songs?.data;
-		if (!songs) return;
+		console.log(response);
 
-		for (const song of songs) {
-			if (options?.signal?.aborted) {
-				return;
+		const results = response?.data?.results;
+		if (!results) {
+			return;
+		}
+
+		const { topResults, songs, albums, artists } = results;
+
+		// TODO: Handle pagination
+
+		if (songs?.data) {
+			for (const song of songs.data) {
+				if (options?.signal?.aborted) {
+					return;
+				}
+				yield getCached("song", song.id) ??
+					getCached("songPreview", song.id) ??
+					cache(musicKitSongPreview(song));
 			}
-			yield getCached("song", song.id) ??
-				getCached("songPreview", song.id) ??
-				cache(musicKitSongPreview(song));
+		}
+
+		if (albums?.data) {
+			for (const album of albums.data) {
+				if (options?.signal?.aborted) {
+					return;
+				}
+				yield getCached("album", album.id) ??
+					getCached("albumPreview", album.id) ??
+					cache(musicKitAlbumPreview(album));
+			}
+		}
+
+		if (artists?.data) {
+			for (const artist of artists.data) {
+				if (options?.signal?.aborted) {
+					return;
+				}
+				yield getCached("artist", artist.id) ??
+					getCached("artistPreview", artist.id) ??
+					cache(musicKitArtistPreview(artist));
+			}
 		}
 	}
 

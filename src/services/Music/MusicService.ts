@@ -51,9 +51,19 @@ export class SilentError extends Error {
 	}
 }
 
-export interface Identifiable {
-	id: string;
+export type SearchFilter = "top-results" | "songs" | "artists" | "albums";
+export interface SearchForItemsOptions {
+	offset: number;
+	filter: SearchFilter;
+	signal?: AbortSignal;
 }
+export type SearchResult<Type extends SongType = SongType> =
+	| Song<Type>
+	| SongPreview<Type>
+	| Artist<Type>
+	| ArtistPreview<Type>
+	| Album<Type>
+	| AlbumPreview<Type>;
 
 export abstract class MusicService<
 	Type extends SongType = SongType,
@@ -227,24 +237,25 @@ export abstract class MusicService<
 		}
 	}
 
-	abstract handleSearchSongs(
+	handleSearchForItems?(
 		term: string,
-		offset: number,
-		options?: { signal?: AbortSignal },
-	): AsyncGenerator<SongPreview<Type> | Song<Type>>;
-	async *searchSongs(
+		options: SearchForItemsOptions,
+	): AsyncGenerator<SearchResult<Type>>;
+	async *searchForItems(
 		term: string,
-		offset = 0,
-		options?: { signal?: AbortSignal },
-	): AsyncGenerator<SongPreview<Type> | Song<Type>> {
-		this.log("searchSongs");
+		options: SearchForItemsOptions,
+	): AsyncGenerator<SearchResult<Type>> {
+		this.log("searchForItems");
 		await this.initialize();
+
+		if (!this.handleSearchForItems) {
+			throw new Error("This service does not support handleSearchForItems");
+		}
 
 		const results = await this.withErrorHandling(
 			undefined!,
-			this.handleSearchSongs,
+			this.handleSearchForItems,
 			term,
-			offset,
 			options,
 		);
 		if (!results) return;

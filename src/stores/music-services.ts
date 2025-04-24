@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, reactive } from "vue";
 
-import { MusicService } from "@/services/Music/MusicService";
+import { MusicService, SearchForItemsOptions, SearchResult } from "@/services/Music/MusicService";
 
 import { LocalMusicService } from "@/services/Music/LocalMusicService";
 import { MusicKitMusicService } from "@/services/Music/MusicKitMusicService";
@@ -60,16 +60,17 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		}
 	}
 
-	async function* searchSongs(
+	async function* searchForItems(
 		term: string,
-		offset = 0,
-		options?: { signal: AbortSignal },
-	): AsyncGenerator<SongPreview | Song> {
-		const iterators: AsyncGenerator<SongPreview | Song>[] = [];
+		options: SearchForItemsOptions,
+	): AsyncGenerator<SearchResult> {
+		const iterators: AsyncGenerator<SearchResult>[] = [];
 		for (const service of enabledServices.value) {
-			if (!service.handleSearchSongs) continue;
-			iterators.push(service.searchSongs(term, offset, options));
+			if (!service.handleSearchForItems) continue;
+			iterators.push(service.searchForItems(term, options));
 		}
+
+		console.log("Iterators:", iterators);
 
 		for await (const searchResult of raceIterators(iterators)) {
 			yield searchResult;
@@ -192,7 +193,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		withAllServices,
 
 		searchHints,
-		searchSongs,
+		searchForItems,
 
 		getSong,
 		refreshSong,

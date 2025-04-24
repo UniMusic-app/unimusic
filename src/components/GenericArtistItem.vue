@@ -1,35 +1,82 @@
 <script lang="ts" setup>
-import LocalImg from "@/components/LocalImg.vue";
-import { IonIcon, IonItem, IonLabel, IonNote } from "@ionic/vue";
-import { compass as compassIcon } from "ionicons/icons";
+import { ref } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
-import { Artist, ArtistPreview } from "@/services/Music/objects";
-import { songTypeToDisplayName } from "@/utils/songs";
+import LocalImg from "@/components/LocalImg.vue";
+import { IonIcon, IonItem, IonLabel, IonNote } from "@ionic/vue";
+import { personOutline as artistIcon, compassOutline as compassIcon } from "ionicons/icons";
 
-const { artist } = defineProps<{ artist: Artist | ArtistPreview }>();
+import { Artist, ArtistPreview } from "@/services/Music/objects";
+import { kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
+
+const {
+	button = true,
+	title,
+	type,
+	kind,
+	artwork,
+	routerLink,
+} = defineProps<
+	Pick<Partial<Artist | ArtistPreview>, "type" | "kind" | "artwork" | "title"> & {
+		reorder?: boolean;
+		button?: boolean;
+		disabled?: boolean;
+		routerLink?: string;
+	}
+>();
+
+const emit = defineEmits<{
+	itemClick: [PointerEvent];
+	contextMenuClick: [PointerEvent];
+	visibilitychange: [value: boolean];
+}>();
+
+const contextMenuOpen = ref(false);
+
+function emitClick(event: PointerEvent): void {
+	if (contextMenuOpen.value) {
+		emit("contextMenuClick", event);
+	} else {
+		emit("itemClick", event);
+	}
+}
 </script>
 
 <template>
-	<ContextMenu ref="contextMenu">
-		<ion-item :router-link="`/items/artists/${artist.type}/${artist.id}`">
+	<ContextMenu :class="$props.class" ref="contextMenu" @visibilitychange="contextMenuOpen = $event">
+		<ion-item
+			:router-link
+			:button
+			:disabled
+			:detail="contextMenuOpen"
+			@click="emitClick"
+			:class="$attrs.class"
+		>
 			<LocalImg
-				v-if="artist.artwork"
 				slot="start"
-				:src="artist.artwork"
-				:alt="`Artwork for artist '${artist.title}'`"
+				:src="artwork"
+				:alt="`Artwork for artist '${title}'`"
+				:fallback-icon="artistIcon"
 			/>
 
 			<ion-label>
-				<h1>{{ artist.title }}</h1>
+				<h1>{{ title }}</h1>
 				<ion-note>
+					<p v-if="kind">
+						<ion-icon :icon="artistIcon" />
+						{{ kindToDisplayName(kind) }}
+					</p>
 					<p>
 						<ion-icon :icon="compassIcon" />
-						{{ songTypeToDisplayName(artist.type) }}
+						{{ songTypeToDisplayName(type) }}
 					</p>
 				</ion-note>
 			</ion-label>
 		</ion-item>
+
+		<template #options>
+			<slot name="options" />
+		</template>
 	</ContextMenu>
 </template>
 

@@ -1,46 +1,28 @@
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { ref } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
-import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
-import {
-	compassOutline as compassIcon,
-	musicalNoteOutline as musicalNoteIcon,
-	musicalNotesOutline as songIcon,
-} from "ionicons/icons";
+import { IonIcon, IonItem, IonLabel, IonNote } from "@ionic/vue";
+import { albumsOutline as albumIcon, compassOutline as compassIcon } from "ionicons/icons";
 
-import { filledDisplayableArtist, Song } from "@/services/Music/objects";
-import { formatArtists, kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
-import { secondsToMMSS } from "@/utils/time";
+import { Album, AlbumPreview } from "@/services/Music/objects";
+import { kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
 
 const {
 	button = true,
 	title,
 	type,
-	kind,
-	artists,
-	album,
 	artwork,
-	duration,
-	reorder,
-	disabled,
 	routerLink,
 } = defineProps<
-	Pick<Partial<Song>, "type" | "duration" | "album" | "artists" | "artwork" | "title"> & {
-		kind?: "song" | "songPreview";
+	Pick<Partial<Album | AlbumPreview>, "type" | "kind" | "artwork" | "title"> & {
 		reorder?: boolean;
 		button?: boolean;
 		disabled?: boolean;
 		routerLink?: string;
 	}
 >();
-
-const formattedArtists = computed(
-	() => artists && formatArtists(artists?.map(filledDisplayableArtist)),
-);
-const displayName = computed(() => type && songTypeToDisplayName(type));
-const formattedDuration = computed(() => duration && secondsToMMSS(duration));
 
 const emit = defineEmits<{
 	itemClick: [PointerEvent];
@@ -72,37 +54,23 @@ function emitClick(event: PointerEvent): void {
 			<LocalImg
 				slot="start"
 				:src="artwork"
-				:alt="`Artwork for song '${title}' by ${formattedArtists}`"
-				:fallback-icon="songIcon"
+				:alt="`Artwork for album '${title}'`"
+				:fallback-icon="albumIcon"
 			/>
 
 			<ion-label>
-				<h1>{{ title ?? "Unknown title" }}</h1>
+				<h1>{{ title }}</h1>
 				<ion-note>
 					<p v-if="kind">
-						<ion-icon :icon="songIcon" />
+						<ion-icon :icon="albumIcon" />
 						{{ kindToDisplayName(kind) }}
 					</p>
-					<template v-if="artists && type">
-						<p>
-							<ion-icon :icon="compassIcon" />
-							{{ displayName }}
-						</p>
-						<p>
-							<ion-icon :icon="musicalNoteIcon" />
-							{{ formattedArtists }}
-						</p>
-					</template>
-					<template v-else-if="album">
-						{{ album }}
-					</template>
-					<template v-else-if="duration">
-						{{ formattedDuration }}
-					</template>
+					<p>
+						<ion-icon :icon="compassIcon" />
+						{{ songTypeToDisplayName(type) }}
+					</p>
 				</ion-note>
 			</ion-label>
-
-			<ion-reorder data-context-menu-ignore v-if="reorder" slot="end" />
 		</ion-item>
 
 		<template #options>
@@ -163,21 +131,15 @@ function emitClick(event: PointerEvent): void {
 			}
 		}
 	}
-
-	& > ion-reorder {
-		display: none;
-	}
 }
 
 ion-item {
 	& > .local-img {
 		pointer-events: none;
 
-		--img-border-radius: 8px;
+		--img-border-radius: 16px;
 		--img-width: auto;
 		--img-height: 56px;
-
-		border: 0.55px solid #0002;
 	}
 
 	& > ion-label {
@@ -207,13 +169,6 @@ ion-item {
 				}
 			}
 		}
-	}
-
-	& > ion-reorder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
 	}
 }
 </style>

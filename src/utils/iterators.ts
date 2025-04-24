@@ -21,7 +21,6 @@ export async function* raceIterators<T>(
 
 		const [resultIterator, result, promise] = await Promise.race(promises);
 		promises.delete(promise!);
-		console.log(result);
 		if (!result?.done) {
 			yield result!.value;
 			iteratorStack.push(resultIterator);

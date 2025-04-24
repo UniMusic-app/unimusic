@@ -77,7 +77,7 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 	grid-template-rows: auto;
 
 	justify-content: center;
-	align-items: center;
+	align-items: end;
 
 	animation: show-up 250ms ease-in;
 

@@ -36,6 +36,22 @@ export function songTypeToDisplayName(type?: SongType): string {
 	}
 }
 
+export function kindToDisplayName(kind?: string): string {
+	switch (kind) {
+		case "album":
+		case "albumPreview":
+			return "Album";
+		case "song":
+		case "songPreview":
+			return "Song";
+		case "artist":
+		case "artistPreview":
+			return "Artist";
+		default:
+			return "Unknown kind";
+	}
+}
+
 const intensity = ([r, g, b]: Uint8ClampedArray): number => {
 	return r! * 0.21 + g! * 0.72 + b! * 0.07;
 };
