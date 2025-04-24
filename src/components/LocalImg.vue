@@ -47,9 +47,9 @@ const loaded = ref(false);
 	& > .fallback,
 	& > img {
 		position: relative;
-		width: var(--img-width, auto);
+		width: var(--img-width, inherit);
 		max-width: var(--img-max-width, auto);
-		height: var(--img-height, auto);
+		height: var(--img-height, inherit);
 		max-height: var(--img-max-height, auto);
 		border-radius: var(--img-border-radius, inherit);
 	}
