@@ -314,9 +314,13 @@ const { width: windowWidth } = useWindowSize();
 				gap: 8px;
 				padding-left: 8px;
 
-				& > .album-card {
+				:global(& .context-item-container .album-card) {
 					scroll-snap-align: start;
-					width: 128px !important;
+					width: 128px;
+				}
+
+				:global(& .context-menu-dummy) {
+					scroll-snap-align: start;
 				}
 			}
 		}
