@@ -5,7 +5,7 @@ import {
 	Song,
 	SongType,
 } from "@/services/Music/objects";
-import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { LocalImage, LocalImageStyle, useLocalImages } from "@/stores/local-images";
 
 export function formatArtists(artists?: (DisplayableArtist | Filled<DisplayableArtist>)[]): string {
 	if (!artists?.length) {
@@ -40,50 +40,14 @@ const intensity = ([r, g, b]: Uint8ClampedArray): number => {
 	return r! * 0.21 + g! * 0.72 + b! * 0.07;
 };
 
-/**
- *
- * @param artworkUrl
- * @returns
- */
-export async function generateSongStyle(artwork?: LocalImage): Promise<Song["style"]> {
-	if (!artwork) {
-		return {
-			fgColor: "#ffffff",
-			bgColor: "#000000",
-			bgGradient: "#000000",
-		};
-	}
-
-	const localImages = useLocalImages();
-
+export async function generateImageStyle(image: Blob): Promise<LocalImageStyle> {
 	const RESOLUTION = 256;
-	const image = new Image(RESOLUTION, RESOLUTION);
-	image.crossOrigin = "anonymous";
-	image.src = localImages.getUrl(artwork)!;
-	const loadedImage = await new Promise<boolean>((r) => {
-		image.onload = (): void => r(true);
-		image.onerror = (): void => {
-			console.warn("Failed loading artwork:", artwork);
-			r(false);
-		};
-	});
-
-	if (!loadedImage) {
-		return {
-			fgColor: "#ffffff",
-			bgColor: "#000000",
-			bgGradient: "#000000",
-		};
-	}
 
 	const canvas = document.createElement("canvas");
 	canvas.width = RESOLUTION;
 	canvas.height = RESOLUTION;
 
-	const context = canvas.getContext("2d", {
-		willReadFrequently: true,
-	});
-
+	const context = canvas.getContext("2d", { willReadFrequently: true });
 	if (!context) {
 		return {
 			fgColor: "#ffffff",
@@ -92,7 +56,8 @@ export async function generateSongStyle(artwork?: LocalImage): Promise<Song["sty
 		};
 	}
 
-	context.drawImage(image, 0, 0, RESOLUTION, RESOLUTION);
+	const bitmap = await createImageBitmap(image);
+	context.drawImage(bitmap, 0, 0, RESOLUTION, RESOLUTION);
 
 	// We get multiple samples from the image:
 	// - All the corners

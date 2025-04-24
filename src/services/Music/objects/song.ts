@@ -27,8 +27,6 @@ export type Song<Type extends SongType = SongType> = Identifiable & {
 	album?: string;
 	duration?: number;
 	artwork?: LocalImage;
-	// TODO: Move this to LocalImage, and use the background color as a fallback
-	style: { fgColor: string; bgColor: string; bgGradient: string };
 
 	data: SongTypes[Type];
 };

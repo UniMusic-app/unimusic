@@ -58,7 +58,7 @@ function emitClick(event: PointerEvent): void {
 			@click="emitClick"
 			:class="$attrs.class"
 		>
-			<LocalImg v-if="artwork" :src="artwork" :alt="`Artwork for album '${title}'`" />
+			<LocalImg :src="artwork" :alt="`Artwork for album '${title}'`" />
 
 			<ion-card-header>
 				<ion-card-title class="ion-text-nowrap">
@@ -113,9 +113,12 @@ function emitClick(event: PointerEvent): void {
 	box-shadow: none;
 	border-radius: 0;
 
+	width: 128px;
+
 	& > .local-img {
 		border-radius: 8px;
 		border: 0.55px solid #0002;
+		--img-width: 100%;
 	}
 
 	& > ion-card-header {

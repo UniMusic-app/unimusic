@@ -61,8 +61,12 @@ export function extractDisplayableArtists(
 		if (!artist.attributes?.name) continue;
 
 		let artwork: Maybe<LocalImage>;
-		if (artist.attributes.artwork) {
-			artwork = { url: MusicKit.formatArtworkURL(artist.attributes.artwork, 256, 256) };
+		const artistArtwork = artist.attributes.artwork;
+		if (artistArtwork) {
+			artwork = {
+				url: MusicKit.formatArtworkURL(artistArtwork, 256, 256),
+				style: { bgColor: `#${artistArtwork.bgColor}` },
+			};
 		}
 
 		const item: MusicKitArtistPreview = {
@@ -150,7 +154,13 @@ export async function extractArtwork(
 		return { id };
 	} catch {
 		// TODO: Remove this after Apple fixes artwork CORS issues
-		return { url: artworkUrl };
+		return {
+			url: artworkUrl,
+			style: {
+				fgColor: `#${artwork.textColor1}`,
+				bgColor: `#${artwork.bgColor}`,
+			},
+		};
 	}
 }
 
@@ -162,7 +172,10 @@ export function musicKitSongPreview(
 	let artwork: Maybe<LocalImage>;
 	if (attributes?.artwork) {
 		const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
-		artwork = { url: artworkUrl };
+		artwork = {
+			url: artworkUrl,
+			style: { bgColor: `#${attributes.artwork.bgColor}` },
+		};
 	}
 
 	const artists = extractDisplayableArtists(relationships?.artists?.data ?? attributes?.artistName);
@@ -235,7 +248,6 @@ export async function musicKitPreviewToSong(
 		available,
 
 		artwork,
-		style: await generateSongStyle(artwork),
 
 		data: {
 			catalogId,
@@ -275,7 +287,6 @@ export async function musicKitSong(
 		duration: attributes?.durationInMillis && attributes?.durationInMillis / 1000,
 
 		artwork,
-		style: await generateSongStyle(artwork),
 
 		data: {
 			catalogId,
@@ -328,7 +339,10 @@ export function musicKitAlbumPreview(album: MusicKit.Albums): MusicKitAlbumPrevi
 	let artwork: Maybe<LocalImage>;
 	if (attributes?.artwork) {
 		const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
-		artwork = { url: artworkUrl };
+		artwork = {
+			url: artworkUrl,
+			style: { bgColor: `#${attributes.artwork.bgColor}` },
+		};
 	}
 
 	return {
@@ -342,14 +356,23 @@ export function musicKitAlbumPreview(album: MusicKit.Albums): MusicKitAlbumPrevi
 	};
 }
 
-export function musicKitArtistPreview(artist: MusicKit.LibraryArtists): MusicKitArtistPreview {
+export function musicKitArtistPreview(
+	artist: MusicKit.Artists | MusicKit.LibraryArtists,
+): MusicKitArtistPreview {
 	const { id, attributes, relationships } = artist;
-	const catalogArtist = relationships?.catalog?.data?.[0];
+	const catalogArtist =
+		relationships && "catalog" in relationships
+			? relationships?.catalog?.data?.[0]
+			: (artist as MusicKit.Artists);
 
 	let artwork: Maybe<LocalImage>;
-	if (catalogArtist?.attributes?.artwork) {
-		const artworkUrl = MusicKit.formatArtworkURL(catalogArtist.attributes.artwork, 256, 256);
-		artwork = { url: artworkUrl };
+	const artistArtwork = catalogArtist?.attributes?.artwork;
+	if (artistArtwork) {
+		const artworkUrl = MusicKit.formatArtworkURL(artistArtwork, 256, 256);
+		artwork = {
+			url: artworkUrl,
+			style: { bgColor: `#${artistArtwork.bgColor}` },
+		};
 	}
 
 	return {

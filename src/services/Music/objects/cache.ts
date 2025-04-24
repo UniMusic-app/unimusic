@@ -13,11 +13,7 @@ import { Song, SongPreview, SongType } from "./song";
 //       Which would make querying the data much more efficient
 // TODO: Add a way to dynamically retrieve data that IS NOT cached but
 // 		 some other item has it linked, e.g. useMusicServices().retrieveKey(...)
-export const itemCache = useIDBKeyval<Record<ItemKey<any>, Identifiable>>(
-	"itemCache",
-	{},
-	{ deep: false },
-);
+export const itemCache = useIDBKeyval<Record<ItemKey<any>, Identifiable>>("itemCache", {});
 
 export function generateCacheMethod<const Type extends SongType>(type: Type) {
 	interface ItemMap {

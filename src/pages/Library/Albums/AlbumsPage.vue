@@ -99,6 +99,10 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 	}
 	gap: var(--gap);
 	grid-template-columns: repeat(var(--columns), calc(100% / var(--columns) - var(--gap)));
+
+	:global(& .album-card) {
+		width: 100%;
+	}
 }
 
 .skeleton-card {

@@ -27,7 +27,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { formatGenres, generateSongStyle } from "@/utils/songs";
+import { formatGenres, generateImageStyle } from "@/utils/songs";
 import { usePresentingElement } from "@/utils/vue";
 
 const { trigger, song } = defineProps<{
@@ -48,7 +48,7 @@ const album = ref(song.album);
 
 const artwork = ref(song.artwork);
 const style = computedAsync(
-	() => (artwork.value === song.artwork ? song.style : generateSongStyle(artwork.value)),
+	() => (artwork.value === song.artwork ? song.style : generateImageStyle(artwork.value)),
 	song.style,
 );
 

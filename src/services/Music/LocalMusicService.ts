@@ -14,7 +14,6 @@ import { base64StringToBuffer } from "@/utils/buffer";
 import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
-import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
 import {
 	Album,
@@ -204,7 +203,6 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		genres,
 
 		artwork,
-		style: await generateSongStyle(artwork),
 
 		data: {
 			isrc,

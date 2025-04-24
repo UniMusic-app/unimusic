@@ -34,6 +34,7 @@ import {
 	playSkipBack as skipPreviousIcon,
 } from "ionicons/icons";
 
+import { useLocalImages } from "@/stores/local-images";
 import { useMusicPlayer } from "@/stores/music-player";
 
 import { filledDisplayableArtist, Song } from "@/services/Music/objects";
@@ -41,10 +42,16 @@ import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
 
+const localImages = useLocalImages();
 const router = useIonRouter();
 const musicPlayer = useMusicPlayer();
 const state = musicPlayer.state;
 const { currentSong, time, playing, duration } = storeToRefs(state);
+
+const artworkStyle = computed(() => {
+	const artwork = currentSong.value?.artwork;
+	return artwork?.style ?? localImages.getStyle(artwork?.id);
+});
 
 const formattedArtists = computed(() =>
 	formatArtists(currentSong.value?.artists?.map(filledDisplayableArtist)),
@@ -110,9 +117,9 @@ function dismiss(): void {
 		:breakpoints="[0, 1]"
 		:class="{ 'queue-view': queueOpen }"
 		:style="{
-			'--bg': currentSong?.style.bgGradient,
-			'--bg-color': currentSong?.style.bgColor,
-			'--fg-color': currentSong?.style.fgColor,
+			'--bg': artworkStyle?.bgGradient ?? artworkStyle?.bgColor ?? '#000',
+			'--bg-color': artworkStyle?.bgColor ?? '#000',
+			'--fg-color': artworkStyle?.fgColor ?? '#fff',
 		}"
 	>
 		<div id="song-lols">

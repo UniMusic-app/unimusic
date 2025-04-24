@@ -65,8 +65,8 @@ function goToSong(): void {
 			@click="contextMenuOpen ? goToSong() : openModal()"
 		>
 			<LocalImg
-				:src="currentSong.artwork"
 				slot="start"
+				:src="currentSong.artwork"
 				:alt="`Artwork for song '${currentSong.title}' by ${formattedArtists}`"
 			/>
 

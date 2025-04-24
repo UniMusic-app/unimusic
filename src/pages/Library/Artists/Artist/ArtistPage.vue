@@ -72,7 +72,6 @@ const { width: windowWidth } = useWindowSize();
 			</h1>
 
 			<section class="top-songs" v-if="artist.songs.length">
-				<!-- TODO: Display all songs of the artist on click -->
 				<h1>
 					<RouterLink :to="`/items/artists/${artist.type}/${artist.id}/songs`">Top Songs</RouterLink>
 					<ion-icon :icon="chevronForwardIcon" />
@@ -212,8 +211,8 @@ const { width: windowWidth } = useWindowSize();
 		margin-inline: auto;
 
 		--img-width: auto;
-		max-width: calc(100% - 24px);
-		max-height: 192px;
+		--img-max-width: calc(100vw - 24px);
+		--img-max-height: 192px;
 
 		--shadow-color: rgba(var(--ion-color-dark-rgb), 0.1);
 
@@ -221,11 +220,6 @@ const { width: windowWidth } = useWindowSize();
 		box-shadow: 0 0 12px var(--shadow-color);
 		margin-block: 24px;
 		background-color: rgba(var(--ion-color-dark-rgb), 0.08);
-
-		& > .fallback {
-			--size: 36px;
-			filter: drop-shadow(0 0 12px var(--shadow-color));
-		}
 	}
 
 	& > .top-songs {
@@ -316,7 +310,6 @@ const { width: windowWidth } = useWindowSize();
 			& > .album-cards {
 				display: flex;
 				flex-direction: row;
-				width: max-content;
 
 				gap: 8px;
 				padding-left: 8px;

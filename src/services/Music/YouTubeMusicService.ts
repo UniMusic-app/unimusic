@@ -6,7 +6,6 @@ import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
-import { generateSongStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
 import {
 	Album,
@@ -204,7 +203,6 @@ export async function youtubeSong(
 		explicit,
 
 		artwork,
-		style: await generateSongStyle(artwork),
 
 		data: { albumId },
 	};

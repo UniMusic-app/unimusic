@@ -1,12 +1,20 @@
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { defineStore } from "pinia";
 
+import { generateImageStyle } from "@/utils/songs";
 import { EitherType, Maybe } from "@/utils/types";
+
+export interface LocalImageStyle {
+	fgColor: string;
+	bgColor: string;
+	bgGradient: string;
+}
 
 // NOTE: We don't store Blob in IndexedDB because of Safari's shenanigans: https://stackoverflow.com/a/70253220/14053734
 interface ImageData {
 	buffer: ArrayBuffer;
 	type: string;
+	style?: LocalImageStyle;
 }
 
 interface IndirectImageData {
@@ -15,7 +23,9 @@ interface IndirectImageData {
 
 type LocalImageInfo = { [id in string]?: IndirectImageData | ImageData };
 
-export type LocalImage = EitherType<[{ id: string }, { url: string }]>;
+export type LocalImage = EitherType<
+	[{ id: string }, { url: string; style?: Partial<LocalImageStyle> }]
+>;
 
 function isIndirect(imageData?: ImageData | IndirectImageData): imageData is IndirectImageData {
 	return imageData ? "key" in imageData : false;
@@ -27,7 +37,10 @@ function isDirect(imageData?: ImageData | IndirectImageData): imageData is Image
 
 export const useLocalImages = defineStore("LocalImages", () => {
 	const localImageInfo = useIDBKeyval<LocalImageInfo>("localImageInfo", {});
-	const blobUrls = new Map<string, [url: string, unregisterToken: WeakRef<Blob>]>();
+	const cachedImageData = new Map<
+		string,
+		[url: string, unregisterToken: WeakRef<Blob>, style?: LocalImageStyle]
+	>();
 
 	function log(...args: unknown[]): void {
 		console.log("%cLocalImageStore:", "color: #40080; font-weight: bold;", ...args);
@@ -35,11 +48,11 @@ export const useLocalImages = defineStore("LocalImages", () => {
 
 	const registry = new FinalizationRegistry((id: string) => {
 		log(`Cleaned up ${id}`);
-		blobUrls.delete(id);
+		cachedImageData.delete(id);
 	});
 
 	function unregisterImage(id: string): boolean {
-		const cached = blobUrls.get(id);
+		const cached = cachedImageData.get(id);
 		if (!cached) return false;
 
 		log(`Unregister ${id}`);
@@ -64,7 +77,7 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		const blob = new Blob([imageData.buffer], { type: imageData.type });
 		const blobUrl = URL.createObjectURL(blob);
 		const blobRef = new WeakRef(blob);
-		blobUrls.set(id, [blobUrl, blobRef]);
+		cachedImageData.set(id, [blobUrl, blobRef, imageData.style]);
 		registry.register(blob, id, blobRef);
 		return blobUrl;
 	}
@@ -126,9 +139,12 @@ export const useLocalImages = defineStore("LocalImages", () => {
 			URL.revokeObjectURL(tempBlobUrl);
 		}
 
+		const [buffer, style] = await Promise.all([image.arrayBuffer(), generateImageStyle(image)]);
+
 		const imageData: ImageData = {
-			buffer: await image.arrayBuffer(),
+			buffer,
 			type: image.type,
+			style,
 		};
 
 		localImageInfo.data.value[id] = imageData;
@@ -150,10 +166,22 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		}
 	}
 
+	function getStyle(id?: string): Maybe<LocalImageStyle> {
+		log("getStyle", id);
+		if (!id) {
+			return;
+		}
+
+		const cached = cachedImageData.get(id);
+		if (cached) {
+			return cached[2];
+		}
+	}
+
 	function getBlobUrl(id: string): Maybe<string> {
 		log("getBlobUrl", id);
 
-		const cached = blobUrls.get(id);
+		const cached = cachedImageData.get(id);
 		if (cached) return cached[0];
 
 		const imageData = localImageInfo.data.value?.[id];
@@ -213,6 +241,7 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		associateImage,
 		getUrl,
 		getBlobUrl,
+		getStyle,
 		deduplicate,
 	};
 });

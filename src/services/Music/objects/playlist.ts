@@ -1,7 +1,6 @@
 import { LocalImage } from "@/stores/local-images";
-import type { Identifiable } from "../MusicService";
 import { getCachedFromKey } from "./cache";
-import { Filled } from "./shared";
+import { Filled, Identifiable } from "./shared";
 import type { SongKey } from "./song";
 
 // TODO: Support in-place playlists on MusicKit
