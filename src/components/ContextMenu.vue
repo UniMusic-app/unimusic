@@ -122,7 +122,12 @@ onIonViewWillLeave(() => {
 			</ion-list>
 		</div>
 	</template>
-	<div class="context-item-container" v-else ref="unpopoverElement" @[event].prevent="open">
+	<div
+		v-show="!opened"
+		class="context-item-container"
+		ref="unpopoverElement"
+		@[event].prevent="open"
+	>
 		<slot />
 	</div>
 </template>
