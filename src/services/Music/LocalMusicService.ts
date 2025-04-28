@@ -1,6 +1,6 @@
 import { toRaw } from "vue";
 
-import Fuse, { FuseResult } from "fuse.js";
+import Fuse from "fuse.js";
 import { parseWebStream, selectCover } from "music-metadata";
 
 import LocalMusic from "@/plugins/LocalMusicPlugin";
@@ -8,7 +8,12 @@ import { Capacitor } from "@capacitor/core";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 
-import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
+import {
+	MusicService,
+	MusicServiceEvent,
+	SearchFilter,
+	SearchResultItem,
+} from "@/services/Music/MusicService";
 
 import { base64StringToBuffer } from "@/utils/buffer";
 import { generateHash, generateUUID } from "@/utils/crypto";
@@ -305,41 +310,41 @@ export class LocalMusicService extends MusicService<"local"> {
 		return getAllCached<LocalAlbum>("local", "album").find(({ id }) => id === albumId);
 	}
 
-	#fuse?: Fuse<LocalSong>;
-	#search = {
-		term: "",
-		pages: [] as Maybe<FuseResult<LocalSong>[]>[],
-	};
-	async *handleSearchSongs(
+	#fuses = new Map<SearchFilter, Fuse<SearchResultItem<"local">>>();
+	async *handleSearchForItems(
 		term: string,
-		offset: number,
-		options?: { signal: AbortSignal },
-	): AsyncGenerator<LocalSong> {
-		if (!this.#fuse) {
-			const allSongs = await Array.fromAsync(getLocalSongs());
-			// TODO: This might require some messing around with distance/threshold settings to not make it excessively loose
-			this.#fuse = new Fuse(allSongs, {
-				keys: ["title", "artists", "album", "genres"] satisfies (keyof LocalSong)[],
-			});
-		}
-
-		if (term === this.#search.term) {
-			const page = this.#search.pages[offset];
-			if (!page) return;
-
-			for (const { item } of page) {
-				if (options?.signal?.aborted) return;
-				yield item;
+		filter: SearchFilter,
+	): AsyncGenerator<SearchResultItem<"local">> {
+		let fuse = this.#fuses.get(filter);
+		if (!fuse) {
+			const data: SearchResultItem<"local">[] = [];
+			if (filter === "songs" || filter === "top-results") {
+				const songs = await Array.fromAsync(this.getLibrarySongs());
+				data.push(...songs);
 			}
-			return;
+
+			if (filter === "artists" || filter === "top-results") {
+				const artists = await Array.fromAsync(this.getLibraryArtists());
+				data.push(...artists);
+			}
+
+			if (filter === "albums" || filter === "top-results") {
+				const albums = await Array.fromAsync(this.getLibraryAlbums());
+				data.push(...albums);
+			}
+
+			// TODO: This might require some messing around with distance/threshold settings to not make it excessively loose
+			fuse = new Fuse(data, {
+				keys: ["title"] satisfies (keyof SearchResultItem<"local">)[],
+				distance: 3,
+				threshold: 0.5,
+			});
+			this.#fuses.set(filter, fuse);
 		}
 
-		const results = this.#fuse.search(term);
-		const pages = Object.values(Object.groupBy(results, (_, index) => Math.floor(index / 25)));
-		this.#search.pages = pages;
+		const results = fuse.search(term);
 
-		for (const { item } of pages[0] ?? []) {
-			if (options?.signal?.aborted) return;
+		for (const { item } of results) {
 			yield item;
 		}
 	}
@@ -532,7 +537,7 @@ export class LocalMusicService extends MusicService<"local"> {
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {
-		this.#fuse = undefined;
+		this.#fuses.clear();
 		await Array.fromAsync(getLocalSongs(true));
 	}
 
