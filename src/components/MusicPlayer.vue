@@ -551,8 +551,9 @@ function dismiss(): void {
 			top: calc(var(--ion-safe-area-top) / 2);
 
 			transition: all 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
-			height: auto;
 
+			--img-width: 100%;
+			--img-height: auto;
 			width: min(40vh, 60%);
 			&.playing {
 				width: min(50vh, 85%);
