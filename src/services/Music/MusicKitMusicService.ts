@@ -21,7 +21,6 @@ import {
 	AlbumPreviewKey,
 	AlbumSong,
 	Artist,
-	ArtistId,
 	ArtistKey,
 	ArtistPreview,
 	cache,

@@ -2,17 +2,16 @@ import {
 	DisplayableArtist,
 	Filled,
 	filledDisplayableArtist,
-	Song,
 	SongType,
 } from "@/services/Music/objects";
-import { LocalImage, LocalImageStyle, useLocalImages } from "@/stores/local-images";
+import { LocalImageStyle } from "@/stores/local-images";
 
 export function formatArtists(artists?: (DisplayableArtist | Filled<DisplayableArtist>)[]): string {
 	if (!artists?.length) {
 		return "Unknown artist(s)";
 	}
 
-	let formatted = filledDisplayableArtist(artists[0]!).title;
+	let formatted = filledDisplayableArtist(artists[0]!).title ?? "Unknown Artist";
 	for (let i = 1; i < artists.length; ++i) {
 		formatted += ` & ${filledDisplayableArtist(artists[i]!).title}`;
 	}

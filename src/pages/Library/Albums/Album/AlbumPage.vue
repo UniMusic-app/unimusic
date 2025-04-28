@@ -145,7 +145,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 			<ion-header collapse="condense">
 				<ion-toolbar>
 					<ion-title class="ion-text-nowrap" size="large">
-						<WrappingMarquee :text="album.title" />
+						<WrappingMarquee :text="album.title ?? 'Unknown album'" />
 					</ion-title>
 				</ion-toolbar>
 			</ion-header>

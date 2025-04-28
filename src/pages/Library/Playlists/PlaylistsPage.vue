@@ -1,15 +1,7 @@
 <script lang="ts" setup>
 import LocalImg from "@/components/LocalImg.vue";
 
-import {
-	IonButton,
-	IonButtons,
-	IonIcon,
-	IonItem,
-	IonLabel,
-	IonList,
-	IonThumbnail,
-} from "@ionic/vue";
+import { IonButton, IonButtons, IonIcon, IonItem, IonLabel, IonList } from "@ionic/vue";
 import { add as addIcon, downloadOutline as importIcon } from "ionicons/icons";
 
 import { useMusicPlayer } from "@/stores/music-player";
