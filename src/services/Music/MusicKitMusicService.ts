@@ -676,7 +676,13 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		}
 
 		const tracks = playlist.relationships?.tracks.data ?? [];
-		const songs = await Promise.all(tracks.map((track) => musicKitSong(track).then(getKey)));
+		const songs = await Promise.all(
+			tracks.map(async (track) => {
+				const song = await musicKitSong(track);
+				cache(song);
+				return getKey(song);
+			}),
+		);
 
 		return {
 			type: "unimusic",
