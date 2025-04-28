@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import {
@@ -22,6 +22,7 @@ import {
 	SongType,
 } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
+import { take } from "@/utils/iterators";
 import { watchAsync } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
@@ -35,6 +36,7 @@ const previousRouteName = computed(() => {
 });
 
 const songs = reactive<(Song | SongPreview)[]>([]);
+const iterator = shallowRef<AsyncGenerator<Song | SongPreview>>();
 
 const isLoading = ref(true);
 const artist = ref<Filled<Artist>>();
@@ -59,25 +61,26 @@ watchAsync(
 	{ immediate: true },
 );
 
-const offset = ref(0);
+async function fetchMoreSongs(): Promise<void> {
+	if (!iterator.value) return;
+	for await (const result of take(iterator.value, 25)) {
+		songs.push(result);
+	}
+}
+
 watchAsync(artist, async (artist) => {
 	songs.length = 0;
-	offset.value = 0;
 	if (!artist) return;
 
+	iterator.value = musicPlayer.services.getArtistsSongs(artist);
 	isLoading.value = true;
-	for await (const song of musicPlayer.services.getArtistsSongs(artist, 0)) {
-		songs.push(song);
-	}
+	await fetchMoreSongs();
 	isLoading.value = false;
 });
 
 async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 	if (!artist.value) return;
-	offset.value += 1;
-	for await (const song of musicPlayer.services.getArtistsSongs(artist.value, offset.value)) {
-		songs.push(song);
-	}
+	await fetchMoreSongs();
 	await event.target.complete();
 }
 
