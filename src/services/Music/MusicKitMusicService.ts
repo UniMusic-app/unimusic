@@ -6,8 +6,8 @@ import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitA
 import {
 	MusicService,
 	MusicServiceEvent,
-	SearchForItemsOptions,
-	SearchResult,
+	SearchFilter,
+	SearchResultItem,
 	SilentError,
 } from "@/services/Music/MusicService";
 
@@ -445,15 +445,6 @@ export function musicKitIdType(id: string): "library" | "catalog" {
 	return "library";
 }
 
-const paginations = new Map();
-async function paginatedRequest<Response = unknown, Query = Record<string, unknown>>(
-	music: MusicKit.MusicKitInstance,
-	path: "/v1/catalog/{{storefrontId}}/search",
-	options: { offset: number } & Query,
-): Promise<void> {
-	const response = await music.api.music<Response, Query>(path, options);
-}
-
 export class MusicKitMusicService extends MusicService<"musickit"> {
 	logName = "MusicKitMusicService";
 	logColor = "#cc80dd";
@@ -525,41 +516,35 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return cache(await musicKitArtist(artist));
 	}
 
-	// TODO: Make a unified way to handle pagination in MusicKit, that uses "next" instead of calculating it manually
-	#artistsSongsPagination: Record<ArtistId, { maxOffset?: number; pages: string[] }> = {};
 	async *handleGetArtistsSongs(
 		artist: MusicKitArtist | Filled<MusicKitArtist>,
-		offset: number,
-		options?: { signal?: AbortSignal },
 	): AsyncGenerator<MusicKitSong | MusicKitSongPreview> {
-		const pagination = (this.#artistsSongsPagination[artist.id] ??= { pages: [] });
-
-		if (options?.signal?.aborted || (pagination.maxOffset && offset > pagination.maxOffset)) {
-			return;
-		}
-
-		const response = await this.music!.api.music<MusicKit.SongsResponse>(
+		const music = this.music!;
+		const query = { limit: 25 };
+		let response = await music.api.music<MusicKit.SongsResponse>(
 			`/v1/catalog/{{storefrontId}}/artists/${artist.id}/view/top-songs`,
-			{ offset: offset * 25, limit: 25 },
+			query,
 		);
 
-		if (!response?.data?.next) {
-			pagination.maxOffset = offset;
-		}
+		while (true) {
+			if (!response?.data?.data) {
+				break;
+			}
 
-		if (!response?.data?.data || options?.signal?.aborted) {
-			return;
-		}
+			for (const song of response.data.data) {
+				const songPreview =
+					getCached("song", song.id) ??
+					getCached("songPreview", song.id) ??
+					cache(musicKitSongPreview(song));
 
-		for (const song of response.data.data) {
-			if (options?.signal?.aborted) return;
+				yield songPreview;
+			}
 
-			const songPreview =
-				getCached("song", song.id) ??
-				getCached("songPreview", song.id) ??
-				cache(musicKitSongPreview(song));
+			if (!response.data.next) {
+				break;
+			}
 
-			yield songPreview;
+			response = await music.api.music(response.data.next, query);
 		}
 	}
 
@@ -706,16 +691,16 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 	async *handleSearchForItems(
 		term: string,
-		options: SearchForItemsOptions,
-	): AsyncGenerator<SearchResult<"musickit">> {
+		filter: SearchFilter,
+	): AsyncGenerator<SearchResultItem<"musickit">> {
+		const music = this.music!;
 		const query: MusicKit.CatalogSearchQuery = {
 			term,
 			types: [],
 			limit: 25,
-			offset: 0,
 		};
 
-		switch (options.filter) {
+		switch (filter) {
 			case "top-results":
 				query.types.push("songs", "music-videos", "artists", "albums");
 				query.with = ["topResults"];
@@ -731,53 +716,46 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 				break;
 		}
 
-		const response = await this.music!.api.music<
-			MusicKit.SearchResponse,
-			MusicKit.CatalogSearchQuery
-		>("/v1/catalog/{{storefrontId}}/search", query);
+		let response = await music.api.music<MusicKit.SearchResponse, MusicKit.CatalogSearchQuery>(
+			"/v1/catalog/{{storefrontId}}/search",
+			query,
+		);
 
-		console.log(response);
+		while (true) {
+			const { topResults, songs, albums, artists } = response.data.results;
+			const items = topResults ?? songs ?? albums ?? artists;
 
-		const results = response?.data?.results;
-		if (!results) {
-			return;
-		}
+			if (!items?.data) break;
 
-		const { topResults, songs, albums, artists } = results;
-
-		// TODO: Handle pagination
-
-		if (songs?.data) {
-			for (const song of songs.data) {
-				if (options?.signal?.aborted) {
-					return;
+			for (const item of items.data) {
+				switch (item.type) {
+					case "music-videos":
+					case "songs": {
+						yield getCached("song", item.id) ??
+							getCached("songPreview", item.id) ??
+							cache(musicKitSongPreview(item));
+						break;
+					}
+					case "albums": {
+						yield getCached("album", item.id) ??
+							getCached("albumPreview", item.id) ??
+							cache(musicKitAlbumPreview(item));
+						break;
+					}
+					case "artists": {
+						yield getCached("artist", item.id) ??
+							getCached("artistPreview", item.id) ??
+							cache(musicKitArtistPreview(item));
+						break;
+					}
 				}
-				yield getCached("song", song.id) ??
-					getCached("songPreview", song.id) ??
-					cache(musicKitSongPreview(song));
 			}
-		}
 
-		if (albums?.data) {
-			for (const album of albums.data) {
-				if (options?.signal?.aborted) {
-					return;
-				}
-				yield getCached("album", album.id) ??
-					getCached("albumPreview", album.id) ??
-					cache(musicKitAlbumPreview(album));
+			if (!("next" in items)) {
+				break;
 			}
-		}
 
-		if (artists?.data) {
-			for (const artist of artists.data) {
-				if (options?.signal?.aborted) {
-					return;
-				}
-				yield getCached("artist", artist.id) ??
-					getCached("artistPreview", artist.id) ??
-					cache(musicKitArtistPreview(artist));
-			}
+			response = await music.api.music(items.next as string, query);
 		}
 	}
 
@@ -818,11 +796,11 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return await this.handleGetSong(song.id, false);
 	}
 
-	async *handleGetLibrarySongs(offset: number): AsyncGenerator<MusicKitSong> {
+	async *handleGetLibrarySongs(): AsyncGenerator<MusicKitSong> {
 		const response = await this.music!.api.music<
 			MusicKit.LibrarySongsResponse,
 			MusicKit.LibrarySongsQuery
-		>("/v1/me/library/songs", { limit: 25, offset, include: ["catalog"] });
+		>("/v1/me/library/songs", { limit: 25, include: ["catalog"] });
 
 		for (const song of response.data.data) {
 			// Filter out songs that cannot be played

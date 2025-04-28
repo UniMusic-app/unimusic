@@ -11,7 +11,7 @@ export interface Artist<Type extends SongType = SongType> extends Identifiable {
 	id: ArtistId;
 	kind: "artist";
 
-	title: string;
+	title?: string;
 	artwork?: LocalImage;
 
 	albums: (AlbumPreviewKey<Type> | AlbumKey<Type>)[];
@@ -25,11 +25,11 @@ export type ArtistPreview<Type extends SongType = SongType> = Identifiable &
 		kind: "artistPreview";
 		type: Type;
 
-		title: string;
+		title?: string;
 	};
 
 export interface InlineArtist {
-	title: string;
+	title?: string;
 	artwork?: LocalImage;
 }
 

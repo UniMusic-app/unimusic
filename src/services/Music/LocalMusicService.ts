@@ -431,18 +431,11 @@ export class LocalMusicService extends MusicService<"local"> {
 		return cache(artist);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async *handleGetArtistsSongs(
+	*handleGetArtistsSongs(
 		artist: LocalArtist | Filled<LocalArtist>,
-		offset: number,
-		options?: { signal?: AbortSignal },
-	): AsyncGenerator<LocalSong | LocalSongPreview> {
-		if (offset > 0 || options?.signal?.aborted) return;
-
+	): Generator<LocalSong | LocalSongPreview> {
 		for (const song of artist.songs) {
 			if (typeof song === "object") {
-				if (options?.signal?.aborted) return;
-
 				yield song;
 				continue;
 			}
@@ -534,8 +527,7 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 	}
 
-	async *handleGetLibrarySongs(_offset: number): AsyncGenerator<LocalSong> {
-		// TODO: Just like search, maybe paginate?
+	async *handleGetLibrarySongs(): AsyncGenerator<LocalSong> {
 		yield* getLocalSongs();
 	}
 

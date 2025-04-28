@@ -14,13 +14,14 @@ import {
 } from "@ionic/vue";
 import { watchDebounced } from "@vueuse/core";
 import { search as searchIcon } from "ionicons/icons";
-import { ref } from "vue";
+import { ref, shallowRef } from "vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
 import AppPage from "@/components/AppPage.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
-import { SearchFilter, SearchResult } from "@/services/Music/MusicService";
+import { SearchFilter, SearchResultItem } from "@/services/Music/MusicService";
+import { take } from "@/utils/iterators";
 import AlbumSearchResult from "./components/AlbumSearchResult.vue";
 import ArtistSearchResult from "./components/ArtistSearchResult.vue";
 import SongSearchResult from "./components/SongSearchResult.vue";
@@ -30,12 +31,13 @@ const musicPlayer = useMusicPlayer();
 const searchTerm = ref("");
 const searchSuggestions = ref<string[]>([]);
 
-const searchResults = ref<SearchResult[]>([]);
+const searchResults = ref<SearchResultItem[]>([]);
 
 const offset = ref(0);
 const searched = ref(false);
 const isLoading = ref(false);
 const filter = ref<SearchFilter>("top-results");
+const iterator = shallowRef<AsyncGenerator<SearchResultItem>>();
 
 watchDebounced(
 	searchTerm,
@@ -65,17 +67,13 @@ watchDebounced(filter, async () => await searchFor(searchTerm.value), {
 	maxWait: 500,
 });
 
-async function fetchResults(term: string, offset: number, signal: AbortSignal): Promise<void> {
-	for await (const result of musicPlayer.services.searchForItems(term, {
-		filter: filter.value,
-		signal,
-		offset,
-	})) {
+async function fetchMoreResults(): Promise<void> {
+	if (!iterator.value) return;
+	for await (const result of take(iterator.value, 25)) {
 		searchResults.value.push(result);
 	}
 }
 
-let controller = new AbortController();
 async function searchFor(term: string): Promise<void> {
 	// Hide keyboard on mobile after searching
 	const { activeElement } = document;
@@ -90,16 +88,18 @@ async function searchFor(term: string): Promise<void> {
 	isLoading.value = true;
 	searchResults.value = [];
 	offset.value = 0;
-	controller.abort();
-	controller = new AbortController();
-	await fetchResults(term, 0, controller.signal);
+
+	await iterator.value?.return(null);
+	iterator.value = musicPlayer.services.searchForItems(term, filter.value);
+
+	await fetchMoreResults();
 
 	isLoading.value = false;
 	searched.value = true;
 }
 
 async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> {
-	await fetchResults(searchTerm.value, ++offset.value, controller.signal);
+	await fetchMoreResults();
 	await event.target.complete();
 }
 </script>

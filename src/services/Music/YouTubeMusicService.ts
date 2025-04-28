@@ -1,12 +1,19 @@
 import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
-import { MusicService, MusicServiceEvent } from "@/services/Music/MusicService";
+import {
+	MusicService,
+	MusicServiceEvent,
+	SearchFilter,
+	SearchResultItem,
+} from "@/services/Music/MusicService";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { Maybe } from "@/utils/types";
+import type { SearchContinuation } from "youtubei.js/dist/src/parser/ytmusic/Search";
+import type { MusicSearchFilters } from "youtubei.js/dist/src/types";
 import {
 	Album,
 	AlbumKey,
@@ -66,21 +73,45 @@ export function youtubeDisplayableArtist(artist: {
 	return { title };
 }
 
+export function youtubeArtistPreview(node: YTNodes.MusicResponsiveListItem): YouTubeArtistPreview {
+	if (!node.id) {
+		throw new Error("Cannot create ArtistPreview from a node without id");
+	}
+	if (node.item_type !== "artist" && node.item_type !== "library_artist") {
+		throw new Error("youtubeArtistPreview can only be called on 'artist' and 'library_artist' nodes");
+	}
+
+	const artwork = node.thumbnails?.[0] && { url: node.thumbnails[0].url };
+
+	return {
+		id: node.id,
+		type: "youtube",
+		kind: "artistPreview",
+
+		artwork,
+		title: node.name ?? node.title,
+	};
+}
+
 export function youtubeSongPreview(
 	node: YTNodes.MusicResponsiveListItem,
 	nodeId: string,
 	albumId?: string,
-): SongPreview<"youtube", true>;
+): YouTubeSongPreview<true>;
 export function youtubeSongPreview(
 	node: YTNodes.MusicResponsiveListItem,
 	nodeId?: string,
 	albumId?: string,
-): SongPreview<"youtube", false>;
+): YouTubeSongPreview<false>;
 export function youtubeSongPreview(
 	node: YTNodes.MusicResponsiveListItem,
 	nodeId?: string,
 	albumId?: string,
-): SongPreview<"youtube"> {
+): YouTubeSongPreview {
+	if (node.item_type !== "song" && node.item_type !== "video" && node.item_type !== "unknown") {
+		throw new Error("youtubeSongPreview can only be called on 'song', 'video' and 'unknown' nodes");
+	}
+
 	const { id, title, album } = node;
 
 	const artwork = node.thumbnails?.[0] && { url: node.thumbnails[0].url };
@@ -208,7 +239,9 @@ export async function youtubeSong(
 	};
 }
 
-export function youtubeAlbumPreview(node: YTNodes.MusicTwoRowItem): YoutubeAlbumPreview {
+export function youtubeAlbumPreview(
+	node: YTNodes.MusicTwoRowItem | YTNodes.MusicResponsiveListItem,
+): YoutubeAlbumPreview {
 	if (!node.id) {
 		throw new Error("Cannot create AlbumPreview from a node without id");
 	}
@@ -221,8 +254,9 @@ export function youtubeAlbumPreview(node: YTNodes.MusicTwoRowItem): YoutubeAlbum
 	}
 
 	let artwork: Maybe<LocalImage>;
-	if (node.thumbnail?.[0]) {
-		artwork = { url: node.thumbnail[0].url };
+	const thumbnails = "thumbnails" in node ? node.thumbnails : node.thumbnail;
+	if (thumbnails?.[0]) {
+		artwork = { url: thumbnails[0].url };
 	}
 
 	return {
@@ -230,7 +264,7 @@ export function youtubeAlbumPreview(node: YTNodes.MusicTwoRowItem): YoutubeAlbum
 		type: "youtube",
 		kind: "albumPreview",
 
-		title: node.title.toString(),
+		title: ("name" in node && node.name) || node.title?.toString(),
 
 		artwork,
 		artists,
@@ -445,45 +479,66 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 
 	handleDeinitialization(): void {}
 
-	// TODO: Add a unified way to handle pagination
-	#search = {
-		term: "",
-		pages: [] as (YTMusic.Search | Awaited<ReturnType<YTMusic.Search["getContinuation"]>>)[],
-	};
-	async *handleSearchSongs(
+	async *handleSearchForItems(
 		term: string,
-		offset: number,
-		options?: { signal: AbortSignal },
-	): AsyncGenerator<YouTubeSong | YouTubeSongPreview> {
-		let contents;
-		if (this.#search.term === term && offset !== 0) {
-			const lastPage = this.#search.pages.at(-1);
-			if (lastPage?.has_continuation) {
-				const continuation = await lastPage.getContinuation();
-				this.#search.pages.push(continuation);
-				contents = continuation.contents?.contents?.filter((node) =>
-					node.is(YTNodes.MusicResponsiveListItem),
-				);
-			}
-		} else {
-			const results = await this.innertube!.music.search(term, { type: "song" });
-			this.#search = { term, pages: [results] };
-			contents = results.contents
-				?.filter((node) => node.is(YTNodes.MusicShelf))
-				?.flatMap((shelf) => shelf.contents);
+		filter: SearchFilter,
+	): AsyncGenerator<SearchResultItem<"youtube">, any, any> {
+		const searchFilters: MusicSearchFilters = {};
+
+		switch (filter) {
+			case "top-results":
+				searchFilters.type = "all";
+				break;
+			case "songs":
+				searchFilters.type = "song";
+				break;
+			case "albums":
+				searchFilters.type = "album";
+				break;
+			case "artists":
+				searchFilters.type = "artist";
+				break;
 		}
 
-		if (!contents) return;
+		const results = await this.innertube!.music.search(term, searchFilters);
+		let contents = results.contents
+			?.filter((node) => node.is(YTNodes.MusicShelf))
+			?.flatMap((shelf) => shelf.contents);
+		let continuation: SearchContinuation | YTMusic.Search = results;
 
-		for (const result of contents) {
-			if (options?.signal?.aborted) {
-				return;
+		while (contents) {
+			for (const result of contents) {
+				if (!result.id) continue;
+
+				switch (result.item_type) {
+					case "video":
+					case "song":
+						yield getCached("song", result.id) ??
+							getCached("songPreview", result.id) ??
+							cache(youtubeSongPreview(result, result.id));
+						break;
+					case "album":
+						yield getCached("album", result.id) ??
+							getCached("albumPreview", result.id) ??
+							cache(youtubeAlbumPreview(result));
+						break;
+					case "artist":
+					case "library_artist":
+						// NOTE: We don't return cached artist here, since YouTube's Artist
+						//		 has a wide thumbnail, which does not look pleasing
+						yield getCached("artistPreview", result.id) ?? cache(youtubeArtistPreview(result));
+						break;
+				}
 			}
 
-			if (!result.id) continue;
-			yield getCached("song", result.id!) ??
-				getCached("songPreview", result.id!) ??
-				cache(youtubeSongPreview(result, result.id));
+			if (!continuation.has_continuation) {
+				break;
+			}
+
+			continuation = await results.getContinuation();
+			contents = continuation.contents?.contents?.filter((node) =>
+				node.is(YTNodes.MusicResponsiveListItem),
+			);
 		}
 	}
 
@@ -590,19 +645,14 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 
 	async *handleGetArtistsSongs(
 		artist: YouTubeArtist | Filled<YouTubeArtist>,
-		offset: number,
-		options?: { signal?: AbortSignal },
 	): AsyncGenerator<YouTubeSong | YouTubeSongPreview> {
 		// continuation seems to be always null, so there's no reason to paginate
-		if (options?.signal?.aborted || offset > 0) return;
-
 		const ytArtist = await this.innertube!.music.getArtist(artist.id);
 		const songs = await ytArtist.getAllSongs();
 
 		if (!songs?.contents) return;
 
 		for (const song of songs?.contents) {
-			if (options?.signal?.aborted) return;
 			if (!song.is(YTNodes.MusicResponsiveListItem)) continue;
 
 			if (!song.id) {
