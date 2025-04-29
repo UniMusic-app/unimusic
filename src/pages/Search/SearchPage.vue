@@ -202,6 +202,7 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 .ios {
 	#toolbars {
 		&::before {
+			pointer-events: none;
 			transition:
 				opacity,
 				backdrop-filter,
