@@ -12,6 +12,7 @@ import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { Maybe } from "@/utils/types";
+import type { Thumbnail } from "youtubei.js/dist/src/parser/misc";
 import type { SearchContinuation } from "youtubei.js/dist/src/parser/ytmusic/Search";
 import type { MusicSearchFilters } from "youtubei.js/dist/src/types";
 import {
@@ -50,6 +51,32 @@ type YouTubeSongKey = SongKey<"youtube">;
 type YouTubeSongPreview<HasId extends boolean = false> = SongPreview<"youtube", HasId>;
 type YouTubeSongPreviewKey = SongPreviewKey<"youtube">;
 type YoutubeDisplayableArtist = DisplayableArtist<"youtube">;
+
+export async function extractArtwork(
+	id: string,
+	thumbnails?: Thumbnail[] | YTNodes.MusicThumbnail,
+): Promise<Maybe<LocalImage>> {
+	const thumbnailUrl = Array.isArray(thumbnails)
+		? thumbnails?.[0]?.url
+		: thumbnails?.contents?.[0]?.url;
+
+	if (!thumbnailUrl) {
+		return;
+	}
+
+	const localImages = useLocalImages();
+
+	// NOTE: YouTube force rate-limits requests from Android WebView
+	const fetch = getPlatform() === "android" ? window.capacitorFetch : window.fetch;
+
+	const artworkBlob = await (await fetch(thumbnailUrl)).blob();
+	await localImages.associateImage(id, artworkBlob, {
+		maxWidth: 512,
+		maxHeight: 512,
+	});
+
+	return { id };
+}
 
 export function youtubeDisplayableArtist(artist: {
 	channel_id?: string;
@@ -93,6 +120,7 @@ export function youtubeArtistPreview(node: YTNodes.MusicResponsiveListItem): You
 	};
 }
 
+// TODO: Figure out why "artists" field is not populated on Android
 export function youtubeSongPreview(
 	node: YTNodes.MusicResponsiveListItem,
 	nodeId: string,
@@ -162,17 +190,7 @@ export async function youtubeSong(
 		throw new Error("Cannot generate YouTubeSong from trackInfo that doesn't have id");
 	}
 
-	const thumbnailUrl = thumbnail?.[0]?.url;
-	let artwork: Maybe<LocalImage>;
-	if (thumbnailUrl) {
-		const localImages = useLocalImages();
-		const artworkBlob = await (await fetch(thumbnailUrl)).blob();
-		await localImages.associateImage(id, artworkBlob, {
-			maxWidth: 512,
-			maxHeight: 512,
-		});
-		artwork = { id };
-	}
+	const artwork = await extractArtwork(id, thumbnail);
 
 	const available = searchResult?.available ?? trackInfo?.playability_status?.status === "OK";
 
@@ -275,18 +293,8 @@ export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<Yo
 	const title = album.header?.title.toString() ?? "Unknown title";
 
 	const thumbnail = album.background?.as(YTNodes.MusicThumbnail);
-	const thumbnailUrl = thumbnail?.contents?.[0]?.url;
 
-	let artwork: Maybe<LocalImage>;
-	if (thumbnailUrl) {
-		const localImages = useLocalImages();
-		const artworkBlob = await (await fetch(thumbnailUrl)).blob();
-		await localImages.associateImage(id, artworkBlob, {
-			maxWidth: 512,
-			maxHeight: 512,
-		});
-		artwork = { id };
-	}
+	const artwork = await extractArtwork(id, thumbnail);
 
 	const artists: YoutubeDisplayableArtist[] = [];
 	const artistText = album.header?.as(YTNodes.MusicResponsiveHeader)?.strapline_text_one?.runs;
