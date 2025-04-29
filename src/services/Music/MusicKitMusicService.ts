@@ -69,7 +69,7 @@ export function extractDisplayableArtists(
 		if (artistArtwork) {
 			artwork = {
 				url: MusicKit.formatArtworkURL(artistArtwork, 256, 256),
-				style: { bgColor: `#${artistArtwork.bgColor}` },
+				style: { bgColor: `#${artistArtwork.bgColor ?? "#000"}` },
 			};
 		}
 
@@ -161,8 +161,8 @@ export async function extractArtwork(
 		return {
 			url: artworkUrl,
 			style: {
-				fgColor: `#${artwork.textColor1}`,
-				bgColor: `#${artwork.bgColor}`,
+				fgColor: `#${artwork.textColor1 ?? "#fff"}`,
+				bgColor: `#${artwork.bgColor ?? "#000"}`,
 			},
 		};
 	}
@@ -178,7 +178,7 @@ export function musicKitSongPreview(
 		const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
 		artwork = {
 			url: artworkUrl,
-			style: { bgColor: `#${attributes.artwork.bgColor}` },
+			style: { bgColor: `#${attributes.artwork.bgColor ?? "#000"}` },
 		};
 	}
 
@@ -345,7 +345,7 @@ export function musicKitAlbumPreview(album: MusicKit.Albums): MusicKitAlbumPrevi
 		const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
 		artwork = {
 			url: artworkUrl,
-			style: { bgColor: `#${attributes.artwork.bgColor}` },
+			style: { bgColor: `#${attributes.artwork.bgColor ?? "#000"}` },
 		};
 	}
 
@@ -375,7 +375,7 @@ export function musicKitArtistPreview(
 		const artworkUrl = MusicKit.formatArtworkURL(artistArtwork, 256, 256);
 		artwork = {
 			url: artworkUrl,
-			style: { bgColor: `#${artistArtwork.bgColor}` },
+			style: { bgColor: `#${artistArtwork.bgColor ?? "#000"}` },
 		};
 	}
 
