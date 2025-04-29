@@ -120,7 +120,7 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 				/>
 			</ion-toolbar>
 			<ion-toolbar class="filters">
-				<ion-segment v-model="filter">
+				<ion-segment v-model="filter" @ion-change="searched = true" :disabled="!searchTerm">
 					<ion-segment-button value="top-results">Top Results</ion-segment-button>
 					<ion-segment-button value="songs">Songs</ion-segment-button>
 					<ion-segment-button value="artists">Artists</ion-segment-button>
