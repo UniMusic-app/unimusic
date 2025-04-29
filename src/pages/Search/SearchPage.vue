@@ -13,7 +13,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 import { watchDebounced } from "@vueuse/core";
-import { search as searchIcon } from "ionicons/icons";
+import { sadOutline as sadIcon, search as searchIcon } from "ionicons/icons";
 import { ref, shallowRef } from "vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
@@ -105,10 +105,9 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 </script>
 
 <template>
-	<AppPage title="Search">
-		<!-- FIXME: Search header being offset by those toolbars -->
-		<template #header-trailing>
-			<ion-toolbar>
+	<AppPage title="Search" class="search-page">
+		<div id="toolbars">
+			<ion-toolbar class="searchbar">
 				<ion-searchbar
 					:debounce="50"
 					v-model="searchTerm"
@@ -116,7 +115,6 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 					show-cancel-button="focus"
 					inputmode="search"
 					enterkeyhint="search"
-					class="searchbar"
 					@ion-input="searched = false"
 					@keydown.enter="searchFor($event.target.value)"
 				/>
@@ -129,9 +127,14 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 					<ion-segment-button value="albums">Albums</ion-segment-button>
 				</ion-segment>
 			</ion-toolbar>
-		</template>
+		</div>
 
 		<div>
+			<h2 class="no-results-found" v-if="searched && !isLoading && !searchResults.length">
+				<ion-icon :icon="sadIcon" />
+				No results found
+			</h2>
+
 			<ion-list v-if="searchTerm && !(searched || isLoading)" id="search-suggestions">
 				<ion-item
 					button
@@ -175,45 +178,97 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 </template>
 
 <style global>
-ion-header:not(#search) {
-	& > ion-toolbar {
-		--border-color: transparent;
+.ios {
+	.search-page ion-header {
+		.header-background {
+			backdrop-filter: none !important;
+		}
+
+		& > ion-toolbar {
+			--background: transparent;
+			--border-color: transparent;
+		}
+	}
+
+	ion-header.header-collapse-condense-inactive ~ ion-content {
+		& > #toolbars::before {
+			opacity: 0;
+		}
 	}
 }
 </style>
 
 <style scoped>
-.searchbar {
-	transition: opacity, height, 150ms;
-	opacity: var(--opacity-scale);
-	height: calc(var(--min-height) + 8px);
-	transform-origin: top center;
-	transform: scaleY(var(--opacity-scale));
-	padding-block: 0;
-}
+.ios {
+	#toolbars {
+		&::before {
+			transition:
+				opacity,
+				backdrop-filter,
+				75ms ease-in-out;
 
-.filters {
-	transition: opacity, height, 150ms;
-	opacity: var(--opacity-scale);
-	transform-origin: top center;
-	transform: scaleY(var(--opacity-scale));
-	padding-inline: 12px;
-}
+			content: "";
+			position: absolute;
 
-.header-collapse-condense-inactive {
-	& > .searchbar,
-	& > .filters {
-		height: 0;
-		opacity: 0;
-	}
-}
+			--offset: calc(44px + var(--ion-safe-area-top));
+			top: calc(var(--offset) * -1);
+			left: 0;
+			width: 100%;
+			height: calc(100% + var(--offset));
 
-:not(.header-collapse-condense-inactive) {
-	& > .searchbar {
-		& ion-icon {
-			font-size: 0.1em;
+			background: color-mix(
+				in srgb,
+				var(
+						--ion-toolbar-background,
+						var(--ion-color-step-50, var(--ion-background-color-step-50, #f7f7f7))
+					)
+					80%,
+				transparent
+			);
+			backdrop-filter: saturate(180%) blur(20px);
+		}
+
+		position: sticky;
+		top: 0;
+		z-index: 10;
+
+		& > ion-toolbar {
+			--border-color: transparent;
+			--background: transparent;
+		}
+
+		& > .searchbar > ion-searchbar {
+			padding-block: 0;
+		}
+
+		& > .filters {
+			padding-inline: 12px;
 		}
 	}
+
+	.header-collapse-condense-inactive {
+		& > .searchbar,
+		& > .filters {
+			height: 0;
+			opacity: 0;
+		}
+	}
+
+	:not(.header-collapse-condense-inactive) {
+		& > .searchbar {
+			& ion-icon {
+				font-size: 0.1em;
+			}
+		}
+	}
+}
+
+.no-results-found {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 0.25rem;
+	font-size: 1.4rem;
 }
 
 #search-suggestions {
