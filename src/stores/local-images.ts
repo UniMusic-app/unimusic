@@ -43,7 +43,7 @@ export const useLocalImages = defineStore("LocalImages", () => {
 	>();
 
 	function log(...args: unknown[]): void {
-		console.log("%cLocalImageStore:", "color: #40080; font-weight: bold;", ...args);
+		console.debug("%cLocalImageStore:", "color: #40080; font-weight: bold;", ...args);
 	}
 
 	const registry = new FinalizationRegistry((id: string) => {
