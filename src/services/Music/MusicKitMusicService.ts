@@ -560,7 +560,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 		for (const album of albums) {
 			if (options?.signal?.aborted) return;
-			yield musicKitAlbumPreview(album);
+			yield cache(musicKitAlbumPreview(album));
 		}
 	}
 
