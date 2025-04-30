@@ -27,13 +27,17 @@ import {
 	pencil as editIcon,
 	play as playIcon,
 	playOutline as playSongNextIcon,
+	shuffle as shuffleIcon,
 } from "ionicons/icons";
 
-import { filledPlaylist, Song } from "@/services/Music/objects";
+import { filledPlaylist } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
+import { useNavigation } from "@/stores/navigation";
 import { useRoute } from "vue-router";
 
 const musicPlayer = useMusicPlayer();
+const navigation = useNavigation();
+const router = useIonRouter();
 const route = useRoute();
 
 const playlist = computed(() => {
@@ -51,8 +55,11 @@ const deleteActionSheetButtons: ActionSheetButton[] = [
 	{ text: "Cancel", role: "cancel" },
 ];
 
-function play(): void {
+function playPlaylist(shuffle = false): void {
 	musicPlayer.state.setQueue(playlist.value!.songs.filter((song) => song.available));
+	if (shuffle) {
+		musicPlayer.state.shuffleQueue();
+	}
 	musicPlayer.state.queueIndex = 0;
 }
 
@@ -69,24 +76,6 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 		musicPlayer.state.removePlaylist(playlist.value.id);
 		router.back();
 	}
-}
-
-const router = useIonRouter();
-
-async function playSong(song: Song): Promise<void> {
-	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
-}
-
-async function playSongNext(song: Song): Promise<void> {
-	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
-}
-
-async function addSongToQueue(song: Song): Promise<void> {
-	await musicPlayer.state.addToQueue(song);
-}
-
-function goToSong(song: Song): void {
-	router.push(`/items/songs/${song.type}/${song.id}`);
 }
 </script>
 
@@ -127,29 +116,37 @@ function goToSong(song: Song): void {
 			<template v-else>
 				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
 
-				<ion-button strong @click="play">
-					<ion-icon slot="start" :icon="playIcon" />
-					Play
-				</ion-button>
+				<div class="buttons">
+					<ion-button strong @click="playPlaylist(false)">
+						<ion-icon slot="start" :icon="playIcon" />
+						Play
+					</ion-button>
+
+					<ion-button strong @click="playPlaylist(true)">
+						<ion-icon slot="start" :icon="shuffleIcon" />
+						Shuffle
+					</ion-button>
+				</div>
 
 				<ion-list>
 					<GenericSongItem
 						v-for="song in playlist.songs"
+						:song
 						:disabled="!song.available"
 						:key="song.id"
 						:title="song.title"
 						:artists="song.artists"
 						:artwork="song.artwork"
 						:type="song.type"
-						@item-click="playSong(song)"
-						@context-menu-click="goToSong(song)"
+						@item-click="musicPlayer.playSongNow(song)"
+						@context-menu-click="navigation.goToSong(song)"
 					>
 						<template #options>
-							<ion-item lines="full" button :detail="false" @click="playSongNext(song)">
+							<ion-item lines="full" button :detail="false" @click="musicPlayer.playSongNext(song)">
 								Play Next
 								<ion-icon aria-hidden="true" :icon="playSongNextIcon" slot="end" />
 							</ion-item>
-							<ion-item lines="full" button :detail="false" @click="addSongToQueue(song)">
+							<ion-item lines="full" button :detail="false" @click="musicPlayer.playSongLast(song)">
 								Add to Queue
 								<ion-icon aria-hidden="true" :icon="addSongToQueueIcon" slot="end" />
 							</ion-item>
@@ -192,16 +189,20 @@ function goToSong(song: Song): void {
 		margin-top: 0;
 	}
 
-	& > ion-button {
-		&::part(native) {
-			width: 33%;
-			margin-inline: auto;
-		}
-
+	& > .buttons {
+		display: flex;
 		width: 100%;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+
 		padding-bottom: 1rem;
 		border-bottom: 0.55px solid
 			var(--ion-color-step-250, var(--ion-background-color-step-250, #c8c7cc));
+
+		& > ion-button {
+			width: calc(40%);
+		}
 	}
 
 	& > .local-img {

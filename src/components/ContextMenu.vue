@@ -59,9 +59,9 @@ async function open(): Promise<void> {
 		await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
 	}
 
-	opened.value = true;
-
 	const { top, left, width, height } = unpopoverElement.value!.getBoundingClientRect();
+
+	opened.value = true;
 
 	await nextTick();
 
@@ -103,34 +103,63 @@ onIonViewWillLeave(() => {
 </script>
 
 <template>
-	<template v-if="opened">
-		<div class="context-menu-dummy" :style />
-		<div
-			class="context-menu"
-			ref="popoverElement"
-			popover="manual"
-			:style
-			:class="{ move, backdrop }"
-			open
-		>
-			<div class="backdrop" @click.self="close" />
-			<div class="context-menu-item" @click="close">
-				<slot />
-			</div>
-			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="close">
-				<slot name="options" />
-			</ion-list>
-		</div>
-	</template>
 	<div
-		v-show="!opened"
+		v-if="opened"
+		class="context-menu"
+		ref="popoverElement"
+		popover="manual"
+		:style
+		:class="{ move, backdrop }"
+		open
+	>
+		<div class="backdrop" @click.self="close" />
+		<div class="context-menu-item" @click="close">
+			<slot />
+		</div>
+		<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="close">
+			<slot name="options" />
+		</ion-list>
+	</div>
+	<div
 		class="context-item-container"
 		ref="unpopoverElement"
+		:class="{ opened }"
 		@[event].prevent="open"
 	>
 		<slot />
 	</div>
 </template>
+
+<style global>
+/** Zoom out animation when context menu is opened */
+/* ion-app {
+	&:has(> ion-modal) {
+		& > ion-modal .ion-page {
+			&:has(.context-menu) {
+				transition: transform 250ms ease-out;
+				transform: scale(91.5%);
+
+				&:has(.context-menu.closed) {
+					transition: transform 250ms ease-out;
+					transform: scale(100%);
+				}
+			}
+		}
+	}
+
+	&:not(:has(> ion-modal)) {
+		&:has(.context-menu) {
+			transition: transform 250ms ease-out;
+			transform: scale(91.5%);
+
+			&:has(.context-menu.closed) {
+				transition: transform 250ms ease-out;
+				transform: scale(100%);
+			}
+		}
+	}
+} */
+</style>
 
 <style>
 @keyframes move-in {
@@ -214,17 +243,16 @@ onIonViewWillLeave(() => {
 	}
 }
 
-.context-menu-dummy {
-	width: var(--context-menu-item-width);
-	height: var(--context-menu-item-height);
+.context-item-container.opened {
+	visibility: hidden;
 }
 
 .context-menu {
 	--context-menu-transition-duration: 450ms;
 	--context-menu-transition-easing: cubic-bezier(0.175, 0.885, 0.32, 1.075);
 	--context-menu-transition-easing-out: cubic-bezier(0.32, 0.885, 0.55, 1.175);
-	--context-menu-transition: all var(--context-menu-transition-duration)
-		var(--context-menu-transition-easing);
+	--context-menu-transition: opacity, transform, background, background-color, color,
+		var(--context-menu-transition-duration) var(--context-menu-transition-easing);
 
 	position: fixed;
 

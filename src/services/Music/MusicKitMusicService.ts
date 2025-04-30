@@ -64,25 +64,8 @@ export function extractDisplayableArtists(
 	for (const artist of artists) {
 		if (!artist.attributes?.name) continue;
 
-		let artwork: Maybe<LocalImage>;
-		const artistArtwork = artist.attributes.artwork;
-		if (artistArtwork) {
-			artwork = {
-				url: MusicKit.formatArtworkURL(artistArtwork, 256, 256),
-				style: { bgColor: `#${artistArtwork.bgColor ?? "#000"}` },
-			};
-		}
-
-		const item: MusicKitArtistPreview = {
-			type: "musickit",
-			kind: "artistPreview",
-			id: artist.id,
-
-			title: artist.attributes.name,
-			artwork,
-		};
-		cache(item);
-		keys.push(getKey(item));
+		const cached = getCached("artist", artist.id) ?? getCached("artistPreview", artist.id);
+		keys.push(cached ? getKey(cached) : getKey(cache(musicKitArtistPreview(artist))));
 	}
 	return keys;
 }
@@ -216,25 +199,25 @@ export function musicKitSongPreview(
 }
 
 export async function musicKitPreviewToSong(
-	searchResult: MusicKitSongPreview,
+	songPreview: MusicKitSongPreview,
 ): Promise<MusicKitSong> {
-	const { id, title, album, artists, duration, available = false, explicit = false } = searchResult;
+	const { id, title, album, artists, duration, available = false, explicit = false } = songPreview;
 
-	const genres = searchResult.genres ?? [];
+	const genres = songPreview.genres ?? [];
 	let artwork: Maybe<LocalImage>;
-	if (searchResult.artwork) {
+	if (songPreview.artwork) {
 		const localImages = useLocalImages();
 		try {
-			const response = await fetch(searchResult.artwork.url!);
+			const response = await fetch(songPreview.artwork.url!);
 			const artworkBlob = await response.blob();
 			await localImages.associateImage(id, artworkBlob);
 			artwork = { id };
 		} catch {
-			artwork = searchResult.artwork;
+			artwork = songPreview.artwork;
 		}
 	}
 
-	const catalogId = extractCatalogId(searchResult.data?.catalogId ?? id);
+	const catalogId = extractCatalogId(songPreview.data?.catalogId ?? id);
 
 	return {
 		type: "musickit",
@@ -255,7 +238,7 @@ export async function musicKitPreviewToSong(
 
 		data: {
 			catalogId,
-			musicVideo: searchResult.data?.musicVideo,
+			musicVideo: songPreview.data?.musicVideo,
 		},
 	};
 }
@@ -620,6 +603,14 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return cache(await musicKitAlbum(album));
 	}
 
+	async handleGetAlbumFromPreview(albumPreview: MusicKitAlbumPreview): Promise<MusicKitAlbum> {
+		const album = await this.getAlbum(albumPreview.id);
+		if (!album) {
+			throw new Error(`Failed to find album for albumPreview: ${albumPreview.id}`);
+		}
+		return album;
+	}
+
 	async handleGetPlaylist(url: URL): Promise<Maybe<Playlist>> {
 		let endpoint: string | undefined;
 
@@ -684,14 +675,14 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			}),
 		);
 
-		return {
+		return cache<Playlist>({
 			type: "unimusic",
 			kind: "playlist",
 			id,
 			title,
 			artwork,
 			songs,
-		};
+		});
 	}
 
 	async *handleSearchForItems(
@@ -764,8 +755,8 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		}
 	}
 
-	async handleGetSongFromPreview(searchResult: MusicKitSongPreview): Promise<MusicKitSong> {
-		return cache(await musicKitPreviewToSong(searchResult));
+	async handleGetSongFromPreview(songPreview: MusicKitSongPreview): Promise<MusicKitSong> {
+		return cache(await musicKitPreviewToSong(songPreview));
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {

@@ -4,9 +4,16 @@ import { ref } from "vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import { IonIcon, IonItem, IonLabel, IonNote } from "@ionic/vue";
-import { albumsOutline as albumIcon, compassOutline as compassIcon } from "ionicons/icons";
+import {
+	addOutline as addIcon,
+	albumsOutline as albumIcon,
+	compassOutline as compassIcon,
+	hourglassOutline as hourglassIcon,
+	playOutline as playIcon,
+} from "ionicons/icons";
 
 import { Album, AlbumPreview } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import { kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
 
 const {
@@ -15,14 +22,18 @@ const {
 	type,
 	artwork,
 	routerLink,
+	album,
 } = defineProps<
 	Pick<Partial<Album | AlbumPreview>, "type" | "kind" | "artwork" | "title"> & {
 		reorder?: boolean;
 		button?: boolean;
 		disabled?: boolean;
 		routerLink?: string;
+		album?: Album | AlbumPreview;
 	}
 >();
+
+const musicPlayer = useMusicPlayer();
 
 const emit = defineEmits<{
 	itemClick: [PointerEvent];
@@ -74,7 +85,24 @@ function emitClick(event: PointerEvent): void {
 		</ion-item>
 
 		<template #options>
-			<slot name="options" />
+			<slot name="options">
+				<template v-if="album">
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playAlbumNow(album)">
+						<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
+						Play now
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playAlbumNext(album)">
+						<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
+						Play next
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playAlbumLast(album)">
+						<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
+						Add to queue
+					</ion-item>
+				</template>
+			</slot>
 		</template>
 	</ContextMenu>
 </template>

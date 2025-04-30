@@ -7,6 +7,7 @@ import { useMusicPlayerState } from "@/stores/music-state";
 
 import type { MusicService } from "@/services/Music/MusicService";
 
+import { Album, AlbumPreview, filledAlbum, Song, SongPreview } from "@/services/Music/objects";
 import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
@@ -98,6 +99,46 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	async function togglePlay(): Promise<void> {
 		await currentService.value?.togglePlay();
 	}
+
+	// TODO: Handle failed retrieve song (show toast or something)
+	async function playSongNow(song: Song | SongPreview): Promise<void> {
+		if (state.currentSong?.type === song.type && state.currentSong.id === song.id) {
+			await play();
+			return;
+		}
+		await state.addToQueue(await services.retrieveSong(song), state.queueIndex);
+	}
+
+	async function playSongNext(song: Song | SongPreview): Promise<void> {
+		await state.addToQueue(await services.retrieveSong(song), state.queueIndex + 1);
+	}
+
+	async function playSongLast(song: Song | SongPreview): Promise<void> {
+		await state.addToQueue(await services.retrieveSong(song));
+	}
+
+	async function getAlbumSongs(album: Album | AlbumPreview): Promise<Song[]> {
+		const retrieved = await services.retrieveAlbum(album);
+		const filled = filledAlbum(retrieved);
+		return await services.getAvailableSongs(filled.songs.map(({ song }) => song));
+	}
+
+	async function playAlbumNow(album: Album | AlbumPreview): Promise<void> {
+		const songs = await getAlbumSongs(album);
+		state.setQueue(songs);
+		state.queueIndex = 0;
+	}
+
+	async function playAlbumNext(album: Album | AlbumPreview): Promise<void> {
+		const songs = await getAlbumSongs(album);
+		await state.insertIntoQueue(songs, state.queueIndex + 1);
+	}
+
+	async function playAlbumLast(album: Album | AlbumPreview): Promise<void> {
+		const songs = await getAlbumSongs(album);
+		await state.insertIntoQueue(songs);
+	}
+
 	// #endregion
 
 	// #region System Music Controls
@@ -247,6 +288,15 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		hasNext,
 		skipNext,
 		setQueueIndex,
+
+		playSongNow,
+		playSongNext,
+		playSongLast,
+
+		getAlbumSongs,
+		playAlbumNow,
+		playAlbumNext,
+		playAlbumLast,
 
 		progress,
 		timeRemaining,

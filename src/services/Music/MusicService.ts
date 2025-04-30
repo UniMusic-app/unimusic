@@ -266,11 +266,11 @@ export abstract class MusicService<
 	}
 
 	abstract handleGetSongFromPreview(
-		searchResult: SongPreview<Type>,
+		songPreview: SongPreview<Type>,
 	): Song<Type> | Promise<Song<Type>>;
-	async getSongFromPreview(searchResult: SongPreview<Type>): Promise<Song<Type>> {
-		this.log("getSongFromSearchResult");
-		return await this.withUnrecoverableErrorHandling(this.handleGetSongFromPreview, searchResult);
+	async getSongFromPreview(songPreview: SongPreview<Type>): Promise<Song<Type>> {
+		this.log("getSongFromPreview");
+		return await this.withUnrecoverableErrorHandling(this.handleGetSongFromPreview, songPreview);
 	}
 
 	handleGetSearchHints?(term: string): AnyGenerator<string>;
@@ -390,6 +390,14 @@ export abstract class MusicService<
 
 		const album = await this.withErrorHandling(undefined, this.handleGetAlbum, id);
 		return album;
+	}
+
+	abstract handleGetAlbumFromPreview(
+		albumPreview: AlbumPreview<Type>,
+	): Album<Type> | Promise<Album<Type>>;
+	async getAlbumFromPreview(albumPreview: AlbumPreview<Type>): Promise<Album<Type>> {
+		this.log("getAlbumFromPreview");
+		return await this.withUnrecoverableErrorHandling(this.handleGetAlbumFromPreview, albumPreview);
 	}
 
 	handleGetPlaylist?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;

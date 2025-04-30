@@ -310,6 +310,10 @@ export class LocalMusicService extends MusicService<"local"> {
 		return getAllCached<LocalAlbum>("local", "album").find(({ id }) => id === albumId);
 	}
 
+	handleGetAlbumFromPreview(album: LocalAlbum): LocalAlbum {
+		return album;
+	}
+
 	#fuses = new Map<SearchFilter, Fuse<SearchResultItem<"local">>>();
 	async *handleSearchForItems(
 		term: string,
@@ -349,8 +353,8 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 	}
 
-	handleGetSongFromPreview(searchResult: LocalSong): LocalSong {
-		return searchResult;
+	handleGetSongFromPreview(songPreview: LocalSong): LocalSong {
+		return songPreview;
 	}
 
 	async *handleGetLibraryArtists(options?: {

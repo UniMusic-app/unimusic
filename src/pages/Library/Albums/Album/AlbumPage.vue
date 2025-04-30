@@ -1,3 +1,4 @@
+j
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -67,21 +68,6 @@ const groupedSongs = computed(() => {
 
 	return Map.groupBy(songs, ({ discNumber }) => discNumber ?? 0);
 });
-
-async function playAlbum(shuffle = false): Promise<void> {
-	if (!album.value) return;
-	const songs = await musicPlayer.services.getAvailableSongs(
-		album.value.songs.map(({ song }) => song),
-	);
-
-	musicPlayer.state.setQueue(songs);
-
-	if (shuffle) {
-		musicPlayer.state.shuffleQueue();
-	}
-
-	musicPlayer.state.queueIndex = 0;
-}
 
 async function playDisc(albumSongs: Filled<AlbumSong[]>): Promise<void> {
 	const songs = await musicPlayer.services.getAvailableSongs(albumSongs.map(({ song }) => song));
@@ -171,12 +157,15 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 			</h2>
 
 			<div class="buttons">
-				<ion-button strong @click="playAlbum(false)">
+				<ion-button strong @click="musicPlayer.playAlbumNow(album)">
 					<ion-icon slot="start" :icon="playIcon" />
 					Play
 				</ion-button>
 
-				<ion-button strong @click="playAlbum(true)">
+				<ion-button
+					strong
+					@click="musicPlayer.playAlbumNow(album).then(musicPlayer.state.shuffleQueue)"
+				>
 					<ion-icon slot="start" :icon="shuffleIcon" />
 					Shuffle
 				</ion-button>

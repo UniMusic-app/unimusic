@@ -5,12 +5,16 @@ import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
 import {
+	addOutline as addIcon,
 	compassOutline as compassIcon,
+	hourglassOutline as hourglassIcon,
 	musicalNoteOutline as musicalNoteIcon,
+	playOutline as playIcon,
 	musicalNotesOutline as songIcon,
 } from "ionicons/icons";
 
-import { filledDisplayableArtist, Song } from "@/services/Music/objects";
+import { filledDisplayableArtist, Song, SongPreview } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import { formatArtists, kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
 
@@ -26,6 +30,7 @@ const {
 	reorder,
 	disabled,
 	routerLink,
+	song,
 } = defineProps<
 	Pick<Partial<Song>, "type" | "duration" | "album" | "artists" | "artwork" | "title"> & {
 		kind?: "song" | "songPreview";
@@ -33,8 +38,11 @@ const {
 		button?: boolean;
 		disabled?: boolean;
 		routerLink?: string;
+		song?: Song | SongPreview;
 	}
 >();
+
+const musicPlayer = useMusicPlayer();
 
 const formattedArtists = computed(
 	() => artists && formatArtists(artists?.map(filledDisplayableArtist)),
@@ -106,7 +114,24 @@ function emitClick(event: PointerEvent): void {
 		</ion-item>
 
 		<template #options>
-			<slot name="options" />
+			<slot name="options">
+				<template v-if="song">
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playSongNow(song)">
+						<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
+						Play now
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playSongNext(song)">
+						<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
+						Play next
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playSongLast(song)">
+						<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
+						Add to queue
+					</ion-item>
+				</template>
+			</slot>
 		</template>
 	</ContextMenu>
 </template>
@@ -128,9 +153,8 @@ function emitClick(event: PointerEvent): void {
 	& > .local-img {
 		transition: var(--context-menu-transition);
 
+		--img-height: 6.75rem;
 		--img-border-radius: 12px;
-		--img-width: 96px;
-		--img-height: auto;
 	}
 
 	& > ion-label {
@@ -141,25 +165,33 @@ function emitClick(event: PointerEvent): void {
 			font-size: 1.2rem;
 			line-height: 1;
 
-			@supports (line-clamp: 2) {
-				line-clamp: 2;
-			}
-
-			@supports not (line-clamp: 2) {
+			@supports (not (line-clamp: 2)) and (not (-webkit-line-clamp: 2)) {
 				max-height: 2em;
 				overflow: hidden;
 				text-overflow: ellipsis;
 			}
+
+			@supports (line-clamp: 2) {
+				line-clamp: 2;
+			}
+
+			@supports (-webkit-line-clamp: 2) {
+				overflow: hidden;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+			}
 		}
 
 		& > ion-note {
-			margin-top: 1em;
+			margin-top: 0.5rem;
 			flex-direction: column;
 			align-items: start;
 
 			& > p {
+				line-height: 1;
 				align-items: start;
-				font-size: 1.1em;
+				font-size: 0.85rem;
 			}
 		}
 	}

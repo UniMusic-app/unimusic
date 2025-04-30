@@ -4,6 +4,11 @@ import { ref } from "vue";
 import { useMusicPlayer } from "@/stores/music-player";
 
 import { IonBadge, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
+import {
+	addOutline as addIcon,
+	hourglassOutline as hourglassIcon,
+	playOutline as playIcon,
+} from "ionicons/icons";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
@@ -39,7 +44,13 @@ async function playAlbumSong(): Promise<void> {
 		ref="contextMenu"
 		@visibilitychange="contextMenuOpen = $event"
 	>
-		<ion-item :disabled="!albumSong.song.available" button lines="full" @click="click">
+		<ion-item
+			class="album-disc-item"
+			:disabled="!albumSong.song.available"
+			button
+			lines="full"
+			@click="click"
+		>
 			<ion-badge color="light" slot="start">
 				{{ albumSong.trackNumber ?? "!" }}
 			</ion-badge>
@@ -55,13 +66,28 @@ async function playAlbumSong(): Promise<void> {
 		</ion-item>
 
 		<template #options>
-			<slot name="options" />
+			<slot name="options">
+				<ion-item :button="true" :detail="false" @click="musicPlayer.playSongNow(albumSong.song)">
+					<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
+					Play now
+				</ion-item>
+
+				<ion-item :button="true" :detail="false" @click="musicPlayer.playSongNext(albumSong.song)">
+					<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
+					Play next
+				</ion-item>
+
+				<ion-item :button="true" :detail="false" @click="musicPlayer.playSongLast(albumSong.song)">
+					<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
+					Add to queue
+				</ion-item>
+			</slot>
 		</template>
 	</ContextMenu>
 </template>
 
 <style scoped>
-& .context-menu:not(.closed) > .context-menu-item > ion-item {
+& .context-menu:not(.closed) > .context-menu-item > .album-disc-item {
 	transition: var(--context-menu-transition);
 
 	--background: var(--context-menu-item-background);
@@ -89,7 +115,7 @@ async function playAlbumSong(): Promise<void> {
 	}
 }
 
-& ion-item {
+& .album-disc-item {
 	&.disc-header {
 		font-size: 1.25rem;
 		font-weight: 550;

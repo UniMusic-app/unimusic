@@ -48,6 +48,7 @@ async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 		<ion-list v-else class="songs-list">
 			<GenericSongItem
 				v-for="song in librarySongs"
+				:song
 				:key="song.id"
 				:router-link="`/items/songs/${song.type}/${song.id}`"
 				:title="song.title"

@@ -19,15 +19,17 @@ export interface Album<Type extends SongType = SongType> extends Identifiable {
 }
 
 export type AlbumPreviewKey<Type extends SongType = SongType> = ItemKey<AlbumPreview<Type>>;
-export type AlbumPreview<Type extends SongType = SongType> = Identifiable &
-	Partial<Omit<Album<Type>, "kind">> & {
-		type: Type;
-		kind: "albumPreview";
-		id: AlbumId;
+export type AlbumPreview<Type extends SongType = SongType> =
+	| Album<Type>
+	| (Identifiable &
+			Partial<Omit<Album<Type>, "kind">> & {
+				type: Type;
+				kind: "albumPreview";
+				id: AlbumId;
 
-		title?: string;
-		artists: DisplayableArtist<Type>[];
-	};
+				title?: string;
+				artists: DisplayableArtist<Type>[];
+			});
 
 export interface AlbumSong<Type extends SongType = SongType> {
 	discNumber?: number;

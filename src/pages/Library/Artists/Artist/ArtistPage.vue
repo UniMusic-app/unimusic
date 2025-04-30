@@ -1,13 +1,6 @@
 <script lang="ts" setup>
 import AppPage from "@/components/AppPage.vue";
-import {
-	Artist,
-	Filled,
-	filledArtist,
-	Song,
-	SongPreview,
-	SongType,
-} from "@/services/Music/objects";
+import { Artist, Filled, filledArtist, SongType } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute, useRouter } from "vue-router";
 
@@ -18,11 +11,13 @@ import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
+import { useNavigation } from "@/stores/navigation";
 import { watchAsync } from "@/utils/vue";
 import { useWindowSize } from "@vueuse/core";
 import { computed, ref } from "vue";
 
 const musicPlayer = useMusicPlayer();
+const navigation = useNavigation();
 const router = useRouter();
 const route = useRoute();
 
@@ -47,17 +42,6 @@ watchAsync(
 	},
 	{ immediate: true },
 );
-
-async function playSong(song: Song | SongPreview<SongType, true>): Promise<void> {
-	await musicPlayer.state.addToQueue(
-		await musicPlayer.services.retrieveSong(song),
-		musicPlayer.state.queueIndex,
-	);
-}
-
-async function goToSong(song: Song | SongPreview<SongType, true>): Promise<void> {
-	await router.push(`/items/songs/${song.type}/${song.id}`);
-}
 
 const { width: windowWidth } = useWindowSize();
 </script>
@@ -85,10 +69,11 @@ const { width: windowWidth } = useWindowSize();
 						}"
 					>
 						<GenericSongItem
-							@item-click="playSong(song)"
-							@context-menu-click="goToSong(song)"
+							@item-click="musicPlayer.playSongNow(song)"
+							@context-menu-click="navigation.goToSong(song)"
 							class="song-item"
 							v-for="song in artist.songs"
+							:song
 							:key="song.id"
 							:title="song.title"
 							:artwork="song.artwork"
@@ -108,6 +93,7 @@ const { width: windowWidth } = useWindowSize();
 						<GenericAlbumCard
 							class="album-card"
 							v-for="album in artist.albums"
+							:album
 							:key="album.id"
 							:title="album.title"
 							:artwork="album.artwork"

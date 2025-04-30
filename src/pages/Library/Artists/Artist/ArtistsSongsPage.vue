@@ -22,10 +22,12 @@ import {
 	SongType,
 } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
+import { useNavigation } from "@/stores/navigation";
 import { take } from "@/utils/iterators";
 import { watchAsync } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
+const navigation = useNavigation();
 const router = useRouter();
 const route = useRoute();
 
@@ -83,17 +85,6 @@ async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 	await fetchMoreSongs();
 	await event.target.complete();
 }
-
-async function playSong(song: Song | SongPreview<SongType>): Promise<void> {
-	await musicPlayer.state.addToQueue(
-		await musicPlayer.services.retrieveSong(song),
-		musicPlayer.state.queueIndex,
-	);
-}
-
-async function goToSong(song: Song | SongPreview<SongType>): Promise<void> {
-	await router.push(`/items/songs/${song.type}/${song.id}`);
-}
 </script>
 
 <template>
@@ -104,8 +95,9 @@ async function goToSong(song: Song | SongPreview<SongType>): Promise<void> {
 		<ion-list v-else-if="artist">
 			<GenericSongItem
 				v-for="song in songs"
-				@item-click="playSong(song)"
-				@context-menu-click="goToSong(song)"
+				@item-click="musicPlayer.playSongNow(song)"
+				@context-menu-click="navigation.goToSong(song)"
+				:song
 				:key="song.id"
 				:title="song.title"
 				:album="song.album"

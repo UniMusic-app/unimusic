@@ -3,10 +3,23 @@ import { computed, ref } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
-import { IonCard, IonCardHeader, IonCardSubtitle, IonCardTitle, IonIcon } from "@ionic/vue";
-import { compass as compassIcon } from "ionicons/icons";
+import {
+	IonCard,
+	IonCardHeader,
+	IonCardSubtitle,
+	IonCardTitle,
+	IonIcon,
+	IonItem,
+} from "@ionic/vue";
+import {
+	addOutline as addIcon,
+	compass as compassIcon,
+	hourglassOutline as hourglassIcon,
+	playOutline as playIcon,
+} from "ionicons/icons";
 
-import { Album, filledDisplayableArtist } from "@/services/Music/objects";
+import { Album, AlbumPreview, filledDisplayableArtist } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 
 const {
@@ -17,13 +30,17 @@ const {
 	button = true,
 	disabled,
 	routerLink,
+	album,
 } = defineProps<
 	Pick<Partial<Album>, "title" | "type" | "artists" | "artwork"> & {
 		button?: boolean;
 		disabled?: boolean;
 		routerLink?: string;
+		album?: Album | AlbumPreview;
 	}
 >();
+
+const musicPlayer = useMusicPlayer();
 
 const formattedArtists = computed(
 	() => artists && formatArtists(artists?.map(filledDisplayableArtist)),
@@ -76,25 +93,40 @@ function emitClick(event: PointerEvent): void {
 		</ion-card>
 
 		<template #options>
-			<slot name="options" />
+			<slot name="options">
+				<template v-if="album">
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playAlbumNow(album)">
+						<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
+						Play now
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playAlbumNext(album)">
+						<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
+						Play next
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playAlbumLast(album)">
+						<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
+						Add to queue
+					</ion-item>
+				</template>
+			</slot>
 		</template>
 	</ContextMenu>
 </template>
 
 <style scoped>
-.context-item-container,
-.context-menu-dummy {
-	display: inline-block;
+.context-menu > .context-menu-item > .album-card {
+	width: 100%;
+}
+
+.context-menu.closed > .context-menu-item > .album-card {
+	transition: var(--context-menu-transition);
 }
 
 .context-menu:not(.closed) > .context-menu-item > .album-card {
-	background: var(--context-menu-item-background);
-}
-
-.context-menu:not(.closed) > .context-menu-item > ion-card {
 	transition: var(--context-menu-transition);
-
-	--background: var(--context-menu-item-background);
+	background: var(--context-menu-item-background);
 
 	border-radius: 24px;
 	--border-color: transparent;

@@ -188,6 +188,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 					<ion-list>
 						<GenericSongItem
 							v-for="song in playlistFilled.songs"
+							:song
 							:key="song.id"
 							:title="song.title"
 							:artists="song.artists"

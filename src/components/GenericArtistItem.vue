@@ -97,7 +97,7 @@ function emitClick(event: PointerEvent): void {
 	& > .local-img {
 		transition: var(--context-menu-transition);
 
-		--img-border-radius: 12px;
+		--img-border-radius: 999px;
 		--img-width: 96px;
 		--img-height: auto;
 	}
@@ -110,19 +110,26 @@ function emitClick(event: PointerEvent): void {
 			font-size: 1.2rem;
 			line-height: 1;
 
-			@supports (line-clamp: 2) {
-				line-clamp: 2;
-			}
-
-			@supports not (line-clamp: 2) {
+			@supports (not (line-clamp: 2)) and (not (-webkit-line-clamp: 2)) {
 				max-height: 2em;
 				overflow: hidden;
 				text-overflow: ellipsis;
 			}
+
+			@supports (line-clamp: 2) {
+				line-clamp: 2;
+			}
+
+			@supports (-webkit-line-clamp: 2) {
+				overflow: hidden;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+			}
 		}
 
 		& > ion-note {
-			margin-top: 1em;
+			margin-top: 0.5rem;
 			flex-direction: column;
 			align-items: start;
 

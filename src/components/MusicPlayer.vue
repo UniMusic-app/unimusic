@@ -179,6 +179,7 @@ function dismiss(): void {
 					<GenericSongItem
 						v-for="({ song, id }, i) in state.queue"
 						reorder
+						:song
 						:key="id"
 						:class="{ 'current-song': i === state.queueIndex }"
 						:title="song.title"

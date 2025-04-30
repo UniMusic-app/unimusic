@@ -122,9 +122,9 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return await getService(song.type)?.refreshSong(song);
 	}
 
-	async function getSongFromPreview(searchResult: SongPreview): Promise<Song> {
-		const service = getService(searchResult.type)!;
-		const song = await service.getSongFromPreview(searchResult);
+	async function getSongFromPreview(songPreview: SongPreview): Promise<Song> {
+		const service = getService(songPreview.type)!;
+		const song = await service.getSongFromPreview(songPreview);
 		return song;
 	}
 
@@ -143,8 +143,21 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return await getService(type)?.getSong(id);
 	}
 
+	async function retrieveAlbum(album: Album | AlbumPreview): Promise<Album> {
+		if (album.kind === "albumPreview") {
+			return await getAlbumFromPreview(album);
+		}
+		return album;
+	}
+
 	async function getAlbum(type: Song["type"], id: string): Promise<Maybe<Album>> {
 		return await getService(type)?.getAlbum(id);
+	}
+
+	async function getAlbumFromPreview(albumPreview: AlbumPreview): Promise<Album> {
+		const service = getService(albumPreview.type)!;
+		const album = await service.getAlbumFromPreview(albumPreview);
+		return album;
 	}
 
 	async function getSongsAlbum(song: Song): Promise<Maybe<Album>> {
@@ -190,6 +203,8 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		refreshLibrarySongs,
 
 		getAlbum,
+		retrieveAlbum,
+		getAlbumFromPreview,
 		libraryAlbums,
 		refreshLibraryAlbums,
 		getSongsAlbum,
