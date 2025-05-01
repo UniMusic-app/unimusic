@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { sleep } from "@/utils/time";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { IonList, onIonViewWillLeave } from "@ionic/vue";
 import { onLongPress } from "@vueuse/core";
@@ -59,6 +60,7 @@ async function open(): Promise<void> {
 
 	if (haptics) {
 		await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+		await sleep(50);
 	}
 
 	const { top, left, width, height } = unpopoverElement.value!.getBoundingClientRect();
@@ -134,12 +136,12 @@ onIonViewWillLeave(() => {
 
 <style global>
 /** Zoom out animation when context menu is opened */
-/* ion-app {
+ion-app {
 	&:has(> ion-modal) {
 		& > ion-modal .ion-page {
 			&:has(.context-menu) {
 				transition: transform 250ms ease-out;
-				transform: scale(91.5%);
+				transform: scale(95%);
 
 				&:has(.context-menu.closed) {
 					transition: transform 250ms ease-out;
@@ -160,7 +162,7 @@ onIonViewWillLeave(() => {
 			}
 		}
 	}
-} */
+}
 </style>
 
 <style>
@@ -250,7 +252,7 @@ onIonViewWillLeave(() => {
 }
 
 .context-menu {
-	--context-menu-transition-duration: 450ms;
+	--context-menu-transition-duration: 350ms;
 	--context-menu-transition-easing: cubic-bezier(0.175, 0.885, 0.32, 1.075);
 	--context-menu-transition-easing-out: cubic-bezier(0.32, 0.885, 0.55, 1.175);
 	--context-menu-transition: opacity, transform, background, background-color, color,
