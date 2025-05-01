@@ -78,10 +78,11 @@ const seekPreview = ref(false);
 const seekPreviewValue = ref(0);
 const seekPreviewTime = computed(() => secondsToMMSS(seekPreviewValue.value * duration.value));
 if (isMobilePlatform()) {
-	watch(seekPreviewValue, async (value) => {
-		if (value === 0 || value === 1) {
-			await Haptics.impact();
+	watch([seekPreview, seekPreviewValue], async ([seekPreview, value]) => {
+		if (!seekPreview || !(value === 0 || value === 1)) {
+			return;
 		}
+		await Haptics.impact();
 	});
 }
 
