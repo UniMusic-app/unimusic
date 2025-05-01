@@ -39,7 +39,9 @@ if (event === "contextmenu") {
 		unpopoverElement,
 		async (event) => {
 			if (event.target instanceof HTMLElement) {
-				if ("contextMenuIgnore" in event.target.dataset) return;
+				if ("contextMenuIgnore" in event.target.dataset || !event.target.matches(":hover")) {
+					return;
+				}
 			}
 			await open();
 		},
