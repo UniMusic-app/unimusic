@@ -139,11 +139,11 @@ onIonViewWillLeave(() => {
 ion-app {
 	&:has(> ion-modal) {
 		& > ion-modal .ion-page {
-			&:has(.context-menu) {
+			&:has(.context-menu.move) {
 				transition: transform 250ms ease-out;
 				transform: scale(95%);
 
-				&:has(.context-menu.closed) {
+				&:has(.context-menu.move.closed) {
 					transition: transform 250ms ease-out;
 					transform: scale(100%);
 				}
@@ -152,11 +152,11 @@ ion-app {
 	}
 
 	&:not(:has(> ion-modal)) {
-		&:has(.context-menu) {
+		&:has(.context-menu.move) {
 			transition: transform 250ms ease-out;
 			transform: scale(91.5%);
 
-			&:has(.context-menu.closed) {
+			&:has(.context-menu.move.closed) {
 				transition: transform 250ms ease-out;
 				transform: scale(100%);
 			}
