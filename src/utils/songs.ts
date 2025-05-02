@@ -167,7 +167,8 @@ export async function generateImageStyle(image: Blob): Promise<LocalImageStyle> 
 		const bgColor = colors[2] ?? colors[0]!;
 		const fgColor = contrastColor(bgColor);
 
-		layers.push(`linear-gradient(rgb(${bgColor[0]}, ${bgColor[1]}, ${bgColor[2]}))`);
+		const cssBgColor = toCssColor(bgColor);
+		layers.push(`linear-gradient(${cssBgColor}, ${cssBgColor})`);
 
 		return {
 			fgColor: toCssColor(fgColor),

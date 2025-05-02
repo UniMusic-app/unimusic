@@ -51,7 +51,13 @@ const { currentSong, time, playing, duration } = storeToRefs(state);
 
 const artworkStyle = computed(() => {
 	const artwork = currentSong.value?.artwork;
-	return artwork?.style ?? localImages.getStyle(artwork?.id);
+	const style = artwork?.style ?? localImages.getStyle(artwork?.id);
+
+	return {
+		"--fg-color": style?.fgColor ?? "#fff",
+		"--bg-color": style?.bgColor ?? "#000",
+		"--bg": style?.bgGradient ?? "#000",
+	};
 });
 
 const formattedArtists = computed(() =>
@@ -125,11 +131,7 @@ async function revertStatusBar(): Promise<void> {
 		:initial-breakpoint="1"
 		:breakpoints="[0, 1]"
 		:class="{ 'queue-view': queueOpen }"
-		:style="{
-			'--bg': artworkStyle?.bgGradient ?? artworkStyle?.bgColor ?? '#000',
-			'--bg-color': artworkStyle?.bgColor ?? '#000',
-			'--fg-color': artworkStyle?.fgColor ?? '#fff',
-		}"
+		:style="artworkStyle"
 		@will-present="styleStatusBar"
 		@will-dismiss="revertStatusBar"
 	>
