@@ -333,8 +333,7 @@ export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<Yo
 			const cached = getCached("song", node.id) ?? getCached("songPreview", node.id);
 			let key;
 			if (!cached) {
-				const songPreview = youtubeSongPreview(node, node.id, id);
-				cache(songPreview);
+				const songPreview = cache(youtubeSongPreview(node, node.id, id));
 				key = getKey(songPreview);
 			} else {
 				key = getKey(cached);
@@ -715,9 +714,11 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		while (playlist?.contents) {
 			for (const node of playlist.contents) {
 				if (!node.is(YTNodes.MusicResponsiveListItem)) continue;
-				const songPreview = youtubeSongPreview(node);
-				const song = await this.getSongFromPreview(songPreview);
-				songs.push(getKey(song));
+				if (node.id) {
+					const songPreview = cache(youtubeSongPreview(node, node.id));
+					const song = await this.getSongFromPreview(songPreview);
+					songs.push(getKey(song));
+				}
 			}
 
 			if (!playlist.has_continuation) break;

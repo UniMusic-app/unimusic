@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, shallowRef } from "vue";
+import { computed, ref, shallowReactive, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import {
@@ -37,7 +37,7 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const songs = reactive<(Song | SongPreview)[]>([]);
+const songs = shallowReactive<(Song | SongPreview)[]>([]);
 const iterator = shallowRef<AsyncGenerator<Song | SongPreview>>();
 
 const isLoading = ref(true);

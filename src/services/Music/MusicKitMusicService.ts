@@ -174,7 +174,7 @@ export function musicKitSongPreview(
 		relationships && "catalog" in relationships ? relationships : song,
 	);
 
-	return cache<MusicKitSongPreview>({
+	return {
 		id,
 		type: "musickit",
 		kind: "songPreview",
@@ -195,7 +195,7 @@ export function musicKitSongPreview(
 			catalogId,
 			musicVideo: song.type === "music-videos",
 		},
-	});
+	};
 }
 
 export async function musicKitPreviewToSong(
@@ -294,7 +294,7 @@ export async function musicKitAlbum(album: MusicKit.Albums): Promise<MusicKitAlb
 	if (tracks) {
 		for (const track of tracks) {
 			const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
-			const songPreview: MusicKitSongPreview = cached ?? musicKitSongPreview(track);
+			const songPreview: MusicKitSongPreview = cached ?? cache(musicKitSongPreview(track));
 
 			songs.push({
 				discNumber: track.attributes?.discNumber,
