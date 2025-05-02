@@ -3,7 +3,7 @@ import { ref } from "vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
-import { IonBadge, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
+import { IonBadge, IonIcon, IonItem, IonLabel, useIonRouter } from "@ionic/vue";
 import {
 	addOutline as addIcon,
 	hourglassOutline as hourglassIcon,

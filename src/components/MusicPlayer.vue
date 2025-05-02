@@ -41,6 +41,7 @@ import { filledDisplayableArtist, Song } from "@/services/Music/objects";
 import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
+import { StatusBar, Style } from "@capacitor/status-bar";
 
 const localImages = useLocalImages();
 const router = useIonRouter();
@@ -92,7 +93,6 @@ const seekPreviewRemainingTime = computed(() =>
 
 function reorderQueue(event: ItemReorderCustomEvent): void {
 	const { from, to } = event.detail;
-	// We offset from and to by 1 because of "Queue" label
 	musicPlayer.state.moveQueueItem(from, to);
 	event.detail.complete();
 }
@@ -104,6 +104,14 @@ function goToSong(song: Song, hash?: string): void {
 
 function dismiss(): void {
 	modal.value?.$el?.dismiss();
+}
+
+async function styleStatusBar(): Promise<void> {
+	await StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+}
+
+async function revertStatusBar(): Promise<void> {
+	await StatusBar.setStyle({ style: Style.Default }).catch(() => {});
 }
 </script>
 
@@ -122,6 +130,8 @@ function dismiss(): void {
 			'--bg-color': artworkStyle?.bgColor ?? '#000',
 			'--fg-color': artworkStyle?.fgColor ?? '#fff',
 		}"
+		@will-present="styleStatusBar"
+		@will-dismiss="revertStatusBar"
 	>
 		<div id="song-lols">
 			<LocalImg :class="{ playing }" :src="currentSong?.artwork" />
@@ -397,11 +407,6 @@ function dismiss(): void {
 	--height: 100%;
 	--player-max-width: 640px;
 
-	--background: linear-gradient(to top, #0009 2%, transparent 50%), var(--bg);
-	@media (prefers-color-scheme: dark) {
-		--background: linear-gradient(to top, #000b 2%, transparent), var(--bg);
-	}
-
 	color: white;
 
 	--modal-handle-top: calc(var(--ion-safe-area-top) + 6px);
@@ -417,10 +422,9 @@ function dismiss(): void {
 	}
 
 	&::part(content) {
-		background-size:
-			100% 100%,
-			500% 500% !important;
-		animation: moving-background 30s linear infinite alternate;
+		background: var(--bg);
+		background-size: 200% 200%;
+		animation: moving-background 10s linear infinite alternate;
 	}
 
 	ion-button[size="large"] ion-icon {
@@ -562,7 +566,9 @@ function dismiss(): void {
 			}
 
 			border-radius: 12px;
-			box-shadow: 0 0 32px #0006;
+			box-shadow:
+				0 0 24px rgb(from var(--bg-color) r g b / 40%),
+				0 0 48px #0004;
 		}
 
 		& > #song-info {
@@ -628,6 +634,7 @@ function dismiss(): void {
 		display: flex;
 		flex-direction: column;
 		margin-bottom: calc(32px + var(--ion-safe-area-bottom));
+		filter: drop-shadow(0 0 4px rgb(from var(--bg-color) r g b / 20%)) drop-shadow(0 0 12px #0002);
 
 		& > #time-control {
 			display: flex;
@@ -702,10 +709,21 @@ function dismiss(): void {
 			display: flex;
 			align-items: center;
 			justify-content: space-evenly;
-			margin-block: 16px;
 
 			& > ion-button {
+				transition:
+					background-color,
+					transform,
+					500ms ease-out;
+				border-radius: 9999px;
+
+				&:active {
+					transform: scale(80%);
+					background-color: rgb(255 255 255 / 30%);
+				}
+
 				& > ion-icon {
+					padding: 16px;
 					color: white;
 				}
 			}
