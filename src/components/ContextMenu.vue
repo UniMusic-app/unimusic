@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { isMobilePlatform } from "@/utils/os";
 import { sleep } from "@/utils/time";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { IonList, onIonViewWillLeave } from "@ionic/vue";
@@ -35,7 +36,7 @@ const {
 const opened = ref(false);
 
 const unpopoverElement = useTemplateRef("unpopoverElement");
-if (event === "contextmenu") {
+if (isMobilePlatform() && event === "contextmenu") {
 	onLongPress(
 		unpopoverElement,
 		async (event) => {
