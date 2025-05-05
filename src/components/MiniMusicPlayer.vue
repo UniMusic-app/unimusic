@@ -54,7 +54,7 @@ function goToSong(): void {
 </script>
 
 <template>
-	<ContextMenu @visibilitychange="contextMenuOpen = $event">
+	<ContextMenu position="bottom" @visibilitychange="contextMenuOpen = $event">
 		<ion-item
 			button
 			:detail="contextMenuOpen"
@@ -129,84 +129,85 @@ ion-tab-bar {
 </style>
 
 <style scoped>
-.context-menu:not(.closed) #mini-music-player {
-	top: 0;
-	width: 100%;
-	margin: 0;
-
-	--background: var(--context-menu-item-background);
-	box-shadow: none;
-
-	border-radius: 24px;
-	--border-color: transparent;
-
-	--padding-top: 12px;
-	--padding-bottom: 12px;
-	--padding-start: 12px;
-	--padding-end: 12px;
-
-	& > .local-img {
-		transition: var(--context-menu-transition);
-
-		--img-border-radius: 12px;
-		--img-width: 96px;
-		--img-height: auto;
+.context-menu {
+	:global(&:has(#mini-music-player)) {
+		--move-item-height: 8rem;
 	}
 
-	& > [slot="end"] {
-		display: none;
-	}
+	&.opened #mini-music-player {
+		top: 0;
+		width: 100%;
+		margin: 0;
 
-	& > ion-label {
-		height: max-content;
-		white-space: normal;
+		--background: var(--ion-background-color-step-100, #fff);
+		box-shadow: none;
 
-		& h1 {
-			font-size: 1.2rem;
-			font-weight: 550;
-			line-height: 1;
+		border-radius: 24px;
+		--border-color: transparent;
 
-			@supports (line-clamp: 2) {
-				line-clamp: 2;
-			}
+		--padding-top: 12px;
+		--padding-bottom: 12px;
+		--padding-start: 12px;
+		--padding-end: 12px;
 
-			@supports not (line-clamp: 2) {
-				max-height: 2em;
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
+		& > .local-img {
+			--img-border-radius: 12px;
+			--img-width: 96px;
+			--img-height: auto;
 		}
 
-		& > ion-note {
-			margin-top: 1em;
-			flex-direction: column;
-			align-items: start;
+		& > [slot="end"] {
+			display: none;
+		}
 
-			& > p {
+		& > ion-label {
+			height: max-content;
+			white-space: normal;
+
+			& h1 {
+				font-size: 1.2rem;
+				font-weight: 550;
+				line-height: 1;
+
+				@supports (line-clamp: 2) {
+					line-clamp: 2;
+				}
+
+				@supports not (line-clamp: 2) {
+					max-height: 2em;
+					overflow: hidden;
+					text-overflow: ellipsis;
+				}
+			}
+
+			& > ion-note {
+				margin-top: 1em;
+				flex-direction: column;
 				align-items: start;
-				font-size: 1.1em;
+
+				& > p {
+					align-items: start;
+					font-size: 1.1em;
+				}
 			}
 		}
 	}
 }
 
-@keyframes item-show-shadow {
-	from {
-		box-shadow: 0 0 0px rgba(0, 0, 0, 0);
-	}
-
-	to {
-		box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
+.context-menu-item #mini-music-player {
+	&::part(native) {
+		--background: var(--ion-background-color-step-100, #fff);
+		@supports (backdrop-filter: blur(12px)) {
+			--background: color-mix(in srgb, var(--ion-background-color-step-100, #fff) 80%, transparent);
+			backdrop-filter: blur(12px);
+		}
 	}
 }
 
-.context-item-container #mini-music-player {
-	animation: item-show-shadow 450ms linear forwards;
-}
-
-.context-menu.closed #mini-music-player,
-.context-item-container #mini-music-player {
+#mini-music-player {
 	--border-color: transparent;
+
+	box-shadow: 0 0 12px #0003;
 
 	--padding-top: 4px;
 	--padding-bottom: 4px;
@@ -243,14 +244,6 @@ ion-tab-bar {
 
 		& > ion-note {
 			display: none;
-		}
-	}
-
-	&::part(native) {
-		--background: var(--ion-background-color-step-100, #fff);
-		@supports (backdrop-filter: blur(12px)) {
-			--background: color-mix(in srgb, var(--ion-background-color-step-100, #fff) 80%, transparent);
-			backdrop-filter: blur(12px);
 		}
 	}
 }

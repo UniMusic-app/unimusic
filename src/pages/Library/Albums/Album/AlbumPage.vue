@@ -93,7 +93,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 	<AppPage :title="album?.title" :show-content-header="false" :back-button="previousRouteName">
 		<template #toolbar-end>
 			<ion-buttons id="album-actions">
-				<ContextMenu event="click" :move="false" y="top" x="right" :backdrop="false" :haptics="false">
+				<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
 					<ion-button>
 						<ion-icon slot="icon-only" :icon="ellipsisIcon" />
 					</ion-button>
@@ -207,12 +207,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 		padding-inline: 8px;
 	}
 
-	:global(& .context-menu-list) {
-		box-shadow: 0 0 16px #0003;
-		overflow: visible;
-	}
-
-	:global(& .context-menu-list > ion-item) {
+	:global(& .context-menu ion-item) {
 		--background: var(--ion-background-color-step-100, #fff);
 	}
 }

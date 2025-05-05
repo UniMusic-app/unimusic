@@ -65,14 +65,19 @@ function emitClick(event: PointerEvent): void {
 </script>
 
 <template>
-	<ContextMenu :class="$props.class" ref="contextMenu" @visibilitychange="contextMenuOpen = $event">
+	<ContextMenu
+		position="top"
+		:class="$props.class"
+		ref="contextMenu"
+		@visibilitychange="contextMenuOpen = $event"
+	>
 		<ion-card
-			class="album-card"
 			:router-link
 			:button
 			:disabled
 			:detail="contextMenuOpen"
 			@click="emitClick"
+			class="album-card"
 			:class="$attrs.class"
 		>
 			<LocalImg :src="artwork" :alt="`Artwork for album '${title}'`" />
@@ -116,25 +121,27 @@ function emitClick(event: PointerEvent): void {
 </template>
 
 <style scoped>
-.context-menu > .context-menu-item > .album-card {
+.context-menu-item .album-card {
 	width: 100%;
 }
 
-.context-menu.closed > .context-menu-item > .album-card {
-	transition: var(--context-menu-transition);
-}
+.context-menu {
+	:global(&:has(.album-card)) {
+		--move-item-width: min(80vw, 400px);
+		--move-item-height: calc(var(--move-item-width) * 1.165);
+	}
 
-.context-menu:not(.closed) > .context-menu-item > .album-card {
-	transition: var(--context-menu-transition);
-	background: var(--context-menu-item-background);
+	&.opened .album-card {
+		background: var(--ion-background-color-step-100, #fff);
+		--border-color: transparent;
 
-	border-radius: 24px;
-	--border-color: transparent;
-	padding: 12px;
+		border-radius: 24px;
+		padding: 12px;
 
-	& > .local-img {
-		border-radius: 12px;
-		border: 1px solid #0002;
+		& > .local-img {
+			border-radius: 12px;
+			border: 1px solid #0002;
+		}
 	}
 }
 
@@ -144,6 +151,9 @@ function emitClick(event: PointerEvent): void {
 	background: transparent;
 	box-shadow: none;
 	border-radius: 0;
+
+	user-select: none;
+	-webkit-user-drag: none;
 
 	width: 128px;
 

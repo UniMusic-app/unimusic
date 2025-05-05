@@ -43,6 +43,7 @@ async function playAlbumSong(): Promise<void> {
 		:disabled="!albumSong.song.available"
 		ref="contextMenu"
 		@visibilitychange="contextMenuOpen = $event"
+		position="top"
 	>
 		<ion-item
 			class="album-disc-item"
@@ -87,35 +88,39 @@ async function playAlbumSong(): Promise<void> {
 </template>
 
 <style scoped>
-& .context-menu:not(.closed) > .context-menu-item > .album-disc-item {
-	transition: var(--context-menu-transition);
-
-	--background: var(--context-menu-item-background);
-
-	border-radius: 24px;
-	--border-color: transparent;
-
-	--padding-top: 12px;
-	--padding-bottom: 12px;
-	--padding-start: 12px;
-	--padding-end: 12px;
-
-	& > ion-badge {
-		display: none;
+.context-menu {
+	:global(&:has(.album-disc-item)) {
+		--move-item-height: 8.65rem;
 	}
 
-	& > .local-img {
-		display: block;
-	}
+	&.opened .album-disc-item {
+		--background: var(--ion-background-color-step-100, #fff);
 
-	& > ion-label {
-		white-space: normal;
-		font-weight: 550;
-		font-size: 1.2rem;
+		border-radius: 24px;
+		--border-color: transparent;
+
+		--padding-top: 12px;
+		--padding-bottom: 12px;
+		--padding-start: 12px;
+		--padding-end: 12px;
+
+		& > ion-badge {
+			display: none;
+		}
+
+		& > .local-img {
+			display: block;
+		}
+
+		& > ion-label {
+			white-space: normal;
+			font-weight: 550;
+			font-size: 1.2rem;
+		}
 	}
 }
 
-& .album-disc-item {
+.album-disc-item {
 	&.disc-header {
 		font-size: 1.25rem;
 		font-weight: 550;

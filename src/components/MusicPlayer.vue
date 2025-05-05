@@ -139,55 +139,53 @@ async function revertStatusBar(): Promise<void> {
 			<LocalImg :class="{ playing }" :src="currentSong?.artwork" />
 
 			<div id="song-info">
-				<div id="song-details">
-					<h1>
-						<WrappingMarquee :text="currentSong?.title ?? 'Unknown title'" />
-					</h1>
-					<h2>
-						<WrappingMarquee :text="formattedArtists" />
-					</h2>
-				</div>
+				<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
+					<div id="song-details">
+						<h1>
+							<WrappingMarquee :text="currentSong?.title ?? 'Unknown title'" />
+						</h1>
+						<h2>
+							<WrappingMarquee :text="formattedArtists" />
+						</h2>
+					</div>
 
-				<div id="song-actions">
-					<ContextMenu
-						event="click"
-						:move="false"
-						:backdrop="false"
-						:haptics="false"
-						x="right"
-						y="center"
-					>
-						<ion-button id="song-menu" size="small" fill="clear">
-							<ion-icon :icon="ellipsisIcon" slot="icon-only" />
-						</ion-button>
+					<template #options>
+						<ion-item button>Go to Song</ion-item>
+						<ion-item button>Go to Album</ion-item>
+						<ion-item button>Go to Artist</ion-item>
+					</template>
+				</ContextMenu>
 
-						<template #options>
-							<ion-item
-								aria-label="Edit song"
-								lines="full"
-								button
-								:detail="false"
-								@click="goToSong(currentSong!, 'edit')"
-							>
-								Edit song
-								<ion-icon aria-hidden="true" :icon="editIcon" slot="end" />
-							</ion-item>
-						</template>
-					</ContextMenu>
-				</div>
+				<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
+					<ion-button id="song-menu" size="small" fill="clear">
+						<ion-icon :icon="ellipsisIcon" slot="icon-only" />
+					</ion-button>
+					<template #options>
+						<ion-item
+							aria-label="Edit song"
+							lines="full"
+							button
+							:detail="false"
+							@click="goToSong(currentSong!, 'edit')"
+						>
+							Edit song
+							<ion-icon aria-hidden="true" :icon="editIcon" slot="end" />
+						</ion-item>
+					</template>
+				</ContextMenu>
 			</div>
 		</div>
 
 		<div
 			v-show="queueOpen"
 			id="player-queue"
+			class="ion-content-scroll-host"
 			@pointercancel="canDismiss = true"
 			@pointerout="canDismiss = true"
 			@pointermove="canDismiss = false"
 		>
 			<ion-list>
 				<ion-list-header>Queue</ion-list-header>
-				<!-- FIXME: Reorder does not work on desktop -->
 				<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
 					<GenericSongItem
 						v-for="({ song, id }, i) in state.queue"
@@ -320,8 +318,8 @@ async function revertStatusBar(): Promise<void> {
 </template>
 
 <style global>
-#music-player .context-menu.closed ion-item,
-#music-player .context-item-container > ion-item {
+#music-player .context-menu-item .song-item,
+#music-player .context-menu:not(.opened) .song-item {
 	--background: transparent;
 	--border-color: transparent;
 	--color: white;
@@ -338,24 +336,6 @@ async function revertStatusBar(): Promise<void> {
 </style>
 
 <style scoped>
-@keyframes moving-background {
-	0% {
-		background-position: 0% 66%;
-	}
-
-	33% {
-		background-position: 33% 100%;
-	}
-
-	66% {
-		background-position: 100% 66%;
-	}
-
-	100% {
-		background-position: 66% 100%;
-	}
-}
-
 @keyframes move-in {
 	from {
 		opacity: 0%;
@@ -425,8 +405,6 @@ async function revertStatusBar(): Promise<void> {
 
 	&::part(content) {
 		background: var(--bg);
-		background-size: 200% 200%;
-		animation: moving-background 10s linear infinite alternate;
 	}
 
 	ion-button[size="large"] ion-icon {
@@ -478,7 +456,7 @@ async function revertStatusBar(): Promise<void> {
 
 			animation: move-in 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
 
-			& > #song-details {
+			& #song-details {
 				overflow: visible;
 				text-shadow: 0 0 12px #0004;
 				width: 100%;
@@ -578,51 +556,52 @@ async function revertStatusBar(): Promise<void> {
 			margin-inline: 24px;
 			margin-bottom: 8px;
 
-			& #song-details {
-				width: 80%;
-				overflow: hidden;
-				white-space: nowrap;
+			& .context-menu-item,
+			& .context-menu {
+				display: flex;
+				width: 50%;
+				background-color: red;
 
-				& > h1 {
-					--marquee-duration: 20s;
-					--marquee-gap: 12px;
-
-					& .wrapping {
-						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
-					}
-
-					font-size: 1.45rem;
-					font-weight: 700;
-					margin: 0;
-				}
-
-				& > h2 {
+				& #song-details {
+					width: 100%;
 					overflow: hidden;
-					& .wrapping {
-						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+					white-space: nowrap;
+					color: white;
+
+					& > h1 {
+						--marquee-duration: 20s;
+						--marquee-gap: 12px;
+
+						& .wrapping {
+							mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+						}
+
+						font-size: 1.45rem;
+						font-weight: 700;
+						margin: 0;
 					}
 
-					font-size: 1.25rem;
-					font-weight: 550;
-					margin: 0;
-					opacity: 80%;
+					& > h2 {
+						overflow: hidden;
+						& .wrapping {
+							mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+						}
+
+						font-size: 1.25rem;
+						font-weight: 550;
+						margin: 0;
+						opacity: 80%;
+					}
 				}
 			}
 
-			& #song-actions {
-				flex-grow: 1;
+			& #song-menu {
+				--background: #fff2;
+				--border-radius: 9999px;
+				width: max-content;
 
-				display: flex;
-				align-items: center;
-				justify-content: end;
-
-				ion-button {
-					--background: #fff2;
-					--border-radius: 9999px;
-
-					ion-icon {
-						color: white;
-					}
+				ion-icon {
+					color: white;
 				}
 			}
 		}

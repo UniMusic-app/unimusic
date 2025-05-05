@@ -43,6 +43,8 @@ const loaded = ref(false);
 .local-img {
 	position: relative;
 	display: inline-flex;
+	pointer-events: none;
+	user-select: none;
 
 	& > .fallback,
 	& > img {

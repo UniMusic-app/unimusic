@@ -43,13 +43,19 @@ function emitClick(event: PointerEvent): void {
 </script>
 
 <template>
-	<ContextMenu :class="$props.class" ref="contextMenu" @visibilitychange="contextMenuOpen = $event">
+	<ContextMenu
+		:class="$props.class"
+		ref="contextMenu"
+		@visibilitychange="contextMenuOpen = $event"
+		position="top"
+	>
 		<ion-item
 			:router-link
 			:button
 			:disabled
 			:detail="contextMenuOpen"
 			@click="emitClick"
+			class="artist-item"
 			:class="$attrs.class"
 		>
 			<LocalImg
@@ -81,67 +87,69 @@ function emitClick(event: PointerEvent): void {
 </template>
 
 <style scoped>
-.context-menu:not(.closed) > .context-menu-item > ion-item {
-	transition: var(--context-menu-transition);
-
-	--background: var(--context-menu-item-background);
-
-	border-radius: 24px;
-	--border-color: transparent;
-
-	--padding-top: 12px;
-	--padding-bottom: 12px;
-	--padding-start: 12px;
-	--padding-end: 12px;
-
-	& > .local-img {
-		transition: var(--context-menu-transition);
-
-		--img-border-radius: 999px;
-		--img-width: 96px;
-		--img-height: auto;
+.context-menu {
+	:global(&:has(.artist-item)) {
+		--move-item-height: 8.65rem;
 	}
 
-	& > ion-label {
-		height: max-content;
-		white-space: normal;
+	&.opened .artist-item {
+		--background: var(--ion-background-color-step-100, #fff);
 
-		& > h1 {
-			font-size: 1.2rem;
-			line-height: 1;
+		border-radius: 24px;
+		--border-color: transparent;
 
-			@supports (not (line-clamp: 2)) and (not (-webkit-line-clamp: 2)) {
-				max-height: 2em;
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
+		--padding-top: 12px;
+		--padding-bottom: 12px;
+		--padding-start: 12px;
+		--padding-end: 12px;
 
-			@supports (line-clamp: 2) {
-				line-clamp: 2;
-			}
-
-			@supports (-webkit-line-clamp: 2) {
-				overflow: hidden;
-				display: -webkit-box;
-				-webkit-line-clamp: 2;
-				-webkit-box-orient: vertical;
-			}
+		& > .local-img {
+			--img-border-radius: 999px;
+			--img-width: 96px;
+			--img-height: auto;
 		}
 
-		& > ion-note {
-			margin-top: 0.5rem;
-			flex-direction: column;
-			align-items: start;
+		& > ion-label {
+			height: max-content;
+			white-space: normal;
 
-			& > p {
+			& > h1 {
+				font-size: 1.2rem;
+				line-height: 1;
+
+				@supports (not (line-clamp: 2)) and (not (-webkit-line-clamp: 2)) {
+					max-height: 2em;
+					overflow: hidden;
+					text-overflow: ellipsis;
+				}
+
+				@supports (line-clamp: 2) {
+					line-clamp: 2;
+				}
+
+				@supports (-webkit-line-clamp: 2) {
+					overflow: hidden;
+					display: -webkit-box;
+					-webkit-line-clamp: 2;
+					-webkit-box-orient: vertical;
+				}
+			}
+
+			& > ion-note {
+				margin-top: 0.5rem;
+				flex-direction: column;
 				align-items: start;
-				font-size: 1.1em;
+
+				& > p {
+					align-items: start;
+					font-size: 1.1em;
+				}
 			}
 		}
 	}
 }
 
-ion-item {
+.artist-item {
 	& > .local-img {
 		pointer-events: none;
 
