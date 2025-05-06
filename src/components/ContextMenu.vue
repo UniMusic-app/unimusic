@@ -56,7 +56,7 @@ if (isMobilePlatform() && event === "contextmenu") {
 
 const state = ref<"closed" | "closing" | "opening" | "opened">("closed");
 
-const style = reactive({
+const initialStyle = {
 	"--item-top": "auto",
 	"--item-max-top": "auto",
 	"--item-bottom": "auto",
@@ -74,7 +74,13 @@ const style = reactive({
 	"--direction-x": "left",
 
 	"--options-height": "auto",
-});
+};
+
+const style = reactive({ ...initialStyle });
+
+function resetStyle(): void {
+	Object.assign(style, initialStyle);
+}
 
 async function openContextMenu(): Promise<void> {
 	if (disabled) return;
@@ -87,10 +93,10 @@ async function openContextMenu(): Promise<void> {
 	state.value = "opening";
 	await nextTick();
 
-	const $contextMenu = contextMenu.value;
-	const $contextMenuItem = contextMenuItem.value;
-	const $contextMenuPreview = contextMenuPreview.value;
-	const $contextMenuOptions = contextMenuOptions.value?.$el as Maybe<HTMLElement>;
+	let $contextMenu = contextMenu.value;
+	let $contextMenuItem = contextMenuItem.value;
+	let $contextMenuPreview = contextMenuPreview.value;
+	let $contextMenuOptions = contextMenuOptions.value?.$el as Maybe<HTMLElement>;
 	if (!$contextMenu || !$contextMenuItem || !$contextMenuPreview) return;
 
 	const itemRect = $contextMenuItem.getBoundingClientRect();
@@ -98,20 +104,18 @@ async function openContextMenu(): Promise<void> {
 	const optionsChildren = $contextMenuOptions?.children?.length ?? 0;
 	const approximateOptionsHeight = `${optionsChildren > 0 ? optionsChildren * 44 + 8 : 0}px`;
 
+	// We first reset all styles and recalculate what's appropriate now
+	resetStyle();
+
 	style["--item-top"] = `${itemRect.top}px`;
 	style["--item-max-top"] =
 		`calc(100vh - var(--move-item-height, ${itemRect.height}px) - ${approximateOptionsHeight} - var(--ion-safe-area-bottom))`;
-	style["--item-bottom"] = "auto";
-	style["--item-min-bottom"] = "auto";
-	style["--item-max-bottom"] = "auto";
+
 	style["--item-left"] = `${itemRect.left}px`;
-	style["--item-right"] = "auto";
 	style["--item-width"] = `${itemRect.width}px`;
 	style["--item-height"] = `${itemRect.height}px`;
 	style["--item-max-height"] = move ? "var(--move-item-height)" : style["--item-height"];
 	style["--options-height"] = approximateOptionsHeight;
-	style["--flex-direction"] = "column";
-	style["--flex-align"] = "start";
 
 	let directionY = "top";
 	let directionX = "left";
@@ -141,6 +145,18 @@ async function openContextMenu(): Promise<void> {
 	style["--direction-x"] = directionX;
 	style["--direction-y"] = directionY;
 
+	// Because we want to use those styles as initial position, we re-open the modal again
+	state.value = "closed";
+	await nextTick();
+	state.value = "opening";
+	await nextTick();
+
+	$contextMenu = contextMenu.value;
+	$contextMenuItem = contextMenuItem.value;
+	$contextMenuPreview = contextMenuPreview.value;
+	$contextMenuOptions = contextMenuOptions.value?.$el as Maybe<HTMLElement>;
+	if (!$contextMenu || !$contextMenuItem || !$contextMenuPreview) return;
+
 	// Adjust the height post-mortem to be accurate
 	if (move) {
 		$contextMenu.addEventListener(
@@ -161,6 +177,12 @@ function closeContextMenu(): void {
 	emit("visibilitychange", false);
 }
 
+function immediatelyCloseContextMenu(): void {
+	state.value = "closed";
+	resetStyle();
+	emit("visibilitychange", false);
+}
+
 async function toggleContextMenu(): Promise<void> {
 	switch (state.value) {
 		case "opening":
@@ -174,10 +196,7 @@ async function toggleContextMenu(): Promise<void> {
 	}
 }
 
-onIonViewWillLeave(() => {
-	state.value = "closed";
-	emit("visibilitychange", false);
-});
+onIonViewWillLeave(immediatelyCloseContextMenu);
 </script>
 
 <template>
@@ -196,7 +215,10 @@ onIonViewWillLeave(() => {
 	>
 		<div class="backdrop" />
 
-		<div class="preview-container" @transitionend.self="state === 'closing' && (state = 'closed')">
+		<div
+			class="preview-container"
+			@transitionend.self="state === 'closing' && immediatelyCloseContextMenu()"
+		>
 			<div class="preview" ref="contextMenuPreview">
 				<slot name="preview">
 					<slot />
