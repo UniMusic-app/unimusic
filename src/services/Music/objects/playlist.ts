@@ -30,9 +30,7 @@ export function filledPlaylist(playlist: Playlist): Filled<Playlist> {
 		songs: playlist.songs.map((song) => {
 			const cached = getCachedFromKey(song);
 			if (!cached) {
-				const err = new Error(`Playlist tried to retrieve song ${song}, but it is not cached`);
-				console.error(err);
-				throw err;
+				throw new Error(`Playlist tried to retrieve song ${song}, but it is not cached`);
 			}
 			return cached;
 		}),

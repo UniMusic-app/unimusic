@@ -2,21 +2,24 @@
 import { computed, ref } from "vue";
 
 import LocalImg from "@/components/LocalImg.vue";
-import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
+import { IonIcon, IonItem, IonItemDivider, IonLabel, IonNote, IonReorder } from "@ionic/vue";
 import {
 	addOutline as addIcon,
 	compassOutline as compassIcon,
 	hourglassOutline as hourglassIcon,
 	musicalNoteOutline as musicalNoteIcon,
 	playOutline as playIcon,
+	listCircleOutline as playlistAddIcon,
 	musicalNotesOutline as songIcon,
 } from "ionicons/icons";
 
+import ContextMenu from "@/components/ContextMenu.vue";
 import { filledDisplayableArtist, Song, SongPreview } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { formatArtists, kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
-import ContextMenu from "./ContextMenu.vue";
+
+import { openAddToPlaylistModal } from "@/pages/Library/Playlists/components/AddToPlaylistModal.vue";
 
 const {
 	button = true,
@@ -135,6 +138,18 @@ function emitClick(event: PointerEvent): void {
 					<ion-item :button="true" :detail="false" @click="musicPlayer.playSongLast(song)">
 						<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
 						Add to queue
+					</ion-item>
+
+					<ion-item-divider />
+
+					<ion-item
+						data-instant-close
+						:button="true"
+						:detail="false"
+						@click="openAddToPlaylistModal(song)"
+					>
+						<ion-icon aria-hidden="true" :icon="playlistAddIcon" slot="end" />
+						Add to playlist
 					</ion-item>
 				</template>
 			</slot>

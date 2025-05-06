@@ -175,12 +175,17 @@ async function openContextMenu(): Promise<void> {
 	emit("visibilitychange", true);
 }
 
-function closeContextMenu(): void {
+function closeContextMenu(event?: MouseEvent): void {
 	if (state.value === "closed") {
 		return;
 	}
 
-	state.value = "closing";
+	if (event && "instantClose" in (event.target as HTMLElement).dataset) {
+		state.value = "closed";
+	} else {
+		state.value = "closing";
+	}
+
 	emit("visibilitychange", false);
 }
 
@@ -222,7 +227,7 @@ watch(
 		class="context-menu"
 		:class="{ [state]: true, move, backdrop, [style['--direction-x']]: true }"
 		:style
-		@click="closeContextMenu"
+		@click="closeContextMenu($event)"
 	>
 		<div class="backdrop" />
 

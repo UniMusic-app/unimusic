@@ -10,17 +10,21 @@ import {
 	IonCardTitle,
 	IonIcon,
 	IonItem,
+	IonItemDivider,
 } from "@ionic/vue";
 import {
 	addOutline as addIcon,
 	compass as compassIcon,
 	hourglassOutline as hourglassIcon,
 	playOutline as playIcon,
+	listCircleOutline as playlistAddIcon,
 } from "ionicons/icons";
 
 import { Album, AlbumPreview, filledDisplayableArtist } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
+
+import { openAddToPlaylistModal } from "@/pages/Library/Playlists/components/AddToPlaylistModal.vue";
 
 const {
 	title,
@@ -113,6 +117,18 @@ function emitClick(event: PointerEvent): void {
 					<ion-item :button="true" :detail="false" @click="musicPlayer.playAlbumLast(album)">
 						<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
 						Add to queue
+					</ion-item>
+
+					<ion-item-divider />
+
+					<ion-item
+						data-instant-close
+						:button="true"
+						:detail="false"
+						@click="openAddToPlaylistModal(album)"
+					>
+						<ion-icon aria-hidden="true" :icon="playlistAddIcon" slot="end" />
+						Add to playlist
 					</ion-item>
 				</template>
 			</slot>

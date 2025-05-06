@@ -2,7 +2,11 @@
 import LocalImg from "@/components/LocalImg.vue";
 
 import { IonButton, IonButtons, IonIcon, IonItem, IonLabel, IonList } from "@ionic/vue";
-import { add as addIcon, downloadOutline as importIcon } from "ionicons/icons";
+import {
+	add as addIcon,
+	downloadOutline as importIcon,
+	listOutline as playlistIcon,
+} from "ionicons/icons";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
@@ -39,6 +43,7 @@ const musicPlayer = useMusicPlayer();
 					slot="start"
 					:src="playlist.artwork"
 					:alt="`Artwork for playlist '${playlist.title}'`"
+					:fallback-icon="playlistIcon"
 				/>
 
 				<ion-label class="ion-text-nowrap">
@@ -59,8 +64,9 @@ const musicPlayer = useMusicPlayer();
 		min-height: 60px;
 
 		& > .local-img {
-			height: 48px;
+			--img-height: 56px;
 			border-radius: 8px;
+			border: 0.55px solid #0002;
 		}
 	}
 }
