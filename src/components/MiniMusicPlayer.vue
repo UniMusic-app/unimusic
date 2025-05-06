@@ -151,9 +151,10 @@ ion-tab-bar {
 		--padding-end: 12px;
 
 		& > .local-img {
-			--img-border-radius: 12px;
 			--img-width: 96px;
 			--img-height: auto;
+			border-radius: 12px;
+			border: 0.55px solid #0002;
 		}
 
 		& > [slot="end"] {
@@ -228,9 +229,11 @@ ion-tab-bar {
 	& > .local-img {
 		pointer-events: none;
 
-		--img-border-radius: 8px;
 		--img-width: auto;
 		--img-height: 42px;
+
+		border-radius: 8px;
+		border: 0.55px solid #0002;
 	}
 
 	& > ion-label {

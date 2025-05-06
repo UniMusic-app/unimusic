@@ -104,7 +104,6 @@ function emitClick(event: PointerEvent): void {
 		--padding-end: 12px;
 
 		& > .local-img {
-			--img-border-radius: 999px;
 			--img-width: 96px;
 			--img-height: auto;
 		}
@@ -153,9 +152,11 @@ function emitClick(event: PointerEvent): void {
 	& > .local-img {
 		pointer-events: none;
 
-		--img-border-radius: 999px;
 		--img-width: auto;
 		--img-height: 56px;
+
+		border-radius: 9999px;
+		border: 0.55px solid #0002;
 	}
 
 	& > ion-label {
