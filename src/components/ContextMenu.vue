@@ -316,8 +316,9 @@ ion-app {
 		align-items: var(--flex-align);
 	}
 	&.opened .preview-container {
-		top: clamp(var(--ion-safe-area-top), var(--item-top), var(--item-max-top));
-		bottom: clamp(var(--item-min-bottom), var(--item-bottom), var(--item-max-bottom));
+		/* Add tiny offset to always trigger transitionend event */
+		top: clamp(var(--ion-safe-area-top), calc(var(--item-top) + 0.001px), var(--item-max-top));
+		bottom: clamp(var(--item-min-bottom), calc(var(--item-bottom) + 0.001px), var(--item-max-bottom));
 	}
 	&.opened.move .preview-container {
 		top: clamp(
