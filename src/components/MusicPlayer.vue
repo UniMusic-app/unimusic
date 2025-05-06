@@ -12,15 +12,19 @@ import {
 	IonIcon,
 	IonItem,
 	IonItemDivider,
+	IonLabel,
 	IonList,
 	IonListHeader,
 	IonModal,
+	IonNote,
 	IonRange,
 	IonReorderGroup,
 	ItemReorderCustomEvent,
 	useIonRouter,
 } from "@ionic/vue";
 import {
+	albumsOutline as albumIcon,
+	personOutline as artistIcon,
 	pencilOutline as editIcon,
 	ellipsisHorizontal as ellipsisIcon,
 	musicalNotes as lyricsIcon,
@@ -32,20 +36,23 @@ import {
 	trashOutline as removeIcon,
 	playSkipForward as skipNextIcon,
 	playSkipBack as skipPreviousIcon,
+	musicalNotesOutline as songIcon,
 } from "ionicons/icons";
 
 import { useLocalImages } from "@/stores/local-images";
 import { useMusicPlayer } from "@/stores/music-player";
 
 import { filledDisplayableArtist, Song } from "@/services/Music/objects";
+import { useNavigation } from "@/stores/navigation";
 import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
-import { StatusBar, Style } from "@capacitor/status-bar";
 
 const localImages = useLocalImages();
 const router = useIonRouter();
 const musicPlayer = useMusicPlayer();
+const navigation = useNavigation();
+
 const state = musicPlayer.state;
 const { currentSong, time, playing, duration } = storeToRefs(state);
 
@@ -111,14 +118,6 @@ function goToSong(song: Song, hash?: string): void {
 function dismiss(): void {
 	modal.value?.$el?.dismiss();
 }
-
-async function styleStatusBar(): Promise<void> {
-	await StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
-}
-
-async function revertStatusBar(): Promise<void> {
-	await StatusBar.setStyle({ style: Style.Default }).catch(() => {});
-}
 </script>
 
 <template>
@@ -126,14 +125,13 @@ async function revertStatusBar(): Promise<void> {
 		v-show="currentSong"
 		ref="music-player"
 		id="music-player"
+		:show-backdrop="false"
 		:keep-contents-mounted="true"
 		:can-dismiss="canDismiss"
 		:initial-breakpoint="1"
 		:breakpoints="[0, 1]"
 		:class="{ 'queue-view': queueOpen }"
 		:style="artworkStyle"
-		@will-present="styleStatusBar"
-		@will-dismiss="revertStatusBar"
 	>
 		<div id="song-lols">
 			<LocalImg :class="{ playing }" :src="currentSong?.artwork" />
@@ -149,10 +147,50 @@ async function revertStatusBar(): Promise<void> {
 						</h2>
 					</div>
 
-					<template #options>
-						<ion-item button>Go to Song</ion-item>
-						<ion-item button>Go to Album</ion-item>
-						<ion-item button>Go to Artist</ion-item>
+					<template v-if="currentSong" #options>
+						<ion-item
+							aria-label="Go to Song"
+							lines="full"
+							button
+							:detail="false"
+							@click="(navigation.goToSong(currentSong), dismiss())"
+						>
+							<ion-label>
+								Go to Song
+								<ion-note>{{ currentSong?.title }}</ion-note>
+							</ion-label>
+							<ion-icon aria-hidden="true" :icon="songIcon" slot="end" />
+						</ion-item>
+
+						<ion-item
+							aria-label="Go to Album"
+							lines="full"
+							button
+							:detail="false"
+							v-if="currentSong?.album"
+							@click="(navigation.goToSongsAlbum(currentSong), dismiss())"
+						>
+							<ion-label>
+								Go to Album
+								<ion-note>{{ currentSong?.album }}</ion-note>
+							</ion-label>
+							<ion-icon aria-hidden="true" :icon="albumIcon" slot="end" />
+						</ion-item>
+
+						<ion-item
+							aria-label="Go to artist"
+							lines="full"
+							button
+							:detail="false"
+							v-if="currentSong?.artists?.length"
+							@click="(navigation.goToSongsArtist(currentSong), dismiss())"
+						>
+							<ion-label>
+								Go to Artist
+								<ion-note>{{ formattedArtists }}</ion-note>
+							</ion-label>
+							<ion-icon aria-hidden="true" :icon="artistIcon" slot="end" />
+						</ion-item>
 					</template>
 				</ContextMenu>
 
@@ -404,7 +442,7 @@ async function revertStatusBar(): Promise<void> {
 	}
 
 	&::part(content) {
-		background: var(--bg);
+		background: linear-gradient(to bottom, black, var(--ion-safe-area-top), transparent), var(--bg);
 	}
 
 	ion-button[size="large"] ion-icon {
@@ -513,10 +551,10 @@ async function revertStatusBar(): Promise<void> {
 			transition: opacity 500ms;
 			content: "";
 			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
+			top: -5vh;
+			left: -5vw;
+			width: 110vw;
+			height: 110vh;
 			background-color: black;
 			opacity: 0;
 			pointer-events: none;
@@ -553,28 +591,46 @@ async function revertStatusBar(): Promise<void> {
 
 		& > #song-info {
 			display: flex;
+			max-width: 100%;
 			margin-inline: 24px;
 			margin-bottom: 8px;
+			justify-content: space-between;
 
-			& .context-menu-item,
-			& .context-menu {
-				display: flex;
-				width: 50%;
-				background-color: red;
+			:deep(& .context-menu-item:has(#song-details)),
+			:deep(& .context-menu:has(#song-details)) {
+				width: 90%;
+
+				& .options ion-item > ion-label {
+					display: flex;
+					flex-direction: column;
+				}
+
+				&.opened #song-details {
+					& > h1 {
+						opacity: 80%;
+					}
+					& > h2 {
+						opacity: 50%;
+					}
+				}
 
 				& #song-details {
-					width: 100%;
 					overflow: hidden;
 					white-space: nowrap;
 					color: white;
 
-					& > h1 {
-						--marquee-duration: 20s;
-						--marquee-gap: 12px;
-
+					& > h1,
+					& > h2 {
+						transition: opacity 250ms ease;
+						cursor: pointer;
 						& .wrapping {
 							mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 						}
+					}
+
+					& > h1 {
+						--marquee-duration: 20s;
+						--marquee-gap: 12px;
 
 						font-size: 1.45rem;
 						font-weight: 700;
@@ -583,9 +639,6 @@ async function revertStatusBar(): Promise<void> {
 
 					& > h2 {
 						overflow: hidden;
-						& .wrapping {
-							mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
-						}
 
 						font-size: 1.25rem;
 						font-weight: 550;
@@ -595,13 +648,26 @@ async function revertStatusBar(): Promise<void> {
 				}
 			}
 
-			& #song-menu {
-				--background: #fff2;
-				--border-radius: 9999px;
-				width: max-content;
+			:deep(& .context-menu-item:has(#song-menu)),
+			:deep(& .context-menu:has(#song-menu)) {
+				display: flex;
 
-				ion-icon {
-					color: white;
+				&.opened #song-menu {
+					opacity: 80%;
+				}
+
+				& #song-menu {
+					display: flex;
+					--background: #fff2;
+					--border-radius: 9999px;
+					width: max-content;
+					margin-block: auto;
+
+					transition: opacity 250ms ease;
+
+					ion-icon {
+						color: white;
+					}
 				}
 			}
 		}
