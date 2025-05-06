@@ -250,20 +250,18 @@ const { width: windowWidth } = useWindowSize();
 
 				width: max-content;
 
-				:global(& .context-menu.closed > .context-menu-item > ion-item) {
+				:global(& .context-menu:not(.opened) ion-item) {
 					--padding-start: 8px;
 				}
 
-				& > .song-item {
+				:deep(& .song-item) {
 					scroll-snap-align: start;
 
 					margin: 0;
 					background: transparent;
 					box-shadow: none;
 
-					:global(& > ion-item) {
-						--padding-start: 8px;
-					}
+					--padding-start: 8px;
 				}
 			}
 		}
@@ -300,13 +298,9 @@ const { width: windowWidth } = useWindowSize();
 				gap: 8px;
 				padding-left: 8px;
 
-				:global(& .context-item-container .album-card) {
+				:deep(& .album-card) {
 					scroll-snap-align: start;
 					width: 128px;
-				}
-
-				:global(& .context-menu-dummy) {
-					scroll-snap-align: start;
 				}
 			}
 		}
