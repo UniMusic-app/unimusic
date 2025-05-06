@@ -1,12 +1,15 @@
 <script lang="ts" setup>
 import { onLongPress } from "@vueuse/core";
-import { nextTick, reactive, ref, useTemplateRef } from "vue";
+import { nextTick, reactive, ref, useTemplateRef, watch } from "vue";
 
 import { isMobilePlatform } from "@/utils/os";
 import { sleep } from "@/utils/time";
 import { Maybe } from "@/utils/types";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
-import { IonList, onIonViewWillLeave } from "@ionic/vue";
+import { IonList } from "@ionic/vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
 
 const contextMenu = useTemplateRef("contextMenu");
 const contextMenuItem = useTemplateRef("contextMenuItem");
@@ -173,6 +176,10 @@ async function openContextMenu(): Promise<void> {
 }
 
 function closeContextMenu(): void {
+	if (state.value === "closed") {
+		return;
+	}
+
 	state.value = "closing";
 	emit("visibilitychange", false);
 }
@@ -196,7 +203,11 @@ async function toggleContextMenu(): Promise<void> {
 	}
 }
 
-onIonViewWillLeave(immediatelyCloseContextMenu);
+// Immediately close ContextMenu on route change
+watch(
+	() => route.fullPath,
+	() => immediatelyCloseContextMenu(),
+);
 </script>
 
 <template>
