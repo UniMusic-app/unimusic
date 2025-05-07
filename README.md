@@ -18,20 +18,20 @@ Development is currently prioritized for iOS and macOS, however first stable rel
 - 🟥 - Not yet added
 - ❓ - Unknown if it will be added
 
-| Service     | Status |
-| ----------- | :----: |
-| MusicKit    |   ✅   |
-| YouTube     |   ✅   |
-| Local media |   ✅   |
-| Deezer      |   ❓   |
-| Jellyfin    |   ❓   |
-| Funkwhale   |   ❓   |
+| Service     | Status | Notes                                |
+| ----------- | :----: | ------------------------------------ |
+| MusicKit    |   ✅   |                                      |
+| YouTube     |   ✅   | Age restricted content does not work |
+| Local media |   ✅   |                                      |
+| Deezer      |   ❓   |                                      |
+| Jellyfin    |   ❓   |                                      |
+| Funkwhale   |   ❓   |                                      |
 
 | Feature               | Status | Notes                                       |
 | --------------------- | :----: | ------------------------------------------- |
-| Unified search        |   🟧   | Missing filters, only songs right now       |
+| Unified search        |   ✅   |                                             |
 | Unified library       |   🟧   | Missing YouTube support and UI to add items |
-| Unified playlists     |   🟧   | Missing UI for adding songs to playlist     |
+| Unified playlists     |   ✅   |                                             |
 | Metadata tagging      |   🟥   | Manual metadata edition is supported        |
 | Media synchronisation |   🟥   |                                             |
 | Lyrics                |   🟥   |                                             |
