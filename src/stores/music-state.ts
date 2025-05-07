@@ -29,6 +29,10 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 	function getPlaylist(id: string): Maybe<Playlist> {
 		return playlists.value[id];
 	}
+
+	function* getAllPlaylists(): Generator<Playlist> {
+		yield* Object.values(playlists.value);
+	}
 	// #endregion
 
 	// #region Album
@@ -147,6 +151,7 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 		addPlaylist,
 		removePlaylist,
 		getPlaylist,
+		getAllPlaylists,
 
 		loading,
 		loadingCounters,

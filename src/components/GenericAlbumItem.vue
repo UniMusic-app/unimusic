@@ -1,42 +1,34 @@
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { ref } from "vue";
 
 import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
-import {
-	IonCard,
-	IonCardHeader,
-	IonCardSubtitle,
-	IonCardTitle,
-	IonIcon,
-	IonItem,
-	IonItemDivider,
-} from "@ionic/vue";
+import { IonIcon, IonItem, IonItemDivider, IonLabel, IonNote } from "@ionic/vue";
 import {
 	addOutline as addIcon,
-	compass as compassIcon,
+	albumsOutline as albumIcon,
+	compassOutline as compassIcon,
 	hourglassOutline as hourglassIcon,
 	playOutline as playIcon,
 	listCircleOutline as playlistAddIcon,
 } from "ionicons/icons";
 
-import { Album, AlbumPreview, filledDisplayableArtist } from "@/services/Music/objects";
+import { Album, AlbumPreview } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
-import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
+import { kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
 
 import { openAddToPlaylistModal } from "@/pages/Library/Playlists/components/AddToPlaylistModal.vue";
 
 const {
+	button = true,
 	title,
 	type,
 	artwork,
-	artists,
-	button = true,
-	disabled,
 	routerLink,
 	album,
 } = defineProps<
-	Pick<Partial<Album>, "title" | "type" | "artists" | "artwork"> & {
+	Pick<Partial<Album | AlbumPreview>, "type" | "kind" | "artwork" | "title"> & {
+		reorder?: boolean;
 		button?: boolean;
 		disabled?: boolean;
 		routerLink?: string;
@@ -45,11 +37,6 @@ const {
 >();
 
 const musicPlayer = useMusicPlayer();
-
-const formattedArtists = computed(
-	() => artists && formatArtists(artists?.map(filledDisplayableArtist)),
-);
-const displayName = computed(() => type && songTypeToDisplayName(type));
 
 const emit = defineEmits<{
 	itemClick: [PointerEvent];
@@ -70,36 +57,41 @@ function emitClick(event: PointerEvent): void {
 
 <template>
 	<ContextMenu
-		position="top"
 		:class="$props.class"
 		ref="contextMenu"
 		@visibilitychange="contextMenuOpen = $event"
+		position="top"
 	>
-		<ion-card
+		<ion-item
 			:router-link
 			:button
 			:disabled
 			:detail="contextMenuOpen"
 			@click="emitClick"
-			class="album-card"
+			class="album-item"
 			:class="$attrs.class"
 		>
-			<LocalImg :src="artwork" :alt="`Artwork for album '${title}'`" />
+			<LocalImg
+				slot="start"
+				:src="artwork"
+				:alt="`Artwork for album '${title}'`"
+				:fallback-icon="albumIcon"
+			/>
 
-			<ion-card-header>
-				<ion-card-title class="ion-text-nowrap">
-					{{ title }}
-				</ion-card-title>
-				<ion-card-subtitle class="ion-text-nowrap">
-					<span v-if="type">
+			<ion-label>
+				<h1>{{ title }}</h1>
+				<ion-note>
+					<p v-if="kind">
+						<ion-icon :icon="albumIcon" />
+						{{ kindToDisplayName(kind) }}
+					</p>
+					<p>
 						<ion-icon :icon="compassIcon" />
-						{{ displayName }}
-					</span>
-
-					{{ formattedArtists }}
-				</ion-card-subtitle>
-			</ion-card-header>
-		</ion-card>
+						{{ songTypeToDisplayName(type) }}
+					</p>
+				</ion-note>
+			</ion-label>
+		</ion-item>
 
 		<template #options>
 			<slot name="options">
@@ -137,63 +129,97 @@ function emitClick(event: PointerEvent): void {
 </template>
 
 <style scoped>
-.context-menu-item .album-card {
-	width: 100%;
-}
-
 .context-menu {
-	:global(&:has(.album-card)) {
-		--move-item-width: min(80vw, 400px);
-		--move-item-height: calc(var(--move-item-width) * 1.165);
+	:global(&:has(.album-item)) {
+		--move-item-height: 8.65rem;
 	}
 
-	&.opened .album-card {
-		background: var(--ion-background-color-step-100, #fff);
-		--border-color: transparent;
+	&.opened .album-item {
+		--background: var(--ion-background-color-step-100, #fff);
 
 		border-radius: 24px;
-		padding: 12px;
+		--border-color: transparent;
+
+		--padding-top: 12px;
+		--padding-bottom: 12px;
+		--padding-start: 12px;
+		--padding-end: 12px;
 
 		& > .local-img {
-			border-radius: 12px;
-			border: 1px solid #0002;
+			--img-width: 96px;
+			--img-height: auto;
+			border-radius: 24px;
+		}
+
+		& > ion-label {
+			height: max-content;
+			white-space: normal;
+
+			& > h1 {
+				font-size: 1.2rem;
+				line-height: 1;
+
+				@supports (line-clamp: 2) {
+					line-clamp: 2;
+				}
+
+				@supports not (line-clamp: 2) {
+					max-height: 2em;
+					overflow: hidden;
+					text-overflow: ellipsis;
+				}
+			}
+
+			& > ion-note {
+				margin-top: 1em;
+				flex-direction: column;
+				align-items: start;
+
+				& > p {
+					align-items: start;
+					font-size: 1.1em;
+				}
+			}
 		}
 	}
 }
 
-.album-card,
-.skeleton-card {
-	margin: 0;
-	background: transparent;
-	box-shadow: none;
-	border-radius: 0;
-
-	user-select: none;
-	-webkit-user-drag: none;
-
-	width: 128px;
-
+.album-item {
 	& > .local-img {
-		border-radius: 8px;
+		pointer-events: none;
+
+		--img-width: auto;
+		--img-height: 56px;
+		border-radius: 16px;
 		border: 0.55px solid #0002;
-		--img-width: 100%;
 	}
 
-	& > ion-card-header {
-		padding: 8px;
+	& > ion-label {
+		pointer-events: none;
+		white-space: nowrap;
 
-		& > ion-card-title {
-			font-size: 1rem;
+		& > h1 {
+			font-size: 0.9em;
 			font-weight: 550;
-			text-overflow: ellipsis;
-			overflow: hidden;
+			display: block;
 		}
 
-		& > ion-card-subtitle {
-			font-size: 0.75rem;
-			font-weight: 400;
-			text-overflow: ellipsis;
-			overflow: hidden;
+		& > ion-note {
+			display: flex;
+			gap: 0.5ch;
+			align-items: center;
+			font-size: 0.75em;
+
+			& > p {
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				font-size: inherit;
+
+				& > ion-icon {
+					min-width: 1em;
+				}
+			}
 		}
 	}
 }

@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, reactive } from "vue";
 
-import { MusicService } from "@/services/Music/MusicService";
+import { MusicService, SearchFilter, SearchResultItem } from "@/services/Music/MusicService";
 
 import { LocalMusicService } from "@/services/Music/LocalMusicService";
 import { MusicKitMusicService } from "@/services/Music/MusicKitMusicService";
@@ -16,6 +16,7 @@ import {
 	Song,
 	SongPreview,
 } from "@/services/Music/objects";
+import { abortableAsyncGenerator, racedIterators } from "@/utils/iterators";
 import { Maybe } from "@/utils/types";
 
 export const useMusicServices = defineStore("MusicServices", () => {
@@ -42,26 +43,41 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return Promise.all(enabledServices.value.map(callback));
 	}
 
-	async function searchHints(term: string): Promise<string[]> {
-		const allHints = await withAllServices((service) => service.searchHints(term));
-		return allHints.flat();
-	}
-
-	async function* searchSongs(
-		term: string,
-		offset = 0,
-		options?: { signal: AbortSignal },
-	): AsyncGenerator<SongPreview | Song> {
+	async function* searchHints(term: string): AsyncGenerator<string> {
+		const iterators: AsyncGenerator<string>[] = [];
 		for (const service of enabledServices.value) {
-			yield* service.searchSongs(term, offset, options);
+			if (!service.handleGetSearchHints) continue;
+			iterators.push(service.getSearchHints(term));
+		}
+
+		// Do not yield duplicates
+		const hints = new Set();
+		for await (const hint of racedIterators(iterators)) {
+			if (!hints.has(hint)) {
+				yield hint;
+				hints.add(hint);
+			}
 		}
 	}
 
-	async function* librarySongs(offset = 0): AsyncGenerator<Song> {
+	function searchForItems(term: string, filter: SearchFilter): AsyncGenerator<SearchResultItem> {
+		const iterators: AsyncGenerator<SearchResultItem>[] = [];
+		for (const service of enabledServices.value) {
+			if (!service.handleSearchForItems) continue;
+			iterators.push(service.searchForItems(term, filter));
+		}
+
+		return abortableAsyncGenerator(racedIterators(iterators));
+	}
+
+	function librarySongs(): AsyncGenerator<Song> {
+		const iterators: AsyncGenerator<Song>[] = [];
 		for (const service of enabledServices.value) {
 			if (!service.handleGetLibrarySongs) continue;
-			yield* service.getLibrarySongs(offset);
+			iterators.push(service.getLibrarySongs());
 		}
+
+		return abortableAsyncGenerator(racedIterators(iterators));
 	}
 
 	async function refreshLibrarySongs(): Promise<void> {
@@ -70,11 +86,14 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		});
 	}
 
-	async function* libraryAlbums(): AsyncGenerator<AlbumPreview | Album> {
+	function libraryAlbums(): AsyncGenerator<AlbumPreview | Album> {
+		const iterators: AsyncGenerator<AlbumPreview | Album>[] = [];
 		for (const service of enabledServices.value) {
 			if (!service.handleGetLibraryAlbums) continue;
-			yield* service.getLibraryAlbums();
+			iterators.push(service.getLibraryAlbums());
 		}
+
+		return abortableAsyncGenerator(racedIterators(iterators));
 	}
 
 	async function refreshLibraryAlbums(): Promise<void> {
@@ -83,11 +102,14 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		});
 	}
 
-	async function* libraryArtists(): AsyncGenerator<ArtistPreview | Artist> {
+	function libraryArtists(): AsyncGenerator<ArtistPreview | Artist> {
+		const iterators: AsyncGenerator<ArtistPreview | Artist>[] = [];
 		for (const service of enabledServices.value) {
 			if (!service.handleGetLibraryArtists) continue;
-			yield* service.getLibraryArtists();
+			iterators.push(service.getLibraryArtists());
 		}
+
+		return abortableAsyncGenerator(racedIterators(iterators));
 	}
 
 	async function refreshLibraryArtists(): Promise<void> {
@@ -100,9 +122,9 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return await getService(song.type)?.refreshSong(song);
 	}
 
-	async function getSongFromPreview(searchResult: SongPreview): Promise<Song> {
-		const service = getService(searchResult.type)!;
-		const song = await service.getSongFromPreview(searchResult);
+	async function getSongFromPreview(songPreview: SongPreview): Promise<Song> {
+		const service = getService(songPreview.type)!;
+		const song = await service.getSongFromPreview(songPreview);
 		return song;
 	}
 
@@ -121,8 +143,21 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return await getService(type)?.getSong(id);
 	}
 
+	async function retrieveAlbum(album: Album | AlbumPreview): Promise<Album> {
+		if (album.kind === "albumPreview") {
+			return await getAlbumFromPreview(album);
+		}
+		return album;
+	}
+
 	async function getAlbum(type: Song["type"], id: string): Promise<Maybe<Album>> {
 		return await getService(type)?.getAlbum(id);
+	}
+
+	async function getAlbumFromPreview(albumPreview: AlbumPreview): Promise<Album> {
+		const service = getService(albumPreview.type)!;
+		const album = await service.getAlbumFromPreview(albumPreview);
+		return album;
 	}
 
 	async function getSongsAlbum(song: Song): Promise<Maybe<Album>> {
@@ -135,12 +170,11 @@ export const useMusicServices = defineStore("MusicServices", () => {
 
 	async function* getArtistsSongs(
 		artist: Artist | Filled<Artist>,
-		offset: number,
 	): AsyncGenerator<Song | SongPreview> {
 		const service = getService(artist.type);
 		if (!service?.handleGetArtistsSongs) return;
 
-		yield* service.getArtistsSongs(artist, offset);
+		yield* service.getArtistsSongs(artist);
 	}
 	// #endregion
 
@@ -158,7 +192,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		withAllServices,
 
 		searchHints,
-		searchSongs,
+		searchForItems,
 
 		getSong,
 		refreshSong,
@@ -169,6 +203,8 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		refreshLibrarySongs,
 
 		getAlbum,
+		retrieveAlbum,
+		getAlbumFromPreview,
 		libraryAlbums,
 		refreshLibraryAlbums,
 		getSongsAlbum,

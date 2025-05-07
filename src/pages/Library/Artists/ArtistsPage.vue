@@ -5,8 +5,8 @@ import { onUpdated, ref } from "vue";
 import AppPage from "@/components/AppPage.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
 import { IonList, IonRefresher, IonRefresherContent, RefresherCustomEvent } from "@ionic/vue";
-import ArtistItem from "./components/ArtistItem.vue";
 
+import GenericArtistItem from "@/components/GenericArtistItem.vue";
 import { Artist, ArtistPreview } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 
@@ -18,7 +18,6 @@ onUpdated(async () => {
 	if (!libraryArtists.value.length) {
 		isLoading.value = true;
 		for await (const artist of musicPlayer.services.libraryArtists()) {
-			console.log(artist);
 			libraryArtists.value.push(artist);
 		}
 		isLoading.value = false;
@@ -47,7 +46,14 @@ async function refreshArtistLibrary(event: RefresherCustomEvent): Promise<void> 
 			<SkeletonItem v-for="i in 25" :key="i" />
 		</ion-list>
 		<ion-list v-else class="artists-list">
-			<ArtistItem v-for="artist in libraryArtists" :artist :key="artist.id" />
+			<GenericArtistItem
+				v-for="artist in libraryArtists"
+				:title="artist.title"
+				:type="artist.type"
+				:artwork="artist.artwork"
+				:router-link="`/items/artists/${artist.type}/${artist.id}`"
+				:key="artist.id"
+			/>
 		</ion-list>
 	</AppPage>
 </template>

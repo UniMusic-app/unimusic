@@ -12,15 +12,19 @@ import {
 	IonIcon,
 	IonItem,
 	IonItemDivider,
+	IonLabel,
 	IonList,
 	IonListHeader,
 	IonModal,
+	IonNote,
 	IonRange,
 	IonReorderGroup,
 	ItemReorderCustomEvent,
 	useIonRouter,
 } from "@ionic/vue";
 import {
+	albumsOutline as albumIcon,
+	personOutline as artistIcon,
 	pencilOutline as editIcon,
 	ellipsisHorizontal as ellipsisIcon,
 	musicalNotes as lyricsIcon,
@@ -32,19 +36,36 @@ import {
 	trashOutline as removeIcon,
 	playSkipForward as skipNextIcon,
 	playSkipBack as skipPreviousIcon,
+	musicalNotesOutline as songIcon,
 } from "ionicons/icons";
 
+import { useLocalImages } from "@/stores/local-images";
 import { useMusicPlayer } from "@/stores/music-player";
 
 import { filledDisplayableArtist, Song } from "@/services/Music/objects";
+import { useNavigation } from "@/stores/navigation";
 import { isMobilePlatform } from "@/utils/os";
 import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
 
+const localImages = useLocalImages();
 const router = useIonRouter();
 const musicPlayer = useMusicPlayer();
+const navigation = useNavigation();
+
 const state = musicPlayer.state;
 const { currentSong, time, playing, duration } = storeToRefs(state);
+
+const artworkStyle = computed(() => {
+	const artwork = currentSong.value?.artwork;
+	const style = artwork?.style ?? localImages.getStyle(artwork?.id);
+
+	return {
+		"--fg-color": style?.fgColor ?? "#fff",
+		"--bg-color": style?.bgColor ?? "#000",
+		"--bg": style?.bgGradient ?? "#000",
+	};
+});
 
 const formattedArtists = computed(() =>
 	formatArtists(currentSong.value?.artists?.map(filledDisplayableArtist)),
@@ -71,10 +92,11 @@ const seekPreview = ref(false);
 const seekPreviewValue = ref(0);
 const seekPreviewTime = computed(() => secondsToMMSS(seekPreviewValue.value * duration.value));
 if (isMobilePlatform()) {
-	watch(seekPreviewValue, async (value) => {
-		if (value === 0 || value === 1) {
-			await Haptics.impact();
+	watch([seekPreview, seekPreviewValue], async ([seekPreview, value]) => {
+		if (!seekPreview || !(value === 0 || value === 1)) {
+			return;
 		}
+		await Haptics.impact();
 	});
 }
 
@@ -84,7 +106,6 @@ const seekPreviewRemainingTime = computed(() =>
 
 function reorderQueue(event: ItemReorderCustomEvent): void {
 	const { from, to } = event.detail;
-	// We offset from and to by 1 because of "Queue" label
 	musicPlayer.state.moveQueueItem(from, to);
 	event.detail.complete();
 }
@@ -104,74 +125,110 @@ function dismiss(): void {
 		v-show="currentSong"
 		ref="music-player"
 		id="music-player"
+		:show-backdrop="false"
 		:keep-contents-mounted="true"
 		:can-dismiss="canDismiss"
 		:initial-breakpoint="1"
 		:breakpoints="[0, 1]"
 		:class="{ 'queue-view': queueOpen }"
-		:style="{
-			'--bg': currentSong?.style.bgGradient,
-			'--bg-color': currentSong?.style.bgColor,
-			'--fg-color': currentSong?.style.fgColor,
-		}"
+		:style="artworkStyle"
 	>
 		<div id="song-lols">
 			<LocalImg :class="{ playing }" :src="currentSong?.artwork" />
 
 			<div id="song-info">
-				<div id="song-details">
-					<h1>
-						<WrappingMarquee :text="currentSong?.title ?? 'Unknown title'" />
-					</h1>
-					<h2>
-						<WrappingMarquee :text="formattedArtists" />
-					</h2>
-				</div>
+				<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
+					<div id="song-details">
+						<h1>
+							<WrappingMarquee :text="currentSong?.title ?? 'Unknown title'" />
+						</h1>
+						<h2>
+							<WrappingMarquee :text="formattedArtists" />
+						</h2>
+					</div>
 
-				<div id="song-actions">
-					<ContextMenu
-						event="click"
-						:move="false"
-						:backdrop="false"
-						:haptics="false"
-						x="right"
-						y="center"
-					>
-						<ion-button id="song-menu" size="small" fill="clear">
-							<ion-icon :icon="ellipsisIcon" slot="icon-only" />
-						</ion-button>
+					<template v-if="currentSong" #options>
+						<ion-item
+							aria-label="Go to Song"
+							lines="full"
+							button
+							:detail="false"
+							@click="(navigation.goToSong(currentSong), dismiss())"
+						>
+							<ion-label>
+								Go to Song
+								<ion-note>{{ currentSong?.title }}</ion-note>
+							</ion-label>
+							<ion-icon aria-hidden="true" :icon="songIcon" slot="end" />
+						</ion-item>
 
-						<template #options>
-							<ion-item
-								aria-label="Edit song"
-								lines="full"
-								button
-								:detail="false"
-								@click="goToSong(currentSong!, 'edit')"
-							>
-								Edit song
-								<ion-icon aria-hidden="true" :icon="editIcon" slot="end" />
-							</ion-item>
-						</template>
-					</ContextMenu>
-				</div>
+						<ion-item
+							aria-label="Go to Album"
+							lines="full"
+							button
+							:detail="false"
+							v-if="currentSong?.album"
+							@click="(navigation.goToSongsAlbum(currentSong), dismiss())"
+						>
+							<ion-label>
+								Go to Album
+								<ion-note>{{ currentSong?.album }}</ion-note>
+							</ion-label>
+							<ion-icon aria-hidden="true" :icon="albumIcon" slot="end" />
+						</ion-item>
+
+						<ion-item
+							aria-label="Go to artist"
+							lines="full"
+							button
+							:detail="false"
+							v-if="currentSong?.artists?.length"
+							@click="(navigation.goToSongsArtist(currentSong), dismiss())"
+						>
+							<ion-label>
+								Go to Artist
+								<ion-note>{{ formattedArtists }}</ion-note>
+							</ion-label>
+							<ion-icon aria-hidden="true" :icon="artistIcon" slot="end" />
+						</ion-item>
+					</template>
+				</ContextMenu>
+
+				<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
+					<ion-button id="song-menu" size="small" fill="clear">
+						<ion-icon :icon="ellipsisIcon" slot="icon-only" />
+					</ion-button>
+					<template #options>
+						<ion-item
+							aria-label="Edit song"
+							lines="full"
+							button
+							:detail="false"
+							@click="goToSong(currentSong!, 'edit')"
+						>
+							Edit song
+							<ion-icon aria-hidden="true" :icon="editIcon" slot="end" />
+						</ion-item>
+					</template>
+				</ContextMenu>
 			</div>
 		</div>
 
 		<div
 			v-show="queueOpen"
 			id="player-queue"
+			class="ion-content-scroll-host"
 			@pointercancel="canDismiss = true"
 			@pointerout="canDismiss = true"
 			@pointermove="canDismiss = false"
 		>
 			<ion-list>
 				<ion-list-header>Queue</ion-list-header>
-				<!-- FIXME: Reorder does not work on desktop -->
 				<ion-reorder-group :disabled="false" @ion-item-reorder="reorderQueue">
 					<GenericSongItem
 						v-for="({ song, id }, i) in state.queue"
 						reorder
+						:song
 						:key="id"
 						:class="{ 'current-song': i === state.queueIndex }"
 						:title="song.title"
@@ -299,8 +356,8 @@ function dismiss(): void {
 </template>
 
 <style global>
-#music-player .context-menu.closed ion-item,
-#music-player .context-item-container > ion-item {
+#music-player .context-menu-item .song-item,
+#music-player .context-menu:not(.opened) .song-item {
 	--background: transparent;
 	--border-color: transparent;
 	--color: white;
@@ -317,24 +374,6 @@ function dismiss(): void {
 </style>
 
 <style scoped>
-@keyframes moving-background {
-	0% {
-		background-position: 0% 66%;
-	}
-
-	33% {
-		background-position: 33% 100%;
-	}
-
-	66% {
-		background-position: 100% 66%;
-	}
-
-	100% {
-		background-position: 66% 100%;
-	}
-}
-
 @keyframes move-in {
 	from {
 		opacity: 0%;
@@ -388,11 +427,6 @@ function dismiss(): void {
 	--height: 100%;
 	--player-max-width: 640px;
 
-	--background: linear-gradient(to top, #0009 2%, transparent 50%), var(--bg);
-	@media (prefers-color-scheme: dark) {
-		--background: linear-gradient(to top, #000b 2%, transparent), var(--bg);
-	}
-
 	color: white;
 
 	--modal-handle-top: calc(var(--ion-safe-area-top) + 6px);
@@ -408,10 +442,7 @@ function dismiss(): void {
 	}
 
 	&::part(content) {
-		background-size:
-			100% 100%,
-			500% 500% !important;
-		animation: moving-background 30s linear infinite alternate;
+		background: linear-gradient(to bottom, black, var(--ion-safe-area-top), transparent), var(--bg);
 	}
 
 	ion-button[size="large"] ion-icon {
@@ -463,7 +494,7 @@ function dismiss(): void {
 
 			animation: move-in 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
 
-			& > #song-details {
+			& #song-details {
 				overflow: visible;
 				text-shadow: 0 0 12px #0004;
 				width: 100%;
@@ -520,10 +551,10 @@ function dismiss(): void {
 			transition: opacity 500ms;
 			content: "";
 			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
+			top: -5vh;
+			left: -5vw;
+			width: 110vw;
+			height: 110vh;
 			background-color: black;
 			opacity: 0;
 			pointer-events: none;
@@ -544,63 +575,95 @@ function dismiss(): void {
 			top: calc(var(--ion-safe-area-top) / 2);
 
 			transition: all 350ms cubic-bezier(0.32, 0.885, 0.55, 1.175);
-			height: auto;
 
+			--img-width: 100%;
+			--img-height: auto;
 			width: min(40vh, 60%);
 			&.playing {
 				width: min(50vh, 85%);
 			}
 
 			border-radius: 12px;
-			box-shadow: 0 0 32px #0006;
+			box-shadow:
+				0 0 24px rgb(from var(--bg-color) r g b / 40%),
+				0 0 48px #0004;
 		}
 
 		& > #song-info {
 			display: flex;
+			max-width: 100%;
 			margin-inline: 24px;
 			margin-bottom: 8px;
+			justify-content: space-between;
 
-			& #song-details {
-				width: 80%;
-				overflow: hidden;
-				white-space: nowrap;
+			:deep(& .context-menu-item:has(#song-details)),
+			:deep(& .context-menu:has(#song-details)) {
+				width: 90%;
 
-				& > h1 {
-					--marquee-duration: 20s;
-					--marquee-gap: 12px;
-
-					& .wrapping {
-						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
-					}
-
-					font-size: 1.45rem;
-					font-weight: 700;
-					margin: 0;
+				& .options ion-item > ion-label {
+					display: flex;
+					flex-direction: column;
 				}
 
-				& > h2 {
+				&.opened #song-details {
+					& > h1 {
+						opacity: 80%;
+					}
+					& > h2 {
+						opacity: 50%;
+					}
+				}
+
+				& #song-details {
 					overflow: hidden;
-					& .wrapping {
-						mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+					white-space: nowrap;
+					color: white;
+
+					& > h1,
+					& > h2 {
+						transition: opacity 250ms ease;
+						cursor: pointer;
+						& .wrapping {
+							mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
+						}
 					}
 
-					font-size: 1.25rem;
-					font-weight: 550;
-					margin: 0;
-					opacity: 80%;
+					& > h1 {
+						--marquee-duration: 20s;
+						--marquee-gap: 12px;
+
+						font-size: 1.45rem;
+						font-weight: 700;
+						margin: 0;
+					}
+
+					& > h2 {
+						overflow: hidden;
+
+						font-size: 1.25rem;
+						font-weight: 550;
+						margin: 0;
+						opacity: 80%;
+					}
 				}
 			}
 
-			& #song-actions {
-				flex-grow: 1;
-
+			:deep(& .context-menu-item:has(#song-menu)),
+			:deep(& .context-menu:has(#song-menu)) {
 				display: flex;
-				align-items: center;
-				justify-content: end;
 
-				ion-button {
+				&.opened #song-menu {
+					opacity: 80%;
+				}
+
+				& #song-menu {
+					display: flex;
 					--background: #fff2;
 					--border-radius: 9999px;
+					width: max-content;
+					margin-block: auto;
+
+					transition: opacity 250ms ease;
 
 					ion-icon {
 						color: white;
@@ -618,6 +681,7 @@ function dismiss(): void {
 		display: flex;
 		flex-direction: column;
 		margin-bottom: calc(32px + var(--ion-safe-area-bottom));
+		filter: drop-shadow(0 0 4px rgb(from var(--bg-color) r g b / 20%)) drop-shadow(0 0 12px #0002);
 
 		& > #time-control {
 			display: flex;
@@ -692,10 +756,21 @@ function dismiss(): void {
 			display: flex;
 			align-items: center;
 			justify-content: space-evenly;
-			margin-block: 16px;
 
 			& > ion-button {
+				transition:
+					background-color,
+					transform,
+					500ms ease-out;
+				border-radius: 9999px;
+
+				&:active {
+					transform: scale(80%);
+					background-color: rgb(255 255 255 / 30%);
+				}
+
 				& > ion-icon {
+					padding: 16px;
 					color: white;
 				}
 			}

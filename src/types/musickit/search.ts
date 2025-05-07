@@ -54,6 +54,18 @@ declare global {
 			artists?: SearchResponseResultsArtistsSearchResult;
 			playlists?: SearchResponseResultsPlaylistsSearchResult;
 			songs?: SearchResponseResultsSongsSearchResult;
+			topResults?: SearchResponseResultsTopResultsSearchResult;
+		}
+
+		interface SearchResponseResultsTopResultsSearchResult {
+			/** The resources for the search result. */
+			data: (
+				| MusicKit.Albums
+				| MusicKit.Artists
+				| MusicKit.Songs
+				| MusicKit.MusicVideos
+				| MusicKit.Playlists
+			)[];
 		}
 
 		/**

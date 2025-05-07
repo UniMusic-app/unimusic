@@ -8,52 +8,72 @@ import {
 	IonLabel,
 	IonList,
 	IonSearchbar,
+	IonSegment,
+	IonSegmentButton,
 	IonToolbar,
-	useIonRouter,
 } from "@ionic/vue";
 import { watchDebounced } from "@vueuse/core";
-import {
-	addOutline as addIcon,
-	hourglassOutline as hourglassIcon,
-	playOutline as playIcon,
-	search as searchIcon,
-} from "ionicons/icons";
-import { ref } from "vue";
+import { sadOutline as sadIcon, search as searchIcon } from "ionicons/icons";
+import { ref, shallowRef } from "vue";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
 import AppPage from "@/components/AppPage.vue";
-import GenericSongItem from "@/components/GenericSongItem.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
-import { Song, SongPreview } from "@/services/Music/objects";
+import { SearchFilter, SearchResultItem } from "@/services/Music/MusicService";
+import { take } from "@/utils/iterators";
+import AlbumSearchResult from "./components/AlbumSearchResult.vue";
+import ArtistSearchResult from "./components/ArtistSearchResult.vue";
+import SongSearchResult from "./components/SongSearchResult.vue";
 
 const musicPlayer = useMusicPlayer();
 
 const searchTerm = ref("");
 const searchSuggestions = ref<string[]>([]);
 
-type SearchResult = SongPreview | Song;
-const searchResults = ref<SearchResult[]>([]);
+const searchResults = ref<SearchResultItem[]>([]);
 
 const offset = ref(0);
 const searched = ref(false);
 const isLoading = ref(false);
+const filter = ref<SearchFilter>("top-results");
+const iterator = shallowRef<AsyncGenerator<SearchResultItem>>();
 
 watchDebounced(
 	searchTerm,
 	async (searchTerm) => {
-		searchSuggestions.value = await musicPlayer.services.searchHints(searchTerm);
+		if (!searchTerm) {
+			searchSuggestions.value.length = 0;
+			return;
+		}
+
+		let hitFirstSuggestion = false;
+		for await (const hint of musicPlayer.services.searchHints(searchTerm)) {
+			// Only clear the suggestions if at least one new one popped up
+			// This makes it so that the suggestions don't jitter when searching
+			if (!hitFirstSuggestion) {
+				searchSuggestions.value.length = 0;
+				hitFirstSuggestion = true;
+			}
+
+			searchSuggestions.value.push(hint);
+		}
 	},
 	{ debounce: 150, maxWait: 500 },
 );
 
-async function fetchResults(term: string, offset: number, signal: AbortSignal): Promise<void> {
-	for await (const result of musicPlayer.services.searchSongs(term, offset, { signal })) {
+watchDebounced(filter, async () => await searchFor(searchTerm.value), {
+	debounce: 150,
+	maxWait: 500,
+});
+
+async function fetchMoreResults(): Promise<void> {
+	if (!iterator.value) return;
+	for await (const result of take(iterator.value, 25)) {
 		searchResults.value.push(result);
 	}
 }
 
-let controller = new AbortController();
 async function searchFor(term: string): Promise<void> {
 	// Hide keyboard on mobile after searching
 	const { activeElement } = document;
@@ -68,44 +88,25 @@ async function searchFor(term: string): Promise<void> {
 	isLoading.value = true;
 	searchResults.value = [];
 	offset.value = 0;
-	controller.abort();
-	controller = new AbortController();
-	await fetchResults(term, 0, controller.signal);
+
+	await iterator.value?.return(null);
+	iterator.value = musicPlayer.services.searchForItems(term, filter.value);
+
+	await fetchMoreResults();
 
 	isLoading.value = false;
 	searched.value = true;
 }
 
 async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> {
-	await fetchResults(searchTerm.value, ++offset.value, controller.signal);
+	await fetchMoreResults();
 	await event.target.complete();
-}
-
-async function playNow(searchResult: SearchResult): Promise<void> {
-	const song = await musicPlayer.services.retrieveSong(searchResult);
-	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex);
-}
-
-async function playNext(searchResult: SearchResult): Promise<void> {
-	const song = await musicPlayer.services.retrieveSong(searchResult);
-	await musicPlayer.state.addToQueue(song, musicPlayer.state.queueIndex + 1);
-}
-
-async function addToQueue(searchResult: SearchResult): Promise<void> {
-	const song = await musicPlayer.services.retrieveSong(searchResult);
-	await musicPlayer.state.addToQueue(song);
-}
-
-const router = useIonRouter();
-function goToSong(searchResult: SearchResult): void {
-	if (!searchResult) return;
-	router.push(`/items/songs/${searchResult.type}/${searchResult.id}`);
 }
 </script>
 
 <template>
-	<AppPage title="Search">
-		<template #header-trailing>
+	<AppPage title="Search" class="search-page">
+		<div id="toolbars">
 			<ion-toolbar class="searchbar">
 				<ion-searchbar
 					:debounce="50"
@@ -115,13 +116,26 @@ function goToSong(searchResult: SearchResult): void {
 					inputmode="search"
 					enterkeyhint="search"
 					@ion-input="searched = false"
-					@keydown.enter="searchFor(searchTerm)"
+					@keydown.enter="searchFor($event.target.value)"
 				/>
 			</ion-toolbar>
-		</template>
+			<ion-toolbar class="filters">
+				<ion-segment v-model="filter" @ion-change="searched = true" :disabled="!searchTerm">
+					<ion-segment-button value="top-results">Top Results</ion-segment-button>
+					<ion-segment-button value="songs">Songs</ion-segment-button>
+					<ion-segment-button value="artists">Artists</ion-segment-button>
+					<ion-segment-button value="albums">Albums</ion-segment-button>
+				</ion-segment>
+			</ion-toolbar>
+		</div>
 
 		<div>
-			<ion-list v-if="!(searched || isLoading)" id="search-suggestions">
+			<h2 class="no-results-found" v-if="searched && !isLoading && !searchResults.length">
+				<ion-icon :icon="sadIcon" />
+				No results found
+			</h2>
+
+			<ion-list v-if="searchTerm && !(searched || isLoading)" id="search-suggestions">
 				<ion-item
 					button
 					class="search-suggestion"
@@ -136,35 +150,21 @@ function goToSong(searchResult: SearchResult): void {
 					</ion-label>
 				</ion-item>
 			</ion-list>
-
 			<ion-list v-else id="search-song-items">
-				<GenericSongItem
-					v-for="(searchResult, i) of searchResults"
-					:key="i"
-					:title="searchResult.title"
-					:artists="searchResult.artists"
-					:artwork="searchResult.artwork"
-					:type="searchResult.type"
-					@item-click="playNow(searchResult)"
-					@context-menu-click="goToSong(searchResult)"
-				>
-					<template #options>
-						<ion-item :button="true" :detail="false" @click="playNow(searchResult)">
-							<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
-							Play now
-						</ion-item>
-
-						<ion-item :button="true" :detail="false" @click="playNext(searchResult)">
-							<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
-							Play next
-						</ion-item>
-
-						<ion-item :button="true" :detail="false" @click="addToQueue(searchResult)">
-							<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
-							Add to queue
-						</ion-item>
-					</template>
-				</GenericSongItem>
+				<template v-for="(searchResult, i) of searchResults" :key="searchResult.id ?? i">
+					<SongSearchResult
+						v-if="searchResult.kind === 'song' || searchResult.kind === 'songPreview'"
+						:search-result
+					/>
+					<ArtistSearchResult
+						v-else-if="searchResult.kind === 'artist' || searchResult.kind === 'artistPreview'"
+						:search-result
+					/>
+					<AlbumSearchResult
+						v-else-if="searchResult.kind === 'album' || searchResult.kind === 'albumPreview'"
+						:search-result
+					/>
+				</template>
 			</ion-list>
 			<ion-list v-if="isLoading && searchResults.length < 25">
 				<SkeletonItem v-for="i in 25 - searchResults.length" :key="i + searchResults.length" />
@@ -178,32 +178,98 @@ function goToSong(searchResult: SearchResult): void {
 </template>
 
 <style global>
-ion-header:not(#search) {
-	& > ion-toolbar {
-		--border-color: transparent;
+.ios {
+	.search-page ion-header {
+		.header-background {
+			backdrop-filter: none !important;
+		}
+
+		& > ion-toolbar {
+			--background: transparent;
+			--border-color: transparent;
+		}
+	}
+
+	ion-header.header-collapse-condense-inactive ~ ion-content {
+		& > #toolbars::before {
+			opacity: 0;
+		}
 	}
 }
 </style>
 
 <style scoped>
-.searchbar {
-	transition: opacity, height, 150ms;
-	opacity: var(--opacity-scale);
-	height: calc(var(--min-height) + 8px);
-	transform-origin: top center;
-	transform: scaleY(var(--opacity-scale));
-}
+.ios {
+	#toolbars {
+		&::before {
+			pointer-events: none;
+			transition:
+				opacity,
+				backdrop-filter,
+				75ms ease-in-out;
 
-.header-collapse-condense-inactive > .searchbar {
-	height: 0;
-}
+			content: "";
+			position: absolute;
 
-:not(.header-collapse-condense-inactive) > .searchbar {
-	ion-searchbar {
-		& ion-icon {
-			font-size: 0.1em;
+			--offset: calc(44px + var(--ion-safe-area-top));
+			top: calc(var(--offset) * -1);
+			left: 0;
+			width: 100%;
+			height: calc(100% + var(--offset));
+
+			background: color-mix(
+				in srgb,
+				var(
+						--ion-toolbar-background,
+						var(--ion-color-step-50, var(--ion-background-color-step-50, #f7f7f7))
+					)
+					80%,
+				transparent
+			);
+			backdrop-filter: saturate(180%) blur(20px);
+		}
+
+		position: sticky;
+		top: 0;
+		z-index: 10;
+
+		& > ion-toolbar {
+			--border-color: transparent;
+			--background: transparent;
+		}
+
+		& > .searchbar > ion-searchbar {
+			padding-block: 0;
+		}
+
+		& > .filters {
+			padding-inline: 12px;
 		}
 	}
+
+	.header-collapse-condense-inactive {
+		& > .searchbar,
+		& > .filters {
+			height: 0;
+			opacity: 0;
+		}
+	}
+
+	:not(.header-collapse-condense-inactive) {
+		& > .searchbar {
+			& ion-icon {
+				font-size: 0.1em;
+			}
+		}
+	}
+}
+
+.no-results-found {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 0.25rem;
+	font-size: 1.4rem;
 }
 
 #search-suggestions {

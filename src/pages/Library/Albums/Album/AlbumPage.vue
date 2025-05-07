@@ -1,3 +1,4 @@
+j
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -68,21 +69,6 @@ const groupedSongs = computed(() => {
 	return Map.groupBy(songs, ({ discNumber }) => discNumber ?? 0);
 });
 
-async function playAlbum(shuffle = false): Promise<void> {
-	if (!album.value) return;
-	const songs = await musicPlayer.services.getAvailableSongs(
-		album.value.songs.map(({ song }) => song),
-	);
-
-	musicPlayer.state.setQueue(songs);
-
-	if (shuffle) {
-		musicPlayer.state.shuffleQueue();
-	}
-
-	musicPlayer.state.queueIndex = 0;
-}
-
 async function playDisc(albumSongs: Filled<AlbumSong[]>): Promise<void> {
 	const songs = await musicPlayer.services.getAvailableSongs(albumSongs.map(({ song }) => song));
 	musicPlayer.state.setQueue(songs);
@@ -107,7 +93,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 	<AppPage :title="album?.title" :show-content-header="false" :back-button="previousRouteName">
 		<template #toolbar-end>
 			<ion-buttons id="album-actions">
-				<ContextMenu event="click" :move="false" y="top" x="right" :backdrop="false" :haptics="false">
+				<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
 					<ion-button>
 						<ion-icon slot="icon-only" :icon="ellipsisIcon" />
 					</ion-button>
@@ -145,7 +131,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 			<ion-header collapse="condense">
 				<ion-toolbar>
 					<ion-title class="ion-text-nowrap" size="large">
-						<WrappingMarquee :text="album.title" />
+						<WrappingMarquee :text="album.title ?? 'Unknown album'" />
 					</ion-title>
 				</ion-toolbar>
 			</ion-header>
@@ -171,12 +157,15 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 			</h2>
 
 			<div class="buttons">
-				<ion-button strong @click="playAlbum(false)">
+				<ion-button strong @click="musicPlayer.playAlbumNow(album)">
 					<ion-icon slot="start" :icon="playIcon" />
 					Play
 				</ion-button>
 
-				<ion-button strong @click="playAlbum(true)">
+				<ion-button
+					strong
+					@click="musicPlayer.playAlbumNow(album).then(musicPlayer.state.shuffleQueue)"
+				>
 					<ion-icon slot="start" :icon="shuffleIcon" />
 					Shuffle
 				</ion-button>
@@ -218,12 +207,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 		padding-inline: 8px;
 	}
 
-	:global(& .context-menu-list) {
-		box-shadow: 0 0 16px #0003;
-		overflow: visible;
-	}
-
-	:global(& .context-menu-list > ion-item) {
+	:global(& .context-menu ion-item) {
 		--background: var(--ion-background-color-step-100, #fff);
 	}
 }

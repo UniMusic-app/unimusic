@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, ref, shallowReactive, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import {
@@ -22,9 +22,12 @@ import {
 	SongType,
 } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
+import { useNavigation } from "@/stores/navigation";
+import { take } from "@/utils/iterators";
 import { watchAsync } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
+const navigation = useNavigation();
 const router = useRouter();
 const route = useRoute();
 
@@ -34,7 +37,8 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const songs = reactive<(Song | SongPreview)[]>([]);
+const songs = shallowReactive<(Song | SongPreview)[]>([]);
+const iterator = shallowRef<AsyncGenerator<Song | SongPreview>>();
 
 const isLoading = ref(true);
 const artist = ref<Filled<Artist>>();
@@ -59,37 +63,27 @@ watchAsync(
 	{ immediate: true },
 );
 
-const offset = ref(0);
+async function fetchMoreSongs(): Promise<void> {
+	if (!iterator.value) return;
+	for await (const result of take(iterator.value, 25)) {
+		songs.push(result);
+	}
+}
+
 watchAsync(artist, async (artist) => {
 	songs.length = 0;
-	offset.value = 0;
 	if (!artist) return;
 
+	iterator.value = musicPlayer.services.getArtistsSongs(artist);
 	isLoading.value = true;
-	for await (const song of musicPlayer.services.getArtistsSongs(artist, 0)) {
-		songs.push(song);
-	}
+	await fetchMoreSongs();
 	isLoading.value = false;
 });
 
 async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 	if (!artist.value) return;
-	offset.value += 1;
-	for await (const song of musicPlayer.services.getArtistsSongs(artist.value, offset.value)) {
-		songs.push(song);
-	}
+	await fetchMoreSongs();
 	await event.target.complete();
-}
-
-async function playSong(song: Song | SongPreview<SongType>): Promise<void> {
-	await musicPlayer.state.addToQueue(
-		await musicPlayer.services.retrieveSong(song),
-		musicPlayer.state.queueIndex,
-	);
-}
-
-async function goToSong(song: Song | SongPreview<SongType>): Promise<void> {
-	await router.push(`/items/songs/${song.type}/${song.id}`);
 }
 </script>
 
@@ -101,8 +95,9 @@ async function goToSong(song: Song | SongPreview<SongType>): Promise<void> {
 		<ion-list v-else-if="artist">
 			<GenericSongItem
 				v-for="song in songs"
-				@item-click="playSong(song)"
-				@context-menu-click="goToSong(song)"
+				@item-click="musicPlayer.playSongNow(song)"
+				@context-menu-click="navigation.goToSong(song)"
+				:song
 				:key="song.id"
 				:title="song.title"
 				:album="song.album"

@@ -2,24 +2,41 @@ import { MaybeRefOrGetter } from "@vueuse/core";
 import { useIDBKeyval, UseIDBOptions } from "@vueuse/integrations/useIDBKeyval.mjs";
 import {
 	computed,
-	markRaw,
+	isProxy,
 	onMounted,
 	ref,
 	Ref,
+	toRaw,
 	watch,
 	WatchHandle,
 	WatchOptions,
 	WatchSource,
 } from "vue";
 
-export function markRawDeep<T extends object>(object: T): T {
-	markRaw(object);
-	for (const value of Object.values(object)) {
-		if (typeof value === "object") {
-			markRaw(value);
-		}
+/**
+ * Tries to deeply recreate an object, converting proxies to the current values.\
+ * This functions similarly to Svelte's $state.snapshot
+ */
+export function stateSnapshot<T>(object: T): T {
+	if (isProxy(object)) {
+		return stateSnapshot(toRaw(object));
+	} else if (typeof object !== "object") {
+		return object;
 	}
-	return object;
+
+	if (Array.isArray(object)) {
+		const cloned = [];
+		for (const value of object) {
+			cloned.push(stateSnapshot(value));
+		}
+		return cloned as T;
+	} else {
+		const cloned = {} as T;
+		for (const key in object) {
+			cloned[key] = stateSnapshot(object[key]);
+		}
+		return cloned;
+	}
 }
 
 export async function useIDBKeyvalAsync<T>(

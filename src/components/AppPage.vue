@@ -13,19 +13,20 @@ import {
 import { personCircle as personIcon } from "ionicons/icons";
 
 import { createSettingsModal } from "@/components/AppSettingsModal.vue";
-import { useElementBounding } from "@vueuse/core";
-import { computed, ref, useTemplateRef, watch } from "vue";
+import { computed } from "vue";
 
 const {
 	title,
 	backButton,
 	showPageHeader = true,
 	showContentHeader = true,
+	class: _class,
 } = defineProps<{
 	title?: string;
 	backButton?: string;
 	showPageHeader?: boolean;
 	showContentHeader?: boolean;
+	class?: string;
 }>();
 
 const slots = defineSlots<{
@@ -54,18 +55,10 @@ async function openSettings(): Promise<void> {
 	await modal.present();
 	await modal.onDidDismiss();
 }
-
-const header = useTemplateRef("header");
-
-const bounding = useElementBounding(header);
-const headerHeight = ref(0);
-watch(bounding.height, (height) => {
-	headerHeight.value = Math.max(headerHeight.value, height);
-});
 </script>
 
 <template>
-	<ion-page id="app-page" :style="{ '--header-height': `${headerHeight}px` }">
+	<ion-page id="app-page" :class="_class">
 		<Transition name="slide">
 			<ion-header v-if="showPageHeader" translucent>
 				<slot name="header-leading" />
@@ -100,7 +93,7 @@ watch(bounding.height, (height) => {
 
 		<ion-content fullscreen>
 			<Transition name="slide">
-				<ion-header ref="header" v-if="showContentHeader && title" collapse="condense">
+				<ion-header v-if="showContentHeader && title" collapse="condense">
 					<slot name="header-leading" />
 
 					<slot name="toolbar">

@@ -1,16 +1,12 @@
 <script lang="ts" setup>
 import LocalImg from "@/components/LocalImg.vue";
 
+import { IonButton, IonButtons, IonIcon, IonItem, IonLabel, IonList } from "@ionic/vue";
 import {
-	IonButton,
-	IonButtons,
-	IonIcon,
-	IonItem,
-	IonLabel,
-	IonList,
-	IonThumbnail,
-} from "@ionic/vue";
-import { add as addIcon, downloadOutline as importIcon } from "ionicons/icons";
+	add as addIcon,
+	downloadOutline as importIcon,
+	listOutline as playlistIcon,
+} from "ionicons/icons";
 
 import { useMusicPlayer } from "@/stores/music-player";
 
@@ -43,9 +39,12 @@ const musicPlayer = useMusicPlayer();
 				:key="playlist.id"
 				:router-link="`/items/playlists/${playlist.id}`"
 			>
-				<ion-thumbnail slot="start">
-					<LocalImg :src="playlist.artwork" :alt="`Artwork for playlist '${playlist.title}'`" />
-				</ion-thumbnail>
+				<LocalImg
+					slot="start"
+					:src="playlist.artwork"
+					:alt="`Artwork for playlist '${playlist.title}'`"
+					:fallback-icon="playlistIcon"
+				/>
 
 				<ion-label class="ion-text-nowrap">
 					<h2>{{ playlist.title }}</h2>
@@ -64,13 +63,10 @@ const musicPlayer = useMusicPlayer();
 		--background: transparent;
 		min-height: 60px;
 
-		& > ion-thumbnail {
-			display: flex;
-			align-items: center;
-
-			& > .local-img {
-				border-radius: 8px;
-			}
+		& > .local-img {
+			--img-height: 56px;
+			border-radius: 8px;
+			border: 0.55px solid #0002;
 		}
 	}
 }

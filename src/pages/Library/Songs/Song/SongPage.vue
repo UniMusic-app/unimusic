@@ -64,16 +64,6 @@ async function editSong(event: SongEditEvent): Promise<void> {
 	const refreshed = await musicPlayer.services.refreshSong(song.value);
 	song.value = refreshed && filledSong(refreshed);
 }
-
-async function playNow(): Promise<void> {
-	if (!song.value) return;
-
-	if (musicPlayer.state?.currentSong?.id === song.value.id) {
-		await musicPlayer.play();
-	} else {
-		await musicPlayer.state.addToQueue(song.value, musicPlayer.state.queueIndex);
-	}
-}
 </script>
 
 <template>
@@ -118,7 +108,7 @@ async function playNow(): Promise<void> {
 				{{ song.album }}
 			</RouterLink>
 
-			<ion-button :disabled="!song.available" strong @click="playNow">
+			<ion-button :disabled="!song.available" strong @click="musicPlayer.playSongNow(song)">
 				<ion-icon slot="start" :icon="playIcon" />
 				Play
 			</ion-button>

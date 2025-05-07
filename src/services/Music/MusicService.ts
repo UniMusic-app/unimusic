@@ -51,9 +51,18 @@ export class SilentError extends Error {
 	}
 }
 
-export interface Identifiable {
-	id: string;
-}
+export type SearchFilter = "top-results" | "songs" | "artists" | "albums";
+export type SearchResultItem<Type extends SongType = SongType> =
+	| Song<Type>
+	| SongPreview<Type>
+	| Artist<Type>
+	| ArtistPreview<Type>
+	| Album<Type>
+	| AlbumPreview<Type>;
+
+type AnyGenerator<T, TReturn = unknown, TNext = unknown> =
+	| Generator<T, TReturn, TNext>
+	| AsyncGenerator<T, TReturn, TNext>;
 
 export abstract class MusicService<
 	Type extends SongType = SongType,
@@ -227,25 +236,29 @@ export abstract class MusicService<
 		}
 	}
 
-	abstract handleSearchSongs(
+	handleSearchForItems?(
 		term: string,
-		offset: number,
-		options?: { signal?: AbortSignal },
-	): AsyncGenerator<SongPreview<Type> | Song<Type>>;
-	async *searchSongs(
+		filter: SearchFilter,
+		signal?: AbortSignal,
+	): AnyGenerator<SearchResultItem<Type>>;
+	async *searchForItems(
 		term: string,
-		offset = 0,
-		options?: { signal?: AbortSignal },
-	): AsyncGenerator<SongPreview<Type> | Song<Type>> {
-		this.log("searchSongs");
+		filter: SearchFilter,
+		signal?: AbortSignal,
+	): AsyncGenerator<SearchResultItem<Type>> {
+		this.log("searchForItems");
 		await this.initialize();
+
+		if (!this.handleSearchForItems) {
+			throw new Error("This service does not support handleSearchForItems");
+		}
 
 		const results = await this.withErrorHandling(
 			undefined!,
-			this.handleSearchSongs,
+			this.handleSearchForItems,
 			term,
-			offset,
-			options,
+			filter,
+			signal,
 		);
 		if (!results) return;
 
@@ -253,27 +266,34 @@ export abstract class MusicService<
 	}
 
 	abstract handleGetSongFromPreview(
-		searchResult: SongPreview<Type>,
+		songPreview: SongPreview<Type>,
 	): Song<Type> | Promise<Song<Type>>;
-	async getSongFromPreview(searchResult: SongPreview<Type>): Promise<Song<Type>> {
-		this.log("getSongFromSearchResult");
-		return await this.withUnrecoverableErrorHandling(this.handleGetSongFromPreview, searchResult);
+	async getSongFromPreview(songPreview: SongPreview<Type>): Promise<Song<Type>> {
+		this.log("getSongFromPreview");
+		return await this.withUnrecoverableErrorHandling(this.handleGetSongFromPreview, songPreview);
 	}
 
-	abstract handleSearchHints(term: string): string[] | Promise<string[]>;
-	async searchHints(term: string): Promise<string[]> {
-		this.log("searchHints");
+	handleGetSearchHints?(term: string): AnyGenerator<string>;
+	async *getSearchHints(term: string): AsyncGenerator<string> {
+		this.log("getSearchHints");
 		await this.initialize();
-		return await this.withErrorHandling([], this.handleSearchHints, term);
+		if (!this.handleGetSearchHints) {
+			throw new Error("This service does not support getSearchHints");
+		}
+
+		const searchHints = await this.withErrorHandling(undefined!, this.handleGetSearchHints, term);
+		if (!searchHints) return;
+
+		yield* searchHints;
 	}
 
-	handleGetLibrarySongs?(offset: number): AsyncGenerator<Song<Type>>;
-	async *getLibrarySongs(offset = 0): AsyncGenerator<Song<Type>> {
+	handleGetLibrarySongs?(): AnyGenerator<Song<Type>>;
+	async *getLibrarySongs(): AsyncGenerator<Song<Type>> {
 		this.log("librarySongs");
 		if (!this.handleGetLibrarySongs) return;
 
 		await this.initialize();
-		const songs = await this.withErrorHandling(undefined!, this.handleGetLibrarySongs, offset);
+		const songs = await this.withErrorHandling(undefined!, this.handleGetLibrarySongs);
 
 		for await (const song of songs) {
 			yield this.metadata.applyMetadata(song);
@@ -296,7 +316,7 @@ export abstract class MusicService<
 
 	handleGetLibraryAlbums?(options?: {
 		signal?: AbortSignal;
-	}): AsyncGenerator<AlbumPreview<Type> | Album<Type>>;
+	}): AnyGenerator<AlbumPreview<Type> | Album<Type>>;
 	async *getLibraryAlbums(options?: {
 		signal?: AbortSignal;
 	}): AsyncGenerator<AlbumPreview<Type> | Album<Type>> {
@@ -323,7 +343,7 @@ export abstract class MusicService<
 
 	handleGetLibraryArtists?(options?: {
 		signal?: AbortSignal;
-	}): AsyncGenerator<ArtistPreview<Type> | Artist<Type>>;
+	}): AnyGenerator<ArtistPreview<Type> | Artist<Type>>;
 	async *getLibraryArtists(options?: {
 		signal?: AbortSignal;
 	}): AsyncGenerator<ArtistPreview<Type> | Artist<Type>> {
@@ -372,6 +392,14 @@ export abstract class MusicService<
 		return album;
 	}
 
+	abstract handleGetAlbumFromPreview(
+		albumPreview: AlbumPreview<Type>,
+	): Album<Type> | Promise<Album<Type>>;
+	async getAlbumFromPreview(albumPreview: AlbumPreview<Type>): Promise<Album<Type>> {
+		this.log("getAlbumFromPreview");
+		return await this.withUnrecoverableErrorHandling(this.handleGetAlbumFromPreview, albumPreview);
+	}
+
 	handleGetPlaylist?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
 	async getPlaylist(url: URL): Promise<Maybe<Playlist>> {
 		this.log("getPlaylist");
@@ -396,13 +424,11 @@ export abstract class MusicService<
 
 	handleGetArtistsSongs?(
 		artist: Artist | Filled<Artist>,
-		offset: number,
-		options?: { signal?: AbortSignal },
-	): AsyncGenerator<Song<Type> | SongPreview<Type>>;
+		signal?: AbortSignal,
+	): AnyGenerator<Song<Type> | SongPreview<Type>>;
 	async *getArtistsSongs(
 		artist: Artist | Filled<Artist>,
-		offset = 0,
-		options?: { signal?: AbortSignal },
+		signal?: AbortSignal,
 	): AsyncGenerator<Song<Type> | SongPreview<Type>> {
 		this.log("getArtistsSongs");
 		if (!this.handleGetArtistsSongs) {
@@ -413,8 +439,7 @@ export abstract class MusicService<
 			undefined!,
 			this.handleGetArtistsSongs,
 			artist,
-			offset,
-			options,
+			signal,
 		);
 		if (!songs) return;
 

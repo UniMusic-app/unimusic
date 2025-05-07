@@ -2,7 +2,6 @@
 import { DisplayableArtist, filledDisplayableArtist, Song } from "@/services/Music/objects";
 import { MetadataOverride } from "@/stores/metadata";
 import { Maybe } from "@/utils/types";
-import { computedAsync } from "@vueuse/core";
 
 export type SongEditEvent = Maybe<MetadataOverride>;
 </script>
@@ -27,7 +26,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { formatGenres, generateSongStyle } from "@/utils/songs";
+import { formatGenres } from "@/utils/songs";
 import { usePresentingElement } from "@/utils/vue";
 
 const { trigger, song } = defineProps<{
@@ -43,14 +42,12 @@ const modal = useTemplateRef("modal");
 const presentingElement = usePresentingElement();
 
 const title = ref(song.title);
-const artists = ref([...song.artists.map(filledDisplayableArtist).map(({ title }) => title)]);
+const artists = ref([
+	...song.artists.map(filledDisplayableArtist).map(({ title }) => title ?? "Unknown Artist"),
+]);
 const album = ref(song.album);
 
 const artwork = ref(song.artwork);
-const style = computedAsync(
-	() => (artwork.value === song.artwork ? song.style : generateSongStyle(artwork.value)),
-	song.style,
-);
 
 const genres = ref([...song.genres]);
 const explicit = ref(song.explicit);
@@ -72,7 +69,6 @@ function edit(): void {
 		genres: toRaw(genres.value),
 		explicit: explicit.value,
 		artwork: toRaw(artwork.value),
-		style: style.value,
 	});
 
 	dismiss("editedSong");

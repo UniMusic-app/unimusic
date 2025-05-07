@@ -47,6 +47,7 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 		</div>
 		<div v-else class="album-cards">
 			<GenericAlbumCard
+				:album
 				class="album-card"
 				:router-link="`/items/albums/album/${album.type}/${album.id}`"
 				v-for="album in libraryAlbums"
@@ -77,7 +78,7 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 	grid-template-rows: auto;
 
 	justify-content: center;
-	align-items: center;
+	align-items: end;
 
 	animation: show-up 250ms ease-in;
 
@@ -99,6 +100,10 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 	}
 	gap: var(--gap);
 	grid-template-columns: repeat(var(--columns), calc(100% / var(--columns) - var(--gap)));
+
+	:global(& .album-card) {
+		width: 100%;
+	}
 }
 
 .skeleton-card {

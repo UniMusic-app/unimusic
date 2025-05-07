@@ -1,12 +1,25 @@
 <script lang="ts" setup>
-import { Haptics, ImpactStyle } from "@capacitor/haptics";
-import { IonList, onIonViewWillLeave } from "@ionic/vue";
 import { onLongPress } from "@vueuse/core";
-import { nextTick, ref, useTemplateRef } from "vue";
+import { nextTick, reactive, ref, useTemplateRef, watch } from "vue";
 
-const _slots = defineSlots<{
+import { isMobilePlatform } from "@/utils/os";
+import { sleep } from "@/utils/time";
+import { Maybe } from "@/utils/types";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
+import { IonList } from "@ionic/vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+
+const contextMenu = useTemplateRef("contextMenu");
+const contextMenuItem = useTemplateRef("contextMenuItem");
+const contextMenuOptions = useTemplateRef("contextMenuOptions");
+const contextMenuPreview = useTemplateRef("contextMenuPreview");
+
+const slots = defineSlots<{
 	default(): any;
 	options(): any;
+	preview(): any;
 }>();
 
 const emit = defineEmits<{
@@ -15,252 +28,280 @@ const emit = defineEmits<{
 
 const {
 	event = "contextmenu",
+	haptics = true,
 	move = true,
 	backdrop = true,
-	haptics = true,
+	position = "auto",
 	disabled = false,
-	x = "left",
-	y = "top",
 } = defineProps<{
 	event?: "click" | "contextmenu";
+	position?: "auto" | "top" | "bottom";
 	move?: boolean;
-	disabled?: boolean;
 	backdrop?: boolean;
 	haptics?: boolean;
-	x?: "left" | "center" | "right" | (string & {});
-	y?: "top" | "center" | "bottom" | (string & {});
+	disabled?: boolean;
 }>();
 
-const opened = ref(false);
-
-const unpopoverElement = useTemplateRef("unpopoverElement");
-if (event === "contextmenu") {
+if (isMobilePlatform() && event === "contextmenu") {
 	onLongPress(
-		unpopoverElement,
+		contextMenuItem,
 		async (event) => {
 			if (event.target instanceof HTMLElement) {
-				if ("contextMenuIgnore" in event.target.dataset) return;
+				if ("contextMenuIgnore" in event.target.dataset || !event.target.matches(":hover")) {
+					return;
+				}
 			}
-			await open();
+			await openContextMenu();
 		},
 		{ delay: 200, modifiers: { prevent: true } },
 	);
 }
 
-const popoverElement = useTemplateRef("popoverElement");
-const options = useTemplateRef("contextMenuOptions");
+const state = ref<"closed" | "closing" | "opening" | "opened">("closed");
 
-const style = ref<Record<string, string>>({});
+const initialStyle = {
+	"--item-top": "auto",
+	"--item-max-top": "auto",
+	"--item-bottom": "auto",
+	"--item-min-bottom": "auto",
+	"--item-max-bottom": "auto",
+	"--item-left": "auto",
+	"--item-right": "auto",
+	"--item-width": "auto",
+	"--item-height": "auto",
+	"--item-max-height": "auto",
 
-async function open(): Promise<void> {
-	if (disabled || opened.value) return;
+	"--flex-direction": "column",
+	"--flex-align": "start",
+	"--direction-y": "top",
+	"--direction-x": "left",
+
+	"--options-height": "auto",
+};
+
+const style = reactive({ ...initialStyle });
+
+function resetStyle(): void {
+	Object.assign(style, initialStyle);
+}
+
+async function openContextMenu(): Promise<void> {
+	if (disabled) return;
 
 	if (haptics) {
 		await Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+		await sleep(90);
 	}
 
-	opened.value = true;
-
-	const { top, left, width, height } = unpopoverElement.value!.getBoundingClientRect();
-
+	state.value = "opening";
 	await nextTick();
 
-	const optionsChildren = options.value?.$el?.children?.length ?? 0;
+	let $contextMenu = contextMenu.value;
+	let $contextMenuItem = contextMenuItem.value;
+	let $contextMenuPreview = contextMenuPreview.value;
+	let $contextMenuOptions = contextMenuOptions.value?.$el as Maybe<HTMLElement>;
+	if (!$contextMenu || !$contextMenuItem || !$contextMenuPreview) return;
 
-	style.value = {
-		"--context-menu-direction-x": x,
-		"--context-menu-direction-y": y,
-		"--context-menu-item-top": `${top}px`,
-		"--context-menu-item-left": `${left}px`,
-		"--context-menu-item-width": `${width}px`,
-		"--context-menu-item-height": `${height}px`,
-		"--context-menu-options-height": `${48 * optionsChildren}px`,
-	};
+	const itemRect = $contextMenuItem.getBoundingClientRect();
 
-	popoverElement.value?.showPopover();
+	const optionsChildren = $contextMenuOptions?.children?.length ?? 0;
+	const approximateOptionsHeight = `${optionsChildren > 0 ? optionsChildren * 44 + 8 : 0}px`;
+
+	// We first reset all styles and recalculate what's appropriate now
+	resetStyle();
+
+	style["--item-top"] = `${itemRect.top}px`;
+	style["--item-max-top"] =
+		`calc(100vh - var(--move-item-height, ${itemRect.height}px) - ${approximateOptionsHeight} - var(--ion-safe-area-bottom))`;
+
+	style["--item-left"] = `${itemRect.left}px`;
+	style["--item-width"] = `${itemRect.width}px`;
+	style["--item-height"] = `${itemRect.height}px`;
+	style["--item-max-height"] = move ? "var(--move-item-height)" : style["--item-height"];
+	style["--options-height"] = approximateOptionsHeight;
+
+	let directionY = "top";
+	let directionX = "left";
+
+	if (itemRect.left > window.innerWidth / 2) {
+		style["--item-left"] = "auto";
+		style["--item-right"] = `${window.innerWidth - itemRect.right}px`;
+		style["--flex-align"] = "end";
+
+		directionX = "right";
+	}
+
+	if (position === "bottom" || (position === "auto" && itemRect.top > window.innerHeight / 2)) {
+		style["--item-bottom"] = `${Math.max(window.innerHeight - itemRect.bottom, 0)}px`;
+		style["--item-min-bottom"] = `var(--ion-safe-area-bottom)`;
+		style["--item-max-bottom"] =
+			`calc(${window.innerHeight - itemRect.height}px - ${approximateOptionsHeight})`;
+
+		style["--item-top"] = "auto";
+		style["--item-max-top"] = "auto";
+
+		style["--flex-direction"] = "column-reverse";
+
+		directionY = "bottom";
+	}
+
+	style["--direction-x"] = directionX;
+	style["--direction-y"] = directionY;
+
+	// Because we want to use those styles as initial position, we re-open the modal again
+	state.value = "closed";
+	await nextTick();
+	state.value = "opening";
+	await nextTick();
+
+	$contextMenu = contextMenu.value;
+	$contextMenuItem = contextMenuItem.value;
+	$contextMenuPreview = contextMenuPreview.value;
+	$contextMenuOptions = contextMenuOptions.value?.$el as Maybe<HTMLElement>;
+	if (!$contextMenu || !$contextMenuItem || !$contextMenuPreview) return;
+
+	// Adjust the height post-mortem to be accurate
+	if (move) {
+		$contextMenu.addEventListener(
+			"transitionend",
+			() => (style["--item-max-height"] = `${$contextMenuPreview.firstElementChild?.clientHeight}px`),
+			{ once: true },
+		);
+	}
+
+	// NOTE: This 2 frame delay is required to properly work on WebKit
+	requestAnimationFrame(() => (state.value = "opened"));
+	$contextMenu.showPopover();
 	emit("visibilitychange", true);
 }
 
-function close(): void {
-	const element = popoverElement.value;
-	if (!opened.value || !element || element.classList.contains("closed")) {
+function closeContextMenu(event?: MouseEvent): void {
+	if (state.value === "closed") {
 		return;
 	}
 
-	element.classList.add("closed");
-	element.addEventListener("animationend", () => {
-		opened.value = false;
-	});
+	if (event && "instantClose" in (event.target as HTMLElement).dataset) {
+		state.value = "closed";
+	} else {
+		state.value = "closing";
+	}
 
 	emit("visibilitychange", false);
 }
 
-onIonViewWillLeave(() => {
-	if (!opened.value) return;
-	opened.value = false;
+function immediatelyCloseContextMenu(): void {
+	state.value = "closed";
+	resetStyle();
 	emit("visibilitychange", false);
-});
+}
+
+async function toggleContextMenu(): Promise<void> {
+	switch (state.value) {
+		case "opening":
+		case "opened":
+			closeContextMenu();
+			break;
+		case "closing":
+		case "closed":
+			await openContextMenu();
+			break;
+	}
+}
+
+// Immediately close ContextMenu on route change
+watch(
+	() => route.fullPath,
+	() => immediatelyCloseContextMenu(),
+);
 </script>
 
 <template>
-	<template v-if="opened">
-		<div class="context-menu-dummy" :style />
+	<span @[event].prevent="toggleContextMenu" ref="contextMenuItem" class="context-menu-item">
+		<slot />
+	</span>
+
+	<div
+		v-if="state !== 'closed'"
+		ref="contextMenu"
+		popover="manual"
+		class="context-menu"
+		:class="{ [state]: true, move, backdrop, [style['--direction-x']]: true }"
+		:style
+		@click="closeContextMenu($event)"
+	>
+		<div class="backdrop" />
+
 		<div
-			class="context-menu"
-			ref="popoverElement"
-			popover="manual"
-			:style
-			:class="{ move, backdrop }"
-			open
+			class="preview-container"
+			@transitionend.self="state === 'closing' && immediatelyCloseContextMenu()"
 		>
-			<div class="backdrop" @click.self="close" />
-			<div class="context-menu-item" @click="close">
-				<slot />
+			<div class="preview" ref="contextMenuPreview">
+				<slot name="preview">
+					<slot />
+				</slot>
 			</div>
-			<ion-list ref="contextMenuOptions" inset class="context-menu-list" @click="close">
+
+			<ion-list ref="contextMenuOptions" v-if="slots.options" class="options" inset>
 				<slot name="options" />
 			</ion-list>
 		</div>
-	</template>
-	<div class="context-item-container" v-else ref="unpopoverElement" @[event].prevent="open">
-		<slot />
 	</div>
 </template>
 
 <style>
-@keyframes move-in {
-	from {
-		top: var(--context-menu-item-top);
-		left: var(--context-menu-item-left);
-		width: var(--context-menu-item-width);
-		height: var(--context-menu-item-height);
+/** Zoom out animation when context menu is opened */
+ion-app {
+	&:has(> ion-modal) {
+		& > ion-modal .ion-page {
+			&:has(.context-menu.move.opened) {
+				transition: transform 250ms ease-out;
+				transform: scale(95%);
+			}
+
+			&:has(.context-menu.move:not(.opened)) {
+				transition: transform 250ms ease-out;
+				transform: scale(100%);
+			}
+		}
 	}
 
-	to {
-		top: var(--context-menu-top);
-		left: var(--context-menu-left);
-		width: var(--context-menu-width);
-		height: var(--context-menu-height);
-	}
-}
+	&:not(:has(> ion-modal)) {
+		&:has(.context-menu.move.opened) {
+			transition: transform 250ms ease-out;
+			transform: scale(91.5%);
+		}
 
-@keyframes move-out {
-	from {
-		top: var(--context-menu-top);
-		left: var(--context-menu-left);
-		width: var(--context-menu-width);
-	}
-
-	to {
-		top: var(--context-menu-item-top);
-		left: var(--context-menu-item-left);
-		width: var(--context-menu-item-width);
-
-		&:not(.move) {
-			top: var(--context-menu-top);
-			left: var(--context-menu-left);
+		&:has(.context-menu.move:not(.opened)) {
+			transition: transform 250ms ease-out;
+			transform: scale(100%);
 		}
 	}
 }
 
-@keyframes backdrop-in {
-	from {
-		opacity: 0%;
-		backdrop-filter: blur(0);
-	}
+.context-menu-item {
+	display: block;
 
-	to {
-		opacity: 100%;
-		backdrop-filter: blur(12px);
+	&:has(+ .context-menu:not(.closed)) {
+		visibility: hidden;
 	}
-}
-
-@keyframes backdrop-out {
-	from {
-		opacity: 100%;
-		backdrop-filter: blur(12px);
-	}
-
-	to {
-		opacity: 0%;
-		backdrop-filter: blur(0);
-	}
-}
-
-@keyframes list-in {
-	from {
-		transform: scale(0%);
-	}
-
-	to {
-		transform: scale(100%);
-	}
-}
-
-@keyframes list-out {
-	from {
-		transform: scale(100%);
-		opacity: 100%;
-	}
-
-	to {
-		transform: scale(0%);
-		opacity: 0%;
-	}
-}
-
-.context-menu-dummy {
-	width: var(--context-menu-item-width);
-	height: var(--context-menu-item-height);
 }
 
 .context-menu {
-	--context-menu-transition-duration: 450ms;
-	--context-menu-transition-easing: cubic-bezier(0.175, 0.885, 0.32, 1.075);
-	--context-menu-transition-easing-out: cubic-bezier(0.32, 0.885, 0.55, 1.175);
-	--context-menu-transition: all var(--context-menu-transition-duration)
-		var(--context-menu-transition-easing);
+	--transition-duration: 350ms;
+	--transition-easing: cubic-bezier(0.175, 0.885, 0.32, 1.075);
 
 	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
 
-	border: none;
 	padding: 0;
 	margin: 0;
-	overflow: hidden;
-
 	background-color: transparent;
 
-	transition: var(--context-menu-transition);
-
-	--context-menu-top: clamp(
-		calc(var(--ion-safe-area-top) + 32px),
-		calc(var(--context-menu-item-top) - 64px),
-		calc(90vh - 64px - var(--context-menu-item-height) - var(--context-menu-options-height))
-	);
-	--context-menu-width: min(400px, 70%);
-	--context-menu-left: calc(
-		var(--context-menu-item-left) - var(--context-menu-width) * 0.9 + var(--context-menu-item-width)
-	);
-	--context-menu-height: 100%;
-
-	&.move {
-		--context-menu-width: min(500px, 90%);
-		--context-menu-height: 100%;
-		--context-menu-top: clamp(
-			calc(var(--ion-safe-area-top) + 64px),
-			calc(var(--context-menu-item-top) - 64px),
-			calc(90vh - 64px - var(--context-menu-item-height) - var(--context-menu-options-height))
-		);
-		--context-menu-left: calc((100% - var(--context-menu-width)) / 2);
-	}
-
-	animation: move-in var(--context-menu-transition-duration) var(--context-menu-transition-easing)
-		forwards;
-
-	&.closed {
-		animation: move-out var(--context-menu-transition-duration) var(--context-menu-transition-easing)
-			forwards;
-	}
+	overflow: hidden;
+	border: none;
 
 	/**
 	 * Popovers backdrop is a pain in the ass:
@@ -270,50 +311,121 @@ onIonViewWillLeave(() => {
 	&::backdrop {
 		display: none;
 	}
-
 	& > .backdrop {
+		content: "";
+
 		position: fixed;
 		top: 0;
 		left: 0;
 		width: 100vw;
 		height: 100vh;
-		content: "";
-	}
 
-	&.backdrop > .backdrop {
+		transition:
+			backdrop-filter,
+			background-color,
+			var(--transition-duration) var(--transition-easing);
+	}
+	&.backdrop.opened > .backdrop {
+		backdrop-filter: blur(12px);
 		background-color: rgba(0, 0, 0, 0.2);
-		animation: backdrop-in var(--context-menu-transition-duration)
-			var(--context-menu-transition-easing) forwards;
 	}
 
-	&.backdrop.closed > .backdrop {
-		animation: backdrop-out var(--context-menu-transition-duration)
-			var(--context-menu-transition-easing-out) forwards;
-	}
+	--options-width: min(400px, 70vw);
+	--move-item-width: min(500px, 90vw);
 
-	& > .context-menu-item {
-		--context-menu-item-background: var(--ion-background-color-step-100, #fff);
-	}
+	& .preview-container {
+		transition:
+			top,
+			left,
+			width,
+			height,
+			var(--transition-duration) var(--transition-easing);
 
-	&:not(.move) > .context-menu-item {
 		position: fixed;
-		top: var(--context-menu-item-top);
-		left: var(--context-menu-item-left);
+		top: var(--item-top);
+		bottom: var(--item-bottom);
+		left: var(--item-left);
+		right: var(--item-right);
+		width: 100%;
+		height: 100%;
+
+		display: flex;
+		flex-direction: var(--flex-direction);
+		align-items: var(--flex-align);
+	}
+	&.opened .preview-container {
+		/* Add tiny offset to always trigger transitionend event */
+		top: clamp(var(--ion-safe-area-top), calc(var(--item-top) + 0.001px), var(--item-max-top));
+		bottom: clamp(var(--item-min-bottom), calc(var(--item-bottom) + 0.001px), var(--item-max-bottom));
+	}
+	&.opened.move .preview-container {
+		top: clamp(
+			calc(var(--ion-safe-area-top) + 8px),
+			calc(var(--item-top) - var(--options-height)),
+			var(--item-max-top)
+		);
+		bottom: clamp(var(--item-min-bottom), var(--item-bottom), var(--item-max-bottom));
+	}
+	&.opened.move.left .preview-container {
+		left: clamp(
+			8px,
+			calc((100vw - var(--move-item-width)) / 2),
+			calc(100vw - var(--move-item-width))
+		);
+	}
+	&.opened.move.right .preview-container {
+		right: clamp(
+			8px,
+			calc((100vw - var(--move-item-width)) / 2),
+			calc(100vw - var(--move-item-width))
+		);
 	}
 
-	& > .context-menu-list {
+	& .preview {
+		transition:
+			width,
+			height,
+			filter,
+			var(--transition-duration) var(--transition-easing);
+		display: flex;
+		flex-direction: column;
+
+		interpolate-size: allow-keywords;
+
+		width: var(--item-width);
+		height: var(--item-height);
+		max-height: var(--item-max-height);
+	}
+	&.closed.move .preview {
+		width: var(--item-width);
+		height: var(--item-height);
+	}
+	&.opened .preview {
+		filter: drop-shadow(0 0 16px #0004);
+	}
+	&.opened.move .preview {
+		width: var(--move-item-width);
+		height: var(--move-item-height, max-content);
+	}
+
+	& .options {
 		margin: 0;
-		margin-top: 0.75rem;
-		text-align: left;
+		margin-block: 8px;
+		width: var(--options-width);
 
-		min-width: max-content;
-		width: 90%;
-
-		transform-origin: var(--context-menu-direction-y) var(--context-menu-direction-x);
-		animation: list-in var(--context-menu-transition-duration) var(--context-menu-transition-easing);
+		transition:
+			opacity,
+			transform,
+			filter,
+			var(--transition-duration) var(--transition-easing);
+		transform-origin: var(--direction-y) var(--direction-x);
+		transform: scale(0%);
+		opacity: 30%;
 
 		background-color: transparent;
 		backdrop-filter: blur(6px) saturate(200%);
+
+		filter: drop-shadow(0 0 16px #0004);
 
 		& > ion-item {
 			opacity: 90%;
@@ -336,10 +448,9 @@ onIonViewWillLeave(() => {
 			outline: 0.02px solid var(--ion-background-color-step-200);
 		}
 	}
-
-	&.closed > .context-menu-list {
-		animation: list-out var(--context-menu-transition-duration)
-			var(--context-menu-transition-easing-out);
+	&.opened .options {
+		transform: scale(100%);
+		opacity: 100%;
 	}
 }
 </style>

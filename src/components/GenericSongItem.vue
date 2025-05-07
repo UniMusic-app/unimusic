@@ -1,19 +1,31 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 
-import ContextMenu from "@/components/ContextMenu.vue";
 import LocalImg from "@/components/LocalImg.vue";
-import { IonIcon, IonItem, IonLabel, IonNote, IonReorder } from "@ionic/vue";
-import { compass as compassIcon, musicalNote as musicalNoteIcon } from "ionicons/icons";
+import { IonIcon, IonItem, IonItemDivider, IonLabel, IonNote, IonReorder } from "@ionic/vue";
+import {
+	addOutline as addIcon,
+	compassOutline as compassIcon,
+	hourglassOutline as hourglassIcon,
+	musicalNoteOutline as musicalNoteIcon,
+	playOutline as playIcon,
+	listCircleOutline as playlistAddIcon,
+	musicalNotesOutline as songIcon,
+} from "ionicons/icons";
 
-import { filledDisplayableArtist, Song } from "@/services/Music/objects";
-import { formatArtists, songTypeToDisplayName } from "@/utils/songs";
+import ContextMenu from "@/components/ContextMenu.vue";
+import { filledDisplayableArtist, Song, SongPreview } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
+import { formatArtists, kindToDisplayName, songTypeToDisplayName } from "@/utils/songs";
 import { secondsToMMSS } from "@/utils/time";
+
+import { openAddToPlaylistModal } from "@/pages/Library/Playlists/components/AddToPlaylistModal.vue";
 
 const {
 	button = true,
 	title,
 	type,
+	kind,
 	artists,
 	album,
 	artwork,
@@ -21,14 +33,19 @@ const {
 	reorder,
 	disabled,
 	routerLink,
+	song,
 } = defineProps<
 	Pick<Partial<Song>, "type" | "duration" | "album" | "artists" | "artwork" | "title"> & {
+		kind?: "song" | "songPreview";
 		reorder?: boolean;
 		button?: boolean;
 		disabled?: boolean;
 		routerLink?: string;
+		song?: Song | SongPreview;
 	}
 >();
+
+const musicPlayer = useMusicPlayer();
 
 const formattedArtists = computed(
 	() => artists && formatArtists(artists?.map(filledDisplayableArtist)),
@@ -54,25 +71,35 @@ function emitClick(event: PointerEvent): void {
 </script>
 
 <template>
-	<ContextMenu :class="$props.class" ref="contextMenu" @visibilitychange="contextMenuOpen = $event">
+	<ContextMenu
+		:class="$props.class"
+		ref="contextMenu"
+		@visibilitychange="contextMenuOpen = $event"
+		position="top"
+	>
 		<ion-item
 			:router-link
 			:button
 			:disabled
 			:detail="contextMenuOpen"
 			@click="emitClick"
+			class="song-item"
 			:class="$attrs.class"
 		>
 			<LocalImg
-				v-if="artwork"
 				slot="start"
 				:src="artwork"
 				:alt="`Artwork for song '${title}' by ${formattedArtists}`"
+				:fallback-icon="songIcon"
 			/>
 
 			<ion-label>
 				<h1>{{ title ?? "Unknown title" }}</h1>
-				<ion-note>
+				<ion-note class="ion-text-nowrap">
+					<p v-if="kind">
+						<ion-icon :icon="songIcon" />
+						{{ kindToDisplayName(kind) }}
+					</p>
 					<template v-if="artists && type">
 						<p>
 							<ion-icon :icon="compassIcon" />
@@ -84,95 +111,137 @@ function emitClick(event: PointerEvent): void {
 						</p>
 					</template>
 					<template v-else-if="album">
-						{{ album }}
+						<p>{{ album }}</p>
 					</template>
 					<template v-else-if="duration">
-						{{ formattedDuration }}
+						<p>{{ formattedDuration }}</p>
 					</template>
 				</ion-note>
 			</ion-label>
 
-			<ion-reorder data-context-menu-ignore v-if="reorder" slot="end" />
+			<ion-reorder v-if="reorder" slot="end" />
 		</ion-item>
 
 		<template #options>
-			<slot name="options" />
+			<slot name="options">
+				<template v-if="song">
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playSongNow(song)">
+						<ion-icon aria-hidden="true" :icon="playIcon" slot="end" />
+						Play now
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playSongNext(song)">
+						<ion-icon aria-hidden="true" :icon="hourglassIcon" slot="end" />
+						Play next
+					</ion-item>
+
+					<ion-item :button="true" :detail="false" @click="musicPlayer.playSongLast(song)">
+						<ion-icon aria-hidden="true" :icon="addIcon" slot="end" />
+						Add to queue
+					</ion-item>
+
+					<ion-item-divider />
+
+					<ion-item
+						data-instant-close
+						:button="true"
+						:detail="false"
+						@click="openAddToPlaylistModal(song)"
+					>
+						<ion-icon aria-hidden="true" :icon="playlistAddIcon" slot="end" />
+						Add to playlist
+					</ion-item>
+				</template>
+			</slot>
 		</template>
 	</ContextMenu>
 </template>
 
 <style scoped>
-.context-menu:not(.closed) > .context-menu-item > ion-item {
-	transition: var(--context-menu-transition);
-
-	--background: var(--context-menu-item-background);
-
-	border-radius: 24px;
-	--border-color: transparent;
-
-	--padding-top: 12px;
-	--padding-bottom: 12px;
-	--padding-start: 12px;
-	--padding-end: 12px;
-
-	& > .local-img {
-		transition: var(--context-menu-transition);
-
-		--img-border-radius: 12px;
-		--img-width: 96px;
-		--img-height: auto;
+.context-menu {
+	:global(&:has(.song-item)) {
+		--move-item-height: 8.65rem;
 	}
 
-	& > ion-label {
-		height: max-content;
-		white-space: normal;
+	&.opened .song-item {
+		--background: var(--ion-background-color-step-100, #fff);
 
-		& > h1 {
-			font-size: 1.2rem;
-			line-height: 1;
+		border-radius: 24px;
+		--border-color: transparent;
 
-			@supports (line-clamp: 2) {
-				line-clamp: 2;
-			}
+		--padding-top: 12px;
+		--padding-bottom: 12px;
+		--padding-start: 12px;
+		--padding-end: 12px;
 
-			@supports not (line-clamp: 2) {
-				max-height: 2em;
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
+		& > .local-img {
+			--img-height: 6.75rem;
+			border-radius: 12px;
 		}
 
-		& > ion-note {
-			margin-top: 1em;
-			flex-direction: column;
-			align-items: start;
+		& > ion-label {
+			height: max-content;
+			white-space: normal;
 
-			& > p {
+			& > h1 {
+				font-size: 1.2rem;
+				line-height: 1;
+
+				@supports (not (line-clamp: 2)) and (not (-webkit-line-clamp: 2)) {
+					max-height: 2em;
+					overflow: hidden;
+					text-overflow: ellipsis;
+				}
+
+				@supports (line-clamp: 2) {
+					line-clamp: 2;
+				}
+
+				@supports (-webkit-line-clamp: 2) {
+					overflow: hidden;
+					display: -webkit-box;
+					-webkit-line-clamp: 2;
+					-webkit-box-orient: vertical;
+				}
+			}
+
+			& > ion-note {
+				margin-top: 0.5rem;
+				flex-direction: column;
 				align-items: start;
-				font-size: 1.1em;
+
+				& > p {
+					line-height: 1;
+					align-items: start;
+					font-size: 0.85rem;
+				}
 			}
 		}
-	}
 
-	& > ion-reorder {
-		display: none;
+		& > ion-reorder {
+			display: none;
+		}
 	}
 }
 
-ion-item {
+.song-item {
 	& > .local-img {
 		pointer-events: none;
 
-		--img-border-radius: 8px;
 		--img-width: auto;
 		--img-height: 56px;
 
+		border-radius: 8px;
 		border: 0.55px solid #0002;
 	}
 
 	& > ion-label {
 		pointer-events: none;
 		white-space: nowrap;
+
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 
 		& > h1 {
 			font-size: 0.9em;
@@ -181,7 +250,7 @@ ion-item {
 		}
 
 		& > ion-note {
-			display: flex;
+			display: inline-flex;
 			gap: 0.5ch;
 			align-items: center;
 			font-size: 0.75em;

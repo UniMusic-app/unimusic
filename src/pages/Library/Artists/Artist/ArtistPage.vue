@@ -1,13 +1,6 @@
 <script lang="ts" setup>
 import AppPage from "@/components/AppPage.vue";
-import {
-	Artist,
-	Filled,
-	filledArtist,
-	Song,
-	SongPreview,
-	SongType,
-} from "@/services/Music/objects";
+import { Artist, Filled, filledArtist, SongType } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute, useRouter } from "vue-router";
 
@@ -18,11 +11,13 @@ import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
+import { useNavigation } from "@/stores/navigation";
 import { watchAsync } from "@/utils/vue";
 import { useWindowSize } from "@vueuse/core";
 import { computed, ref } from "vue";
 
 const musicPlayer = useMusicPlayer();
+const navigation = useNavigation();
 const router = useRouter();
 const route = useRoute();
 
@@ -48,17 +43,6 @@ watchAsync(
 	{ immediate: true },
 );
 
-async function playSong(song: Song | SongPreview<SongType, true>): Promise<void> {
-	await musicPlayer.state.addToQueue(
-		await musicPlayer.services.retrieveSong(song),
-		musicPlayer.state.queueIndex,
-	);
-}
-
-async function goToSong(song: Song | SongPreview<SongType, true>): Promise<void> {
-	await router.push(`/items/songs/${song.type}/${song.id}`);
-}
-
 const { width: windowWidth } = useWindowSize();
 </script>
 
@@ -72,7 +56,6 @@ const { width: windowWidth } = useWindowSize();
 			</h1>
 
 			<section class="top-songs" v-if="artist.songs.length">
-				<!-- TODO: Display all songs of the artist on click -->
 				<h1>
 					<RouterLink :to="`/items/artists/${artist.type}/${artist.id}/songs`">Top Songs</RouterLink>
 					<ion-icon :icon="chevronForwardIcon" />
@@ -86,10 +69,11 @@ const { width: windowWidth } = useWindowSize();
 						}"
 					>
 						<GenericSongItem
-							@item-click="playSong(song)"
-							@context-menu-click="goToSong(song)"
+							@item-click="musicPlayer.playSongNow(song)"
+							@context-menu-click="navigation.goToSong(song)"
 							class="song-item"
 							v-for="song in artist.songs"
+							:song
 							:key="song.id"
 							:title="song.title"
 							:artwork="song.artwork"
@@ -109,6 +93,7 @@ const { width: windowWidth } = useWindowSize();
 						<GenericAlbumCard
 							class="album-card"
 							v-for="album in artist.albums"
+							:album
 							:key="album.id"
 							:title="album.title"
 							:artwork="album.artwork"
@@ -212,8 +197,8 @@ const { width: windowWidth } = useWindowSize();
 		margin-inline: auto;
 
 		--img-width: auto;
-		max-width: calc(100% - 24px);
-		max-height: 192px;
+		--img-max-width: calc(100vw - 24px);
+		--img-max-height: 192px;
 
 		--shadow-color: rgba(var(--ion-color-dark-rgb), 0.1);
 
@@ -221,11 +206,6 @@ const { width: windowWidth } = useWindowSize();
 		box-shadow: 0 0 12px var(--shadow-color);
 		margin-block: 24px;
 		background-color: rgba(var(--ion-color-dark-rgb), 0.08);
-
-		& > .fallback {
-			--size: 36px;
-			filter: drop-shadow(0 0 12px var(--shadow-color));
-		}
 	}
 
 	& > .top-songs {
@@ -270,20 +250,18 @@ const { width: windowWidth } = useWindowSize();
 
 				width: max-content;
 
-				:global(& .context-menu.closed > .context-menu-item > ion-item) {
+				:global(& .context-menu:not(.opened) ion-item) {
 					--padding-start: 8px;
 				}
 
-				& > .song-item {
+				:deep(& .song-item) {
 					scroll-snap-align: start;
 
 					margin: 0;
 					background: transparent;
 					box-shadow: none;
 
-					:global(& > ion-item) {
-						--padding-start: 8px;
-					}
+					--padding-start: 8px;
 				}
 			}
 		}
@@ -316,14 +294,13 @@ const { width: windowWidth } = useWindowSize();
 			& > .album-cards {
 				display: flex;
 				flex-direction: row;
-				width: max-content;
 
 				gap: 8px;
 				padding-left: 8px;
 
-				& > .album-card {
+				:deep(& .album-card) {
 					scroll-snap-align: start;
-					width: 128px !important;
+					width: 128px;
 				}
 			}
 		}

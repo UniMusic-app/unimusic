@@ -3,7 +3,7 @@ import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { createKey, getKey, Identifiable, ItemKey, unpackKey } from "./shared";
 
 import { Maybe } from "@/utils/types";
-import { markRawDeep } from "@/utils/vue";
+import { stateSnapshot } from "@/utils/vue";
 import { Album, AlbumPreview } from "./album";
 import { Artist, ArtistPreview } from "./artist";
 import { Song, SongPreview, SongType } from "./song";
@@ -13,11 +13,7 @@ import { Song, SongPreview, SongType } from "./song";
 //       Which would make querying the data much more efficient
 // TODO: Add a way to dynamically retrieve data that IS NOT cached but
 // 		 some other item has it linked, e.g. useMusicServices().retrieveKey(...)
-export const itemCache = useIDBKeyval<Record<ItemKey<any>, Identifiable>>(
-	"itemCache",
-	{},
-	{ deep: false },
-);
+export const itemCache = useIDBKeyval<Record<ItemKey<any>, Identifiable>>("itemCache", {});
 
 export function generateCacheMethod<const Type extends SongType>(type: Type) {
 	interface ItemMap {
@@ -43,14 +39,14 @@ export function cache<ItemPromise extends Promise<Identifiable>>(
 export function cache<Item extends Identifiable>(item: Item): Item;
 export function cache<Item extends Identifiable>(item: Item | Promise<Item>): Item | Promise<Item> {
 	if (item instanceof Promise) {
-		return item.then((item) => {
-			itemCache.data.value[getKey(item)] = item;
-			return markRawDeep(item);
-		});
+		return item.then((item) => cache(item));
 	}
 
-	itemCache.data.value[getKey(item)] = item;
-	return markRawDeep(item);
+	// Vue still f's around with the state (even when it is marked as raw!)
+	// So instead we just take a snapshot of it.
+	const snapshot = stateSnapshot(item);
+	itemCache.data.value[getKey(item)] = snapshot;
+	return snapshot;
 }
 
 export function removeFromCache(item: Identifiable): boolean {
