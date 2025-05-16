@@ -1,16 +1,15 @@
 import { defineStore, storeToRefs } from "pinia";
-import { computed, watch } from "vue";
+import { computed, shallowRef, watch } from "vue";
 
 import { useLocalImages } from "@/stores/local-images";
 import { useMusicServices } from "@/stores/music-services";
 import { useMusicPlayerState } from "@/stores/music-state";
 
-import type { MusicService } from "@/services/Music/MusicService";
+import { MusicService } from "@/services/Music/MusicService";
 
 import { Album, AlbumPreview, filledAlbum, Song, SongPreview } from "@/services/Music/objects";
 import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
-import { Maybe } from "@/utils/types";
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
@@ -19,12 +18,12 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const { currentQueueSong, currentSong, autoplay, playing, time, volume } = storeToRefs(state);
 
 	const services = useMusicServices();
+	const { enabledServices } = storeToRefs(services);
 
 	// #region Managing services
-	const currentService = computed<Maybe<MusicService>>(() => {
-		const song = currentSong.value;
-		if (!song) return;
-		return services.getService(song.type);
+	const currentService = shallowRef<MusicService>();
+	watch([currentSong, enabledServices], ([song]) => {
+		currentService.value = services.getService(song?.type);
 	});
 
 	watch(volume, async (volume) => {
@@ -33,7 +32,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 
 	// Automatically change songs
 	let abortController = new AbortController();
-	watch(currentQueueSong, async () => {
+	watch([currentQueueSong, enabledServices], async () => {
 		abortController.abort();
 		abortController = new AbortController();
 
