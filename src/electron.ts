@@ -4,9 +4,6 @@
  */
 
 declare global {
-	// eslint-disable-next-line no-var
-	var __IS_ELECTRON__: boolean;
-
 	interface $ElectronMusicPlayer {
 		// musickit:
 		authorizeMusicKit: () => Promise<string | undefined>;

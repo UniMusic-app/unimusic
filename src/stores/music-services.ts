@@ -3,10 +3,6 @@ import { computed, reactive } from "vue";
 
 import { MusicService, SearchFilter, SearchResultItem } from "@/services/Music/MusicService";
 
-import { LocalMusicService } from "@/services/Music/LocalMusicService";
-import { MusicKitMusicService } from "@/services/Music/MusicKitMusicService";
-import { YouTubeMusicService } from "@/services/Music/YouTubeMusicService";
-
 import {
 	Album,
 	AlbumPreview,
@@ -30,7 +26,11 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		registeredServices[service.type] = service;
 	}
 
-	function getService(type: string): Maybe<MusicService> {
+	function getService(type?: string): Maybe<MusicService> {
+		if (!type) {
+			return;
+		}
+
 		const service = registeredServices[type];
 		if (service?.enabled?.value) {
 			return service;
@@ -178,9 +178,23 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	}
 	// #endregion
 
-	registerService(new MusicKitMusicService());
-	registerService(new YouTubeMusicService());
-	registerService(new LocalMusicService());
+	// #region Registering services
+	if (__SERVICE_LOCAL__) {
+		void import("@/services/Music/LocalMusicService").then((module) =>
+			registerService(new module.LocalMusicService()),
+		);
+	}
+	if (__SERVICE_MUSICKIT__) {
+		void import("@/services/Music/MusicKitMusicService").then((module) =>
+			registerService(new module.MusicKitMusicService()),
+		);
+	}
+	if (__SERVICE_YOUTUBE__) {
+		void import("@/services/Music/YouTubeMusicService").then((module) =>
+			registerService(new module.YouTubeMusicService()),
+		);
+	}
+	// #endregion
 
 	return {
 		registeredServices,

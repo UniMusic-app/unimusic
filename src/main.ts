@@ -1,3 +1,4 @@
+/* eslint-disable no-var */
 import { createPinia } from "pinia";
 import { createApp } from "vue";
 
@@ -40,6 +41,14 @@ import { isMobilePlatform } from "./utils/os";
 
 /* Vue store */
 const pinia = createPinia();
+
+declare global {
+	var __IS_ELECTRON__: boolean;
+
+	var __SERVICE_LOCAL__: boolean;
+	var __SERVICE_YOUTUBE__: boolean;
+	var __SERVICE_MUSICKIT__: boolean;
+}
 
 async function main(): Promise<void> {
 	if (__IS_ELECTRON__) {

@@ -38,6 +38,11 @@ Development is currently prioritized for iOS and macOS, however first stable rel
 
 ## Development
 
+### Conditional service bundling
+
+`SERVICE_{LOCAL,MUSICKIT,YOUTUBE}` environment variables can be used to conditonally toggle bundling music services.\
+All of them are set to `true` by default, meaning they are enabled.
+
 ### Shared
 
 These steps are needed for every platform to work properly

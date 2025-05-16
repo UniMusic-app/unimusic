@@ -427,6 +427,8 @@ export function musicKitIdType(id: string): "library" | "catalog" {
 	return "library";
 }
 
+// TODO: Warning/Note if user has no paid Apple Music Subscription but tried to enable it
+// TODO: Warning/Note if user has declined Apple Music permission
 export class MusicKitMusicService extends MusicService<"musickit"> {
 	logName = "MusicKitMusicService";
 	logColor = "#cc80dd";

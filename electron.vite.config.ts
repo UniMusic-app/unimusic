@@ -1,6 +1,6 @@
 import vue from "@vitejs/plugin-vue";
 import type { ElectronViteConfig } from "electron-vite";
-import path from "path";
+import { sharedAlias, sharedBuild, sharedDefine } from "./shared.vite.config";
 
 export default {
 	main: {
@@ -30,19 +30,18 @@ export default {
 		plugins: [vue()],
 		root: ".",
 		build: {
-			sourcemap: "inline",
 			emptyOutDir: false,
 			outDir: "./dist/electron/renderer",
-			rollupOptions: {
-				input: "./index.html",
-			},
+			rollupOptions: { input: "./index.html" },
+			...sharedBuild,
 		},
 		define: {
-			__IS_ELECTRON__: "true",
+			__IS_ELECTRON__: true,
+			...sharedDefine,
 		},
 		resolve: {
 			alias: {
-				"@": path.resolve(__dirname, "./src"),
+				...sharedAlias,
 			},
 		},
 	},
