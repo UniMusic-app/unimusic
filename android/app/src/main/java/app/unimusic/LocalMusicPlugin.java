@@ -3,10 +3,8 @@ package app.unimusic;
 import android.Manifest;
 import android.content.ContentUris;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
-import android.util.Base64;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -17,9 +15,6 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
-
-import java.io.DataInputStream;
-import java.io.InputStream;
 
 @CapacitorPlugin(
         name = "LocalMusic",
@@ -42,39 +37,6 @@ public class LocalMusicPlugin extends Plugin {
             return "externalStorage";
         }
     }
-
-    @PluginMethod()
-    public void readSong(PluginCall call) {
-        String path = call.getString("path");
-        if (path == null) {
-            call.reject("readSong failed: missing path parameter");
-            return;
-        }
-
-        Uri uri = Uri.parse(path);
-
-        try {
-            InputStream inputStream = getActivity().getContentResolver().openInputStream(uri);
-            if (inputStream == null) {
-                call.reject("getSong failed: inputStream is null");
-                return;
-            }
-
-            byte[] bytes = new byte[inputStream.available()];
-            DataInputStream dataInputStream = new DataInputStream(inputStream);
-            dataInputStream.readFully(bytes);
-
-            String base64Data = Base64.encodeToString(bytes, Base64.DEFAULT);
-
-            JSObject result = new JSObject();
-            result.put("data", base64Data);
-
-            call.resolve(result);
-        } catch (Exception exception) {
-            call.reject("readSong failed: " + exception.getMessage());
-        }
-    }
-
 
     @PluginMethod()
     public void getSongs(PluginCall call) {

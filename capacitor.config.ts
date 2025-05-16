@@ -22,6 +22,7 @@ const config: CapacitorConfig = {
 		"@capacitor/status-bar",
 	],
 	android: {
+		adjustMarginsForEdgeToEdge: "auto",
 		includePlugins: [
 			"@capacitor/app",
 			"@capacitor/filesystem",

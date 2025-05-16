@@ -6,7 +6,6 @@ export interface LocalSongInfo {
 }
 
 export interface LocalMusicPlugin {
-	readSong(data: { path: string }): Promise<{ data: string }>;
 	getSongs(): Promise<{ songs: LocalSongInfo[] }>;
 }
 

@@ -15,7 +15,6 @@ import {
 	SearchResultItem,
 } from "@/services/Music/MusicService";
 
-import { base64StringToBuffer } from "@/utils/buffer";
 import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
@@ -113,17 +112,13 @@ async function getFileStream(path: string): Promise<ReadableStream<Uint8Array>> 
 			});
 			return stream;
 		}
-		// TODO: Stream data on Android?
 		case "android": {
-			const { data } = await LocalMusic.readSong({ path });
-			const buffer = base64StringToBuffer(data);
-			const stream = new ReadableStream({
-				start(controller): void {
-					controller.enqueue(buffer);
-					controller.close();
-				},
-			});
-			return stream;
+			const fileSrc = Capacitor.convertFileSrc(path);
+			const response = await fetch(fileSrc);
+			if (!response.body) {
+				throw new Error(`Failed retrieving file stream for ${path}: body is empty.`);
+			}
+			return response.body;
 		}
 		default: {
 			const { Filesystem, Directory } = await import("@capacitor/filesystem");
@@ -144,11 +139,11 @@ async function getFileStream(path: string): Promise<ReadableStream<Uint8Array>> 
 
 async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 	const stream = await getFileStream(path);
-
-	const metadata = await parseWebStream(stream, {
-		path,
-		mimeType: audioMimeTypeFromPath(path),
-	});
+	const metadata = await parseWebStream(
+		stream,
+		{ path, mimeType: audioMimeTypeFromPath(path) },
+		{ duration: true, skipPostHeaders: true },
+	);
 
 	const { common, format } = metadata;
 
@@ -560,7 +555,8 @@ export class LocalMusicService extends MusicService<"local"> {
 	}
 
 	async handlePlay(): Promise<void> {
-		const { path } = this.song!.data;
+		const song = this.song!;
+		const path = song.data.path;
 
 		const stream = await getFileStream(path);
 		const buffer = await new Response(stream).arrayBuffer();

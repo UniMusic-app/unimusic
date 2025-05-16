@@ -96,11 +96,35 @@ void app.whenReady().then(async () => {
 		return await fs.readFile(path);
 	});
 	ipcMain.handle("musicplayer:traverse_dir", async (_, path: string): Promise<string[]> => {
-		const paths = [];
-		for (const relativePath of await fs.readdir(path, { recursive: true })) {
-			paths.push(join(path, relativePath));
+		const directories = [path];
+		const filePaths = [];
+
+		while (directories.length > 0) {
+			const directory = directories.pop()!;
+			const entries = await fs.readdir(directory, { withFileTypes: true }).catch((error) => {
+				console.error(`Failed to access ${directory}:`, error);
+				return [];
+			});
+
+			for (const entry of entries) {
+				const absolutePath = join(entry.parentPath, entry.name);
+
+				if (entry.isDirectory()) {
+					directories.push(absolutePath);
+				} else {
+					filePaths.push(absolutePath);
+				}
+			}
 		}
-		return paths;
+
+		try {
+			for (const relativePath of await fs.readdir(path, { recursive: true })) {
+				filePaths.push(join(path, relativePath));
+			}
+		} catch (error) {
+			console.error(`Failed to traverse ${path}:`, error);
+		}
+		return filePaths;
 	});
 
 	await components.whenReady();
