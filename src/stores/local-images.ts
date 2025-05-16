@@ -42,8 +42,9 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		[url: string, unregisterToken: WeakRef<Blob>, style?: LocalImageStyle]
 	>();
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function log(...args: unknown[]): void {
-		console.debug("%cLocalImageStore:", "color: #40080; font-weight: bold;", ...args);
+		// console.debug("%cLocalImageStore:", "color: #40080; font-weight: bold;", ...args);
 	}
 
 	const registry = new FinalizationRegistry((id: string) => {
