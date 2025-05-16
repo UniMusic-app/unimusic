@@ -139,11 +139,11 @@ async function getFileStream(path: string): Promise<ReadableStream<Uint8Array>> 
 
 async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 	const stream = await getFileStream(path);
-
-	const metadata = await parseWebStream(stream, {
-		path,
-		mimeType: audioMimeTypeFromPath(path),
-	});
+	const metadata = await parseWebStream(
+		stream,
+		{ path, mimeType: audioMimeTypeFromPath(path) },
+		{ duration: true, skipPostHeaders: true },
+	);
 
 	const { common, format } = metadata;
 
