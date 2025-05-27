@@ -15,7 +15,7 @@ class MainActivity : BridgeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         appScope.launch {
             val sync = UniMusicSync.create(applicationContext.cacheDir.path);
-            val author = sync.irohManager.getAuthor();
+            val author = sync.getAuthor();
             uniMusicSync = sync
             println("IROH Author: $author")
         }
@@ -28,14 +28,14 @@ class MainActivity : BridgeActivity() {
 
     override fun onDestroy() {
         if (::uniMusicSync.isInitialized) {
-            uniMusicSync.irohManager.destroy()
+            uniMusicSync.close()
         }
         super.onDestroy()
     }
 
     override fun onStart() {
         if (::uniMusicSync.isInitialized) appScope.launch {
-            val author = uniMusicSync?.irohManager?.getAuthor();
+            val author = uniMusicSync?.getAuthor();
             println("IROH Author: $author")
         }
 
