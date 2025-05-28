@@ -10,7 +10,12 @@ import {
 	IonTabButton,
 	IonTabs,
 } from "@ionic/vue";
-import { home as homeIcon, library as libraryIcon, search as searchIcon } from "ionicons/icons";
+import {
+	home as homeIcon,
+	library as libraryIcon,
+	search as searchIcon,
+	syncCircleOutline as syncIcon,
+} from "ionicons/icons";
 </script>
 
 <template>
@@ -36,6 +41,11 @@ import { home as homeIcon, library as libraryIcon, search as searchIcon } from "
 					<ion-tab-button tab="library" href="/library">
 						<ion-icon aria-hidden="true" :icon="libraryIcon" />
 						<ion-label>Library</ion-label>
+					</ion-tab-button>
+
+					<ion-tab-button tab="sync" href="/sync">
+						<ion-icon aria-hidden="true" :icon="syncIcon" />
+						<ion-label>Sync</ion-label>
 					</ion-tab-button>
 				</ion-tab-bar>
 			</div>

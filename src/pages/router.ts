@@ -14,6 +14,7 @@ import PlaylistsPage from "@/pages/Library/Playlists/PlaylistsPage.vue";
 import SongPage from "@/pages/Library/Songs/Song/SongPage.vue";
 import SongsPage from "@/pages/Library/Songs/SongsPage.vue";
 import ArtistsSongsPage from "./Library/Artists/Artist/ArtistsSongsPage.vue";
+import SyncPage from "./Sync/SyncPage.vue";
 
 const routes: RouteRecordRaw[] = [
 	{ path: "/", redirect: "/home" },
@@ -21,6 +22,8 @@ const routes: RouteRecordRaw[] = [
 	{ path: "/search", name: "Search", component: SearchPage },
 
 	{ path: "/library", name: "Library", component: LibraryPage },
+
+	{ path: "/sync", name: "Sync", component: SyncPage },
 
 	{ path: "/library/songs", name: "Songs", component: SongsPage },
 	{ path: "/items/songs/:songType/:songId", name: "Song", component: SongPage },
