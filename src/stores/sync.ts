@@ -5,6 +5,7 @@ import UniMusicSync, { DocTicket, Entry, NamespaceId } from "@/plugins/UniMusicS
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath, traverseDirectory } from "@/utils/path";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Ref, watch } from "vue";
 
 type Path = string;
 
@@ -19,44 +20,62 @@ interface DirectoryInfo {
 }
 
 export interface SyncData {
-	watchedDirectories: Record<Path, DirectoryInfo>;
-	namespaces: NamespaceId[];
+	watchedNamespaces: Record<Path, DirectoryInfo>;
+	namespaces: Record<NamespaceId, Path>;
 }
 
 export const useSync = defineStore("UniMusicSync", () => {
 	const synchronizationData = useIDBKeyval<SyncData>("uniMusicSync", {
-		watchedDirectories: {},
-		namespaces: [],
+		watchedNamespaces: {},
+		namespaces: {},
 	});
 
 	function log(...args: unknown[]): void {
 		console.debug("%UniMusicSync:", "color: #9f00ff; font-weight: bold;", ...args);
 	}
 
-	function syncData(): SyncData {
-		return synchronizationData.data.value;
+	async function data(): Promise<Ref<SyncData>> {
+		if (synchronizationData.isFinished) {
+			return synchronizationData.data;
+		} else {
+			await new Promise<void>((resolve) => {
+				const unwatch = watch(synchronizationData.isFinished, (isFinished) => {
+					if (isFinished) {
+						unwatch();
+						resolve();
+					}
+				});
+			});
+			return synchronizationData.data;
+		}
 	}
 
-	async function syncDirectory(relativePath: string): Promise<void> {
-		log(`Synchronizing ${relativePath}`);
+	async function createNamespace(path: string): Promise<NamespaceId> {
+		const { namespace } = await UniMusicSync.createNamespace();
+		synchronizationData.data.value.namespaces[namespace] = path;
+		return namespace;
+	}
 
+	async function shareNamespace(namespace: NamespaceId): Promise<DocTicket> {
+		const { ticket } = await UniMusicSync.share({ namespace });
+		return ticket;
+	}
+
+	async function syncFiles(): Promise<void> {
 		log(`- Reconnecting`);
 		await UniMusicSync.reconnect();
 
 		const syncData = synchronizationData.data.value;
 
-		if (!syncData.namespaces.length) {
-			const { namespace } = await UniMusicSync.createNamespace();
-			syncData.namespaces.push(namespace);
-		}
-
 		const recordedInfo: Record<Path, FileInfo> = {};
 
-		for (const namespace of syncData.namespaces) {
-			log(`- Sync namespace ${namespace}`);
+		for (const [namespace, directory] of Object.entries(syncData.namespaces)) {
+			log(`- Sync namespace ${namespace} (${directory})`);
 
 			await UniMusicSync.sync({ namespace });
 			const syncedFiles = await UniMusicSync.getFiles({ namespace });
+
+			log("synced files:", syncedFiles);
 
 			let path: string;
 			switch (getPlatform()) {
@@ -66,23 +85,23 @@ export const useSync = defineStore("UniMusicSync", () => {
 					const musicPath = await ElectronMusicPlayer!.getMusicPath();
 
 					path = musicPath;
-					if (relativePath.startsWith("./")) {
-						path += relativePath.slice(2);
-					} else if (relativePath.startsWith("/")) {
-						path += relativePath.slice();
+					if (directory.startsWith("./")) {
+						path += directory.slice(2);
+					} else if (directory.startsWith("/")) {
+						path += directory.slice();
 					} else {
-						path += relativePath;
+						path += directory;
 					}
 					break;
 				}
 				case "ios":
-					path = relativePath;
+					path = directory;
 					break;
 				case "web":
 					return;
 			}
 
-			const watchedDirectory = syncData.watchedDirectories[relativePath];
+			const watchedDirectory = syncData.watchedNamespaces[namespace];
 
 			const lastRecordedInfo = watchedDirectory?.lastRecordedInfo;
 			for await (const { filePath } of traverseDirectory(path)) {
@@ -161,45 +180,33 @@ export const useSync = defineStore("UniMusicSync", () => {
 					destination,
 				});
 			}
-		}
 
-		syncData.watchedDirectories[relativePath] = { lastRecordedInfo: recordedInfo };
+			syncData.watchedNamespaces[namespace] = { lastRecordedInfo: recordedInfo };
+		}
 	}
 
-	async function shareSongs(): Promise<DocTicket[]> {
+	async function importNamespace(ticket: DocTicket, path: string): Promise<NamespaceId> {
 		const syncData = synchronizationData.data.value;
 
-		const tickets = [];
-		for (const namespace of syncData.namespaces) {
-			log(`Share namespace ${namespace}`);
-			const { ticket } = await UniMusicSync.share({ namespace });
-			log(`Share namespace ${namespace} -> ${ticket}`);
-			tickets.push(ticket);
+		log(`Importing ticket ${ticket}`);
+		const { namespace } = await UniMusicSync.import({ ticket });
+
+		if (namespace in syncData.namespaces) {
+			throw new Error(
+				`Namespace ${namespace} was already imported, remove it first if you want to move it`,
+			);
 		}
 
-		return tickets;
-	}
-
-	async function importSongs(tickets: DocTicket[]): Promise<void> {
-		const syncData = synchronizationData.data.value;
-
-		for (const ticket of tickets) {
-			log(`Importing ticket ${ticket}`);
-			const { namespace } = await UniMusicSync.import({ ticket });
-
-			if (syncData.namespaces.includes(namespace)) {
-				log(`Namespace ${namespace} was already imported`);
-			} else {
-				syncData.namespaces.push(namespace);
-				log(`Imported namespace ${namespace}`);
-			}
-		}
+		syncData.namespaces[namespace] = path;
+		log(`Imported namespace ${namespace}`);
+		return namespace;
 	}
 
 	return {
-		syncData,
-		syncDirectory,
-		shareSongs,
-		importSongs,
+		data,
+		syncFiles,
+		importNamespace,
+		createNamespace,
+		shareNamespace,
 	};
 });

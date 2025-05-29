@@ -61,6 +61,25 @@ export async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: s
 	}
 }
 
+export function pathBreadcrumbs(path: string): string[] {
+	switch (getPlatform()) {
+		default:
+		case "ios": {
+			const importantFolders = ["Application", "Documents", "Library"];
+
+			const pathSegments = path.split(/\/+/);
+			const i = pathSegments.findLastIndex((segment) => importantFolders.includes(segment));
+			if (i === -1) {
+				return pathSegments;
+			} else {
+				return pathSegments.slice(i);
+			}
+		}
+		//	default:
+		//			return path.split(/[/\\]+/);
+	}
+}
+
 export async function* traverseDirectory(path: string): AsyncGenerator<{ filePath: string }> {
 	if (getPlatform() === "electron") {
 		for (const filePath of await ElectronMusicPlayer!.traverseDirectory(path)) {

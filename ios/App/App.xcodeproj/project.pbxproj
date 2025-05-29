@@ -18,6 +18,7 @@
 		61625DC02D29D59700DB0F57 /* UniMusicViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61625DBF2D29D59700DB0F57 /* UniMusicViewController.swift */; };
 		61625DC42D29D68200DB0F57 /* MusicKitAuthorizationPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61625DC32D29D68200DB0F57 /* MusicKitAuthorizationPlugin.swift */; };
 		6191901B2DE735B800FD9276 /* UniMusicSync in Frameworks */ = {isa = PBXBuildFile; productRef = 6191901A2DE735B800FD9276 /* UniMusicSync */; };
+		61B7F5EF2DE8806C00452C02 /* DirectoryPickerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B7F5EE2DE8806C00452C02 /* DirectoryPickerPlugin.swift */; };
 		61B9DDEB2DE61357002EB755 /* UniMusicSyncPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B9DDEA2DE61357002EB755 /* UniMusicSyncPlugin.swift */; };
 		61B9DDEF2DE6621B002EB755 /* HTTPResponseServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B9DDEE2DE6621B002EB755 /* HTTPResponseServer.swift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
@@ -36,6 +37,8 @@
 		61199EFD2D2D36F300D41CE9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		61625DBF2D29D59700DB0F57 /* UniMusicViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniMusicViewController.swift; sourceTree = "<group>"; };
 		61625DC32D29D68200DB0F57 /* MusicKitAuthorizationPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicKitAuthorizationPlugin.swift; sourceTree = "<group>"; };
+		61B7F5EE2DE8806C00452C02 /* DirectoryPickerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryPickerPlugin.swift; sourceTree = "<group>"; };
+		61B7F5F02DE8829C00452C02 /* App.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = App.xcodeproj; sourceTree = "<group>"; };
 		61B9DDEA2DE61357002EB755 /* UniMusicSyncPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniMusicSyncPlugin.swift; sourceTree = "<group>"; };
 		61B9DDEE2DE6621B002EB755 /* HTTPResponseServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPResponseServer.swift; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -67,6 +70,7 @@
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
+				61B7F5EE2DE8806C00452C02 /* DirectoryPickerPlugin.swift */,
 				61B9DDEE2DE6621B002EB755 /* HTTPResponseServer.swift */,
 				61625DC32D29D68200DB0F57 /* MusicKitAuthorizationPlugin.swift */,
 				61B9DDEA2DE61357002EB755 /* UniMusicSyncPlugin.swift */,
@@ -75,6 +79,7 @@
 				504EC3051FED79650016851F /* Products */,
 				7F8756D8B27F46E3366F6CEA /* Pods */,
 				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
+				61B7F5F02DE8829C00452C02 /* App.xcodeproj */,
 			);
 			sourceTree = "<group>";
 		};
@@ -100,6 +105,11 @@
 				61199EFD2D2D36F300D41CE9 /* PrivacyInfo.xcprivacy */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		61B7F5F32DE8841200452C02 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
 			sourceTree = "<group>";
 		};
 		7F8756D8B27F46E3366F6CEA /* Pods */ = {
@@ -163,6 +173,12 @@
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 61B7F5F32DE8841200452C02 /* Products */;
+					ProjectRef = 61B7F5F02DE8829C00452C02 /* App.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
@@ -231,6 +247,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				61B9DDEB2DE61357002EB755 /* UniMusicSyncPlugin.swift in Sources */,
 				61B9DDEF2DE6621B002EB755 /* HTTPResponseServer.swift in Sources */,
+				61B7F5EF2DE8806C00452C02 /* DirectoryPickerPlugin.swift in Sources */,
 				61625DC02D29D59700DB0F57 /* UniMusicViewController.swift in Sources */,
 				61625DC42D29D68200DB0F57 /* MusicKitAuthorizationPlugin.swift in Sources */,
 			);

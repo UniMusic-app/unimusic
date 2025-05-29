@@ -24,5 +24,6 @@ class UniMusicViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(MusicKitAuthorizationPlugin())
         bridge?.registerPluginInstance(UniMusicSyncPlugin())
+        bridge?.registerPluginInstance(DirectoryPicker())
     }
 }
