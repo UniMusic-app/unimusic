@@ -1,6 +1,7 @@
 import LocalMusic from "@/plugins/LocalMusic";
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { relative } from "path";
 import { getPlatform } from "./os";
 
 export function audioMimeTypeFromPath(path: string): string | undefined {
@@ -63,7 +64,6 @@ export async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: s
 
 export function pathBreadcrumbs(path: string): string[] {
 	switch (getPlatform()) {
-		default:
 		case "ios": {
 			const importantFolders = ["Application", "Documents", "Library"];
 
@@ -75,8 +75,18 @@ export function pathBreadcrumbs(path: string): string[] {
 				return pathSegments.slice(i);
 			}
 		}
-		//	default:
-		//			return path.split(/[/\\]+/);
+		case "android": {
+			// Example SAF path: /tree/primary:Music/Pop
+			if (!path.startsWith("/tree")) {
+				throw new Error(`Unsupported path type: ${path}. Please report this issue.`);
+			}
+
+			path = path.replace("/tree/", "");
+			const [device, relativePath] = path.split(":");
+			return [device!, ...relativePath!.split(/\/+/)];
+		}
+		default:
+			return path.split(/[/\\]+/);
 	}
 }
 

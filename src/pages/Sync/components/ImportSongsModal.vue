@@ -25,7 +25,6 @@ import {
 import { ref, useTemplateRef } from "vue";
 
 import DirectoryPicker from "@/components/DirectoryPicker.vue";
-import { NamespaceId } from "@/plugins/UniMusicSync";
 import { useSync } from "@/stores/sync";
 import { pathBreadcrumbs } from "@/utils/path";
 import { usePresentingElement } from "@/utils/vue";

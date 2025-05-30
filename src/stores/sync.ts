@@ -4,6 +4,7 @@ import { defineStore } from "pinia";
 import UniMusicSync, { DocTicket, Entry, NamespaceId } from "@/plugins/UniMusicSync";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath, traverseDirectory } from "@/utils/path";
+import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Ref, watch } from "vue";
 
@@ -79,8 +80,11 @@ export const useSync = defineStore("UniMusicSync", () => {
 
 			let path: string;
 			switch (getPlatform()) {
-				case "android":
+				case "android": {
+					console.log(directory);
+					// TODO: Manipulating SAF paths requires yet another Android API 🤦‍♂️
 					throw new Error("todo");
+				}
 				case "electron": {
 					const musicPath = await ElectronMusicPlayer!.getMusicPath();
 
