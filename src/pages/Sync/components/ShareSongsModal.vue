@@ -13,9 +13,9 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
-import { share, shareOutline as shareIcon } from "ionicons/icons";
+import { clipboardOutline as clipboardIcon, shareOutline as shareIcon } from "ionicons/icons";
 import QR from "qr-code-styling";
-import { onMounted, ref, shallowRef, useTemplateRef } from "vue";
+import { ref, useTemplateRef } from "vue";
 
 import DirectoryPicker from "@/components/DirectoryPicker.vue";
 import { useSync } from "@/stores/sync";
@@ -106,6 +106,12 @@ async function generateTicket(): Promise<void> {
 	}
 	const url = URL.createObjectURL(blob as Blob);
 	ticketQR.value = url;
+
+	await sync.syncFiles();
+}
+
+async function copyTicket(): Promise<void> {
+	await navigator.clipboard.writeText(ticket.value);
 }
 </script>
 
@@ -141,7 +147,7 @@ async function generateTicket(): Promise<void> {
 							:items-before-collapse="1"
 							:items-after-collapse="1"
 						>
-							<ion-breadcrumb v-for="breadcrumb in pathBreadcrumbs(directory)">
+							<ion-breadcrumb v-for="breadcrumb in pathBreadcrumbs(directory)" :key="breadcrumb">
 								<span>{{ breadcrumb }}</span>
 							</ion-breadcrumb>
 						</ion-breadcrumbs>
@@ -158,7 +164,21 @@ async function generateTicket(): Promise<void> {
 				</ion-button>
 			</div>
 
-			<img v-if="ticketQR" :src="ticketQR" :alt="ticket" />
+			<img
+				v-if="ticketQR"
+				class="ticket-qr-code"
+				:src="ticketQR"
+				alt="Library synchronization ticket in the form of QR code"
+			/>
+
+			<div class="ticket" v-if="ticket">
+				<code aria-label="Library synchronization ticket">
+					{{ ticket }}
+				</code>
+				<ion-button class="copy-ticket" size="large" @click="copyTicket">
+					<ion-icon slot="icon-only" :icon="clipboardIcon" />
+				</ion-button>
+			</div>
 		</ion-content>
 	</ion-modal>
 </template>
@@ -186,6 +206,33 @@ async function generateTicket(): Promise<void> {
 			--background: transparent;
 		}
 		margin-bottom: 16px;
+	}
+
+	& > .ticket {
+		display: flex;
+		justify-content: center;
+		width: 100%;
+		gap: 8px;
+
+		& > code {
+			position: relative;
+			width: 80%;
+
+			@supports (line-clamp: 4) {
+				line-clamp: 4;
+			}
+
+			@supports not (line-clamp: 4) {
+				display: -webkit-box;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 4;
+				overflow: hidden;
+			}
+		}
+
+		& > .copy-ticket {
+			flex-grow: 1;
+		}
 	}
 
 	.path-breadcrumbs {

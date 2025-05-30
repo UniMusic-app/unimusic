@@ -7,6 +7,7 @@ import {
 	IonContent,
 	IonHeader,
 	IonIcon,
+	IonInput,
 	IonItem,
 	IonList,
 	IonModal,
@@ -18,6 +19,7 @@ import {
 import {
 	addOutline as addIcon,
 	downloadOutline as importIcon,
+	qrCodeOutline as qrImportIcon,
 	warningOutline as warningIcon,
 } from "ionicons/icons";
 import { ref, useTemplateRef } from "vue";
@@ -42,6 +44,7 @@ const presentingElement = usePresentingElement();
 const directory = ref<string>();
 const expanded = ref(false);
 const loading = ref(false);
+const ticket = ref<string>();
 
 function changeDirectory(event: string): void {
 	directory.value = event;
@@ -51,27 +54,44 @@ function changeDirectory(event: string): void {
 function resetModal(): void {
 	directory.value = undefined;
 	expanded.value = false;
+	ticket.value = undefined;
 }
 
 function dismiss(): void {
 	modal.value?.$el.dismiss();
 }
 
+async function importTicketQRCode(): Promise<void> {
+	const { ScanResult: maybeTicket } = await CapacitorBarcodeScanner.scanBarcode({
+		hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
+		scanText: "Scan UniMusicSync QR code",
+	});
+	ticket.value = maybeTicket;
+
+	await importTicket();
+}
+
 async function importTicket(): Promise<void> {
-	if (!directory.value) {
+	if (!directory.value || !ticket.value) {
 		return;
 	}
 
 	loading.value = true;
 
-	let namespace: NamespaceId;
 	try {
-		const { ScanResult: maybeTicket } = await CapacitorBarcodeScanner.scanBarcode({
-			hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
-			scanText: "Scan UniMusicSync QR code",
-		});
+		const namespace = await sync.importNamespace(ticket.value, directory.value);
 
-		namespace = await sync.importNamespace(maybeTicket, directory.value);
+		const toast = await toastController.create({
+			header: `Import successful!`,
+			message: `Imported namespace ${namespace.slice(0, 6)}...`,
+			icon: addIcon,
+
+			duration: 2000,
+			translucent: true,
+			swipeGesture: "vertical",
+			positionAnchor: "mini-music-player",
+		});
+		await toast.present();
 	} catch (error) {
 		const toast = await toastController.create({
 			header: `Import failed!`,
@@ -79,27 +99,13 @@ async function importTicket(): Promise<void> {
 
 			color: "warning",
 			icon: warningIcon,
-			duration: 3000,
+			duration: 5000,
 			translucent: true,
 			swipeGesture: "vertical",
 			positionAnchor: "mini-music-player",
 		});
 		await toast.present();
-		loading.value = false;
-		return;
 	}
-
-	const toast = await toastController.create({
-		header: `Import successful!`,
-		message: `Imported namespace ${namespace.slice(0, 6)}...`,
-		icon: addIcon,
-
-		duration: 2000,
-		translucent: true,
-		swipeGesture: "vertical",
-		positionAnchor: "mini-music-player",
-	});
-	await toast.present();
 
 	loading.value = false;
 }
@@ -137,7 +143,7 @@ async function importTicket(): Promise<void> {
 							:items-before-collapse="1"
 							:items-after-collapse="1"
 						>
-							<ion-breadcrumb v-for="breadcrumb in pathBreadcrumbs(directory)">
+							<ion-breadcrumb v-for="breadcrumb in pathBreadcrumbs(directory)" :key="breadcrumb">
 								<span>{{ breadcrumb }}</span>
 							</ion-breadcrumb>
 						</ion-breadcrumbs>
@@ -147,8 +153,31 @@ async function importTicket(): Promise<void> {
 
 			<div class="actions">
 				<DirectoryPicker @change="changeDirectory($event)" />
+			</div>
 
-				<ion-button :disabled="!directory" @click="importTicket">
+			<h1>Import ticket</h1>
+			<ion-note>
+				Choose whether to import ticket by scanning a QR code or by manually entering it
+			</ion-note>
+			<ion-input
+				label="Ticket"
+				helper-text="A ticket starting with 'doc' your friend sent you"
+				v-model="ticket"
+			/>
+
+			<div class="actions">
+				<ion-button :disabled="!directory || loading" @click="importTicketQRCode">
+					<template v-if="loading">
+						<ion-spinner slot="start" />
+						Loading...
+					</template>
+					<template v-else>
+						<ion-icon slot="start" :icon="qrImportIcon" />
+						Scan QR Code
+					</template>
+				</ion-button>
+
+				<ion-button :disabled="!directory || !ticket || loading" @click="importTicket">
 					<template v-if="loading">
 						<ion-spinner slot="start" />
 						Loading...
@@ -171,6 +200,10 @@ async function importTicket(): Promise<void> {
 	& > p {
 		margin: 0;
 		margin-bottom: 8px;
+	}
+
+	& > ion-input {
+		margin-bottom: 0.5rem;
 	}
 
 	& > .actions {
