@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -21,6 +21,7 @@
 		61B7F5EF2DE8806C00452C02 /* DirectoryPickerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B7F5EE2DE8806C00452C02 /* DirectoryPickerPlugin.swift */; };
 		61B9DDEB2DE61357002EB755 /* UniMusicSyncPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B9DDEA2DE61357002EB755 /* UniMusicSyncPlugin.swift */; };
 		61B9DDEF2DE6621B002EB755 /* HTTPResponseServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B9DDEE2DE6621B002EB755 /* HTTPResponseServer.swift */; };
+		61D8F9122DE9F7D8004EC05B /* UniMusicSync in Frameworks */ = {isa = PBXBuildFile; productRef = 61D8F9112DE9F7D8004EC05B /* UniMusicSync */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 /* End PBXBuildFile section */
 
@@ -52,6 +53,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6191901B2DE735B800FD9276 /* UniMusicSync in Frameworks */,
+				61D8F9122DE9F7D8004EC05B /* UniMusicSync in Frameworks */,
 				A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -169,7 +171,7 @@
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
-				619190192DE735B800FD9276 /* XCLocalSwiftPackageReference "../../../unimusic-sync" */,
+				61D8F9102DE9F7D8004EC05B /* XCRemoteSwiftPackageReference "unimusic-sync" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
@@ -465,16 +467,25 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		619190192DE735B800FD9276 /* XCLocalSwiftPackageReference "../../../unimusic-sync" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../unimusic-sync";
+/* Begin XCRemoteSwiftPackageReference section */
+		61D8F9102DE9F7D8004EC05B /* XCRemoteSwiftPackageReference "unimusic-sync" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/UniMusic-app/unimusic-sync";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.8;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		6191901A2DE735B800FD9276 /* UniMusicSync */ = {
 			isa = XCSwiftPackageProductDependency;
+			productName = UniMusicSync;
+		};
+		61D8F9112DE9F7D8004EC05B /* UniMusicSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 61D8F9102DE9F7D8004EC05B /* XCRemoteSwiftPackageReference "unimusic-sync" */;
 			productName = UniMusicSync;
 		};
 /* End XCSwiftPackageProductDependency section */

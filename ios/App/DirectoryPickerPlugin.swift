@@ -16,7 +16,7 @@ public class DirectoryPicker: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDeleg
     let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
 
     @objc func pickDirectory(_ call: CAPPluginCall) {
-        guard let viewController = self.bridge?.viewController else {
+        guard let viewController = bridge?.viewController else {
             return
         }
 
@@ -28,12 +28,12 @@ public class DirectoryPicker: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDeleg
         }
     }
 
-    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let call = self.currentCall else {
+    public func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let call = currentCall else {
             return
         }
 
-        let documentsPath = self.documentsDirectory!.path
+        let documentsPath = documentsDirectory!.path
         let validUrls = urls.map { $0.path }.filter {
             print("Path: \($0) | Root: \(documentsPath)")
             return $0.contains(documentsPath)
@@ -49,15 +49,15 @@ public class DirectoryPicker: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDeleg
             ])
         }
 
-        self.currentCall = .none
+        currentCall = .none
     }
 
-    public func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-        guard let call = self.currentCall else {
+    public func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
+        guard let call = currentCall else {
             return
         }
 
         call.reject("User cancelled directory selection")
-        self.currentCall = .none
+        currentCall = .none
     }
 }

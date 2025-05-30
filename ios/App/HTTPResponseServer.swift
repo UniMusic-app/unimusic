@@ -35,7 +35,7 @@ class HTTPResponseServer {
                             userInfo: [NSLocalizedDescriptionKey: "Server started, but it is missing port"]
                         ))
                     }
-                case .failed(let error):
+                case let .failed(error):
                     continuation.resume(throwing: error)
                 default:
                     break
@@ -65,7 +65,7 @@ class HTTPResponseServer {
                 "Content-Type: \(self.type?.preferredMIMEType ?? "application/octet-stream")\r\n" +
                 "Connection: close\r\n" +
                 "\r\n"
-            
+
             let httpResponse = headers.data(using: .utf8)! + self.body
 
             connection.send(content: httpResponse, completion: .contentProcessed { _ in
