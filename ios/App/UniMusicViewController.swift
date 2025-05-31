@@ -1,9 +1,10 @@
 import Capacitor
 import MusicKit
 import UIKit
+import UniMusicSync
 
 class UniMusicViewController: CAPBridgeViewController {
-    var keepWebViewAlive: Timer?
+    private var keepWebViewAlive: Timer?
 
     deinit {
         keepWebViewAlive?.invalidate()
@@ -22,5 +23,7 @@ class UniMusicViewController: CAPBridgeViewController {
 
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(MusicKitAuthorizationPlugin())
+        bridge?.registerPluginInstance(UniMusicSyncPlugin())
+        bridge?.registerPluginInstance(DirectoryPicker())
     }
 }

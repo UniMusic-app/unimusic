@@ -1,0 +1,15 @@
+{
+  "originHash" : "90a90dc79910bbfff15e47ad069bc66ab72fbc242159c90abee6ab6075b3a799",
+  "pins" : [
+    {
+      "identity" : "unimusic-sync",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/UniMusic-app/unimusic-sync",
+      "state" : {
+        "revision" : "e3d5a8cd1003ee2abe1ff4b0273b78592d8eca6a",
+        "version" : "0.1.8"
+      }
+    }
+  ],
+  "version" : 3
+}
