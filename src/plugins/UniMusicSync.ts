@@ -29,8 +29,12 @@ export interface UniMusicSyncPlugin {
 	readFile(options: { namespace: NamespaceId; syncPath: string }): Promise<{ url: string }>;
 	readFileHash(options: { fileHash: Hash }): Promise<{ url: string }>;
 
-	export(options: { namespace: NamespaceId; syncPath: string; destination: string }): Promise<void>;
-	exportHash(options: { fileHash: Hash; destination: string }): Promise<void>;
+	export(options: {
+		namespace: NamespaceId;
+		syncPath: string;
+		destinationPath: string;
+	}): Promise<void>;
+	exportHash(options: { fileHash: Hash; destinationPath: string }): Promise<void>;
 
 	share(options: { namespace: NamespaceId }): Promise<{ ticket: DocTicket }>;
 	import(options: { ticket: DocTicket }): Promise<{ namespace: NamespaceId }>;

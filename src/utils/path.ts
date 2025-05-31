@@ -65,9 +65,9 @@ export async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: s
 export function pathBreadcrumbs(path: string): string[] {
 	switch (getPlatform()) {
 		case "ios": {
+			path = decodeURIComponent(path);
 			const importantFolders = ["Application", "Documents", "Library"];
-
-			const pathSegments = path.split(/\/+/);
+			const pathSegments = path.split(/\/+/).filter(Boolean);
 			const i = pathSegments.findLastIndex((segment) => importantFolders.includes(segment));
 			if (i === -1) {
 				return pathSegments;
@@ -76,14 +76,27 @@ export function pathBreadcrumbs(path: string): string[] {
 			}
 		}
 		case "android": {
-			// Example SAF path: /tree/primary:Music/Pop
-			if (!path.startsWith("/tree")) {
+			// Example SAF URI: content://com.android.externalstorage.documents/tree/primary%3AMusic%2FMu
+			const knownProviders: Record<string, string> = {
+				"com.android.externalstorage.documents": "Documents",
+				"com.android.providers.downloads.documents": "Downloads",
+			};
+
+			if (!path.startsWith("content://") || !path.includes("/tree/")) {
 				throw new Error(`Unsupported path type: ${path}. Please report this issue.`);
 			}
+			path = decodeURIComponent(path);
+			path = path.replace("content://", "");
 
-			path = path.replace("/tree/", "");
-			const [device, relativePath] = path.split(":");
-			return [device!, ...relativePath!.split(/\/+/)];
+			const [providerId, treePath] = path.split("/tree/") as [string, string];
+			const [volume, relativePath] = treePath.split(":") as [string, string];
+
+			let provider = providerId;
+			if (knownProviders[providerId]) {
+				provider = knownProviders[provider]!;
+			}
+
+			return [provider, volume, ...relativePath.split(/\/+/)];
 		}
 		default:
 			return path.split(/[/\\]+/);

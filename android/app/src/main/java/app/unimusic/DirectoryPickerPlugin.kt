@@ -9,6 +9,7 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 
+@Suppress("unused")
 @CapacitorPlugin(name = "DirectoryPicker")
 class DirectoryPickerPlugin : Plugin() {
 
@@ -18,7 +19,8 @@ class DirectoryPickerPlugin : Plugin() {
             addFlags(
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
             )
         }
 
@@ -38,8 +40,14 @@ class DirectoryPickerPlugin : Plugin() {
                 return
             }
 
+            context.contentResolver.takePersistableUriPermission(
+                treeUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+
             val result = JSObject()
-            result.put("path", treeUri.path)
+            println("Chosen path: ${treeUri.toString()}")
+            result.put("path", treeUri.toString())
             call.resolve(result)
         } ?: run {
             call.reject("Picking directory failed")

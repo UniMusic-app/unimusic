@@ -1,16 +1,17 @@
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { defineStore } from "pinia";
 
+import StorageAccessFramework from "@/plugins/StorageAccessFramework";
 import UniMusicSync, { DocTicket, Entry, NamespaceId } from "@/plugins/UniMusicSync";
 import { getPlatform } from "@/utils/os";
-import { audioMimeTypeFromPath, traverseDirectory } from "@/utils/path";
-import { Capacitor } from "@capacitor/core";
+import { audioMimeTypeFromPath } from "@/utils/path";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Ref, watch } from "vue";
 
 type Path = string;
 
 interface FileInfo {
+	sourcePath: Path;
 	mtime: number;
 	size: number;
 	entry?: Entry;
@@ -32,7 +33,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 	});
 
 	function log(...args: unknown[]): void {
-		console.debug("%UniMusicSync:", "color: #9f00ff; font-weight: bold;", ...args);
+		console.debug("%cUniMusicSync:", "color: #9f00ff; font-weight: bold;", ...args);
 	}
 
 	async function data(): Promise<Ref<SyncData>> {
@@ -62,6 +63,88 @@ export const useSync = defineStore("UniMusicSync", () => {
 		return ticket;
 	}
 
+	function normalizeRelativePath(path: string): string {
+		path = decodeURIComponent(path);
+		// Convert windows-style path to be unix-like
+		path = path.replaceAll("\\", "/");
+		// Remove leading slashes
+		path = path.replace(/^\/+/, "");
+
+		const segments = path.split(/\/+/);
+		segments.filter((segment) => {
+			switch (segment) {
+				case "":
+				case ".":
+					return false;
+				case "..":
+					throw new Error("Paths going up a directory are not allowed");
+			}
+		});
+
+		const result = segments.join("/");
+		if (!result.length) {
+			throw new Error(`Invalid path '${path}' results in being empty after normalization`);
+		}
+		return result;
+	}
+
+	async function* traverseRelativeDirectory(
+		rootPath: string,
+		path = "",
+	): AsyncGenerator<{ relativePath: string; absolutePath: string }> {
+		switch (getPlatform()) {
+			case "electron": {
+				throw new Error("TODO");
+			}
+			case "ios": {
+				const { files } = await Filesystem.readdir({
+					path: `${rootPath}/${path}`,
+					directory: Directory.Documents,
+				});
+
+				for (const file of files) {
+					// Ignore hidden files
+					if (file.name.startsWith(".")) {
+						continue;
+					}
+
+					const filePath = normalizeRelativePath(`${path}/${file.name}`);
+
+					if (file.type === "directory") {
+						yield* traverseRelativeDirectory(rootPath, filePath);
+						continue;
+					}
+
+					yield { relativePath: filePath, absolutePath: `${rootPath}/${filePath}` };
+				}
+				break;
+			}
+			case "android": {
+				const { files } = await StorageAccessFramework.readdir({
+					treeUri: rootPath,
+					path: path!,
+				});
+
+				for (const file of files) {
+					// Ignore hidden files
+					if (file.name.startsWith(".")) {
+						continue;
+					}
+
+					const filePath = normalizeRelativePath(`${path}/${file.name}`);
+
+					if (file.type === "directory") {
+						yield* traverseRelativeDirectory(rootPath, filePath);
+						continue;
+					}
+
+					yield { relativePath: filePath, absolutePath: `${rootPath}/${filePath}` };
+				}
+				break;
+			}
+		}
+	}
+
 	async function syncFiles(): Promise<void> {
 		log(`- Reconnecting`);
 		await UniMusicSync.reconnect();
@@ -78,41 +161,15 @@ export const useSync = defineStore("UniMusicSync", () => {
 
 			log("synced files:", syncedFiles);
 
-			let path: string;
-			switch (getPlatform()) {
-				case "android": {
-					console.log(directory);
-					// TODO: Manipulating SAF paths requires yet another Android API 🤦‍♂️
-					throw new Error("todo");
-				}
-				case "electron": {
-					const musicPath = await ElectronMusicPlayer!.getMusicPath();
-
-					path = musicPath;
-					if (directory.startsWith("./")) {
-						path += directory.slice(2);
-					} else if (directory.startsWith("/")) {
-						path += directory.slice();
-					} else {
-						path += directory;
-					}
-					break;
-				}
-				case "ios":
-					path = directory;
-					break;
-				case "web":
-					return;
-			}
-
 			const watchedDirectory = syncData.watchedNamespaces[namespace];
 
 			const lastRecordedInfo = watchedDirectory?.lastRecordedInfo;
-			for await (const { filePath } of traverseDirectory(path)) {
-				if (!audioMimeTypeFromPath(filePath)) continue;
-				log(`- Sync file ${filePath}`);
+			for await (const { relativePath, absolutePath } of traverseRelativeDirectory(directory)) {
+				if (!audioMimeTypeFromPath(relativePath)) continue;
+				log(`- Sync file ${relativePath}`);
 
-				const syncPath = filePath.replace("//", "/").replaceAll("\\", "/");
+				const syncPath = relativePath;
+
 				const lastFileInfo = lastRecordedInfo?.[syncPath];
 
 				let sourcePath: string;
@@ -123,17 +180,18 @@ export const useSync = defineStore("UniMusicSync", () => {
 						throw new Error("todo");
 					}
 					case "android": {
-						sourcePath = filePath;
-						const stat = await Filesystem.stat({
-							path: filePath,
+						const stat = await StorageAccessFramework.stat({
+							treeUri: directory,
+							path: relativePath,
 						});
+						sourcePath = stat.uri;
 						mtime = stat.mtime;
 						size = stat.size;
 						break;
 					}
 					case "ios": {
 						const stat = await Filesystem.stat({
-							path: filePath,
+							path: absolutePath,
 							directory: Directory.Documents,
 						});
 						sourcePath = stat.uri;
@@ -154,7 +212,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 					log(`Updating ${syncPath} (New remote value | EXPORT)`);
 					await UniMusicSync.exportHash({
 						fileHash: entry.contentHash,
-						destination: sourcePath,
+						destinationPath: sourcePath,
 					});
 				} else if (lastFileInfo.mtime !== mtime || lastFileInfo.size !== size) {
 					log(`Updating ${syncPath} (File got modified)`);
@@ -163,26 +221,27 @@ export const useSync = defineStore("UniMusicSync", () => {
 					log(`File ${syncPath} already up to date`);
 				}
 
-				recordedInfo[syncPath] = { mtime, size, entry };
+				recordedInfo[syncPath] = { sourcePath, mtime, size, entry };
 			}
 
 			const seenFiles = new Set(Object.keys(recordedInfo));
 			const allFiles = new Set(Object.keys(syncedFiles));
 
 			for (const syncPath of allFiles.difference(seenFiles)) {
-				const { uri } = await Filesystem.getUri({
-					path: syncPath,
-					directory: Directory.Documents,
-				});
+				// TODO: Deleting files
 
-				const destination = uri.replace("file://", "");
-				log(`Retrieving ${syncPath} (Missing locally, saving to ${destination})`);
+				let destinationPath = `${directory}/${syncPath}`;
+				log(`Retrieving ${syncPath} (Missing locally, saving to ${destinationPath})`);
 
-				await UniMusicSync.export({
-					namespace,
-					syncPath,
-					destination,
-				});
+				if (getPlatform() === "ios") {
+					const { uri } = await Filesystem.getUri({
+						path: destinationPath,
+						directory: Directory.Documents,
+					});
+					destinationPath = decodeURIComponent(uri.replace("file://", ""));
+				}
+
+				await UniMusicSync.export({ namespace, syncPath, destinationPath });
 			}
 
 			syncData.watchedNamespaces[namespace] = { lastRecordedInfo: recordedInfo };

@@ -9,6 +9,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(LocalMusicPlugin::class.java)
         registerPlugin(DirectoryPickerPlugin::class.java)
         registerPlugin(UniMusicSyncPlugin::class.java)
+        registerPlugin(StorageAccessFrameworkPlugin::class.java)
 
         super.onCreate(savedInstanceState)
     }

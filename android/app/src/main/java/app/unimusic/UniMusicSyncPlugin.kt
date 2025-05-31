@@ -1,6 +1,8 @@
 package app.unimusic
 
+import android.net.Uri
 import android.os.Environment
+import androidx.documentfile.provider.DocumentFile
 import app.unimusic.sync.UniMusicSync
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -13,8 +15,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.io.File
 
+@Suppress("unused")
 @CapacitorPlugin(name = "UniMusicSync")
 class UniMusicSyncPlugin : Plugin() {
     private val appJob = SupervisorJob()
@@ -144,21 +146,31 @@ class UniMusicSyncPlugin : Plugin() {
             return
         }
 
-        val sourcePathString = call.getString("sourcePath") ?: run {
+        // sourcePath in case of Android is a DocumentFile Uri
+        val sourcePath = call.getString("sourcePath") ?: run {
             call.reject("You must provide a 'sourcePath' option")
             return
         }
 
-        val sourceFile = try {
-            File(sourcePathString)
+        val fileUri = try {
+            Uri.parse(sourcePath)
         } catch (e: Exception) {
             System.err.println(e)
-            call.reject("'sourcePath' option must be a valid android path")
+            call.reject("'sourcePath' option has to be a valid SAF file uri")
+            return
+        }
+
+        val file = DocumentFile.fromSingleUri(context, fileUri) ?: run {
+            call.reject("Provided 'sourcePath' does not seem to exist")
             return
         }
 
         appScope.launch {
-            val data = sourceFile.readBytes()
+            val inputStream = context.contentResolver.openInputStream(file.uri) ?: run {
+                call.reject("Failed to open input stream for ${file.uri}")
+                return@launch
+            }
+            val data = inputStream.use { inputStream.readBytes() }
             val fileHash = uniMusicSync.writeFile(namespace, syncPath, data)
             val result = JSObject()
             result.put("fileHash", fileHash)
@@ -230,21 +242,34 @@ class UniMusicSyncPlugin : Plugin() {
             return
         }
 
+        // destinationPath in case of Android is a DocumentFile Uri
         val destinationPath = call.getString("destinationPath") ?: run {
             call.reject("You must provide a 'destinationPath' option")
             return
         }
 
-        try {
-            File(destinationPath)
+        val fileUri = try {
+            Uri.parse(destinationPath)
         } catch (e: Exception) {
             System.err.println(e)
-            call.reject("'destinationPath' option must be a valid android path")
+            call.reject("'destinationPath' option has to be a valid SAF file uri")
+            return
+        }
+
+        val file = DocumentFile.fromSingleUri(context, fileUri) ?: run {
+            call.reject("Provided 'destinationPath' does not seem to exist")
             return
         }
 
         appScope.launch {
-            uniMusicSync.export(namespace, syncPath, destinationPath)
+            // Since Android<->Rust filesystem interop would be a pain in the ass,
+            // we do similar things to what Rust does directly here
+            val outputStream = context.contentResolver.openOutputStream(file.uri) ?: run {
+                call.reject("Failed to open input stream for ${file.uri}")
+                return@launch
+            }
+            val data = uniMusicSync.readFile(namespace, syncPath)
+            outputStream.use { outputStream.write(data) }
             call.resolve()
         }
     }
@@ -261,21 +286,34 @@ class UniMusicSyncPlugin : Plugin() {
             return
         }
 
+        // destinationPath in case of Android is a DocumentFile Uri
         val destinationPath = call.getString("destinationPath") ?: run {
             call.reject("You must provide a 'destinationPath' option")
             return
         }
 
-        try {
-            File(destinationPath)
+        val fileUri = try {
+            Uri.parse(destinationPath)
         } catch (e: Exception) {
             System.err.println(e)
-            call.reject("'destinationPath' option must be a valid android path")
+            call.reject("'destinationPath' option has to be a valid SAF file uri")
+            return
+        }
+
+        val file = DocumentFile.fromSingleUri(context, fileUri) ?: run {
+            call.reject("Provided 'destinationPath' does not seem to exist")
             return
         }
 
         appScope.launch {
-            uniMusicSync.exportHash(fileHash, destinationPath)
+            // Since Android<->Rust filesystem interop would be a pain in the ass,
+            // we do similar things to what Rust does directly here
+            val outputStream = context.contentResolver.openOutputStream(file.uri) ?: run {
+                call.reject("Failed to open input stream for ${file.uri}")
+                return@launch
+            }
+            val data = uniMusicSync.readFileHash(fileHash)
+            outputStream.use { outputStream.write(data) }
             call.resolve()
         }
     }
@@ -313,7 +351,14 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val namespace = uniMusicSync.import(ticket)
+            val namespace = try {
+                uniMusicSync.import(ticket)
+            } catch (e: Exception) {
+                System.err.println(e)
+                call.reject("Failed to import ticket")
+                return@launch
+            }
+
             val result = JSObject()
             result.put("namespace", namespace)
             call.resolve(result)

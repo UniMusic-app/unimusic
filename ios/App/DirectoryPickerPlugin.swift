@@ -13,7 +13,7 @@ public class DirectoryPicker: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDeleg
     ]
 
     var currentCall: CAPPluginCall?
-    let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+    let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
 
     @objc func pickDirectory(_ call: CAPPluginCall) {
         guard let viewController = bridge?.viewController else {
@@ -33,19 +33,15 @@ public class DirectoryPicker: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDeleg
             return
         }
 
-        let documentsPath = documentsDirectory!.path
-        let validUrls = urls.map { $0.path }.filter {
-            print("Path: \($0) | Root: \(documentsPath)")
-            return $0.contains(documentsPath)
-        }
-
+        let documentsPath = documentsDirectory.absoluteString
+        let validUrls = urls.map { $0.standardizedFileURL.absoluteString }.filter { $0.contains(documentsPath) }
         if validUrls.isEmpty {
             call.reject("You can only choose a directory within the App's Documents folder")
         } else {
+            // Relative path to the Documents directory
+            let relativePath = validUrls[0].replacingOccurrences(of: documentsPath, with: "").removingPercentEncoding!
             call.resolve([
-                "path": validUrls[0]
-                    .replacingOccurrences(of: "/private", with: "")
-                    .replacingOccurrences(of: documentsPath, with: ""),
+                "path": relativePath
             ])
         }
 

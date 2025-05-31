@@ -222,10 +222,10 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        guard let destinationPath = call.getString("destination"),
+        guard let destinationPath = call.getString("destinationPath"),
               let _ = URL(string: destinationPath)
         else {
-            call.reject("You must provide a valid file url for 'destination' option")
+            call.reject("You must provide a valid file url for 'destinationPath' option")
             return
         }
 
@@ -246,7 +246,7 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        guard let destinationPath = call.getString("destination"),
+        guard let destinationPath = call.getString("destinationPath"),
               let _ = URL(string: destinationPath)
         else {
             call.reject("You must provide a valid file url for 'destination' option")

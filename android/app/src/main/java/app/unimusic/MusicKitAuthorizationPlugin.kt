@@ -10,6 +10,7 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 
+@Suppress("unused")
 @CapacitorPlugin(name = "MusicKitAuthorization")
 class MusicKitAuthorizationPlugin : Plugin() {
     private var authManager: AuthenticationManager? = null

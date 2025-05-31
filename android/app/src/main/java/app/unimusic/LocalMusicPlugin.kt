@@ -14,6 +14,7 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
 
+@Suppress("unused")
 @CapacitorPlugin(
     name = "LocalMusic",
     permissions = [
