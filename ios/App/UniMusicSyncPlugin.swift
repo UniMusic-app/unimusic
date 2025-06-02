@@ -28,7 +28,7 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
     deinit {
         if let uniMusicSync {
             Task {
-                try! await uniMusicSync.shutdown()
+                try? await uniMusicSync.shutdown()
             }
         }
     }
@@ -38,7 +38,7 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
             let syncPath = documentsPath.appendingPathComponent("UniMusicSync")
             do {
-                uniMusicSync = try! await UniMusicSync(syncPath.path)
+                uniMusicSync = try await UniMusicSync(syncPath.path)
                 print("Initialized UniMusicSync")
             } catch {
                 print("Failed to initialize UniMusicSync: \(error)")
@@ -53,10 +53,14 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let namespace = try! await uniMusicSync.createNamespace()
-            call.resolve([
-                "namespace": namespace,
-            ])
+            do {
+                let namespace = try await uniMusicSync.createNamespace()
+                call.resolve([
+                    "namespace": namespace,
+                ])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -67,10 +71,14 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let author = try! await uniMusicSync.getAuthor()
-            call.resolve([
-                "author": author,
-            ])
+            do {
+                let author = try await uniMusicSync.getAuthor()
+                call.resolve([
+                    "author": author,
+                ])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -100,25 +108,30 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let files = try! await uniMusicSync.getFiles(namespace)
-
-            var filesObject: PluginCallResultData = [:]
-            for entry in files {
-                if entry.isEmpty() {
-                    continue
+            do {
+                let files = try await uniMusicSync.getFiles(namespace)
+                
+                
+                var filesObject: PluginCallResultData = [:]
+                for entry in files {
+                    if entry.isEmpty() {
+                        continue
+                    }
+                    
+                    let key = entry.key()
+                    filesObject[key] = [
+                        "key": key,
+                        "author": entry.author(),
+                        "timestamp": entry.timestamp(),
+                        "contentHash": entry.contentHash(),
+                        "contentLen": entry.contentLen(),
+                    ]
                 }
-
-                let key = entry.key()
-                filesObject[key] = [
-                    "key": key,
-                    "author": entry.author(),
-                    "timestamp": entry.timestamp(),
-                    "contentHash": entry.contentHash(),
-                    "contentLen": entry.contentLen(),
-                ]
+                
+                call.resolve(filesObject)
+            } catch {
+                call.reject(error.localizedDescription)
             }
-
-            call.resolve(filesObject)
         }
     }
 
@@ -146,15 +159,19 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let data = try! Data(contentsOf: sourcePathUrl)
-            let fileHash = try! await uniMusicSync.writeFile(
-                namespace,
-                syncPath,
-                data
-            )
-            call.resolve([
-                "fileHash": fileHash,
-            ])
+            do {
+                let data = try Data(contentsOf: sourcePathUrl)
+                let fileHash = try await uniMusicSync.writeFile(
+                    namespace,
+                    syncPath,
+                    data
+                )
+                call.resolve([
+                    "fileHash": fileHash,
+                ])
+            } catch {
+                    call.reject(error.localizedDescription)
+                }
         }
     }
 
@@ -175,13 +192,17 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let data = try! await uniMusicSync.readFile(namespace, syncPath)
+            do {
+            let data = try await uniMusicSync.readFile(namespace, syncPath)
             let dataType = UTType(filenameExtension: (syncPath as NSString).pathExtension)
             let server = HTTPResponseServer(body: data, type: dataType)
-            let url = try! await server.start()
+            let url = try await server.start()
             call.resolve([
                 "url": url.absoluteString,
             ])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -197,12 +218,16 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let data = try! await uniMusicSync.readFileHash(fileHash)
-            let server = HTTPResponseServer(body: data, type: .data)
-            let url = try! await server.start()
-            call.resolve([
-                "url": url,
-            ])
+            do {
+                let data = try await uniMusicSync.readFileHash(fileHash)
+                let server = HTTPResponseServer(body: data, type: .data)
+                let url = try await server.start()
+                call.resolve([
+                    "url": url,
+                ])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -254,8 +279,12 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            try! await uniMusicSync.exportHash(fileHash, destinationPath)
-            call.resolve()
+            do {
+                try await uniMusicSync.exportHash(fileHash, destinationPath)
+                call.resolve()
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -271,10 +300,14 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let ticket = try! await uniMusicSync.share(namespace)
-            call.resolve([
-                "ticket": ticket,
-            ])
+            do {
+                let ticket = try await uniMusicSync.share(namespace)
+                call.resolve([
+                    "ticket": ticket,
+                ])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -290,10 +323,14 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            let namespace = try! await uniMusicSync.import(ticket)
-            call.resolve([
-                "namespace": namespace,
-            ])
+            do {
+                let namespace = try await uniMusicSync.import(ticket)
+                call.resolve([
+                    "namespace": namespace,
+                ])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 

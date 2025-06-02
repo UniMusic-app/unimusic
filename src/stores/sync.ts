@@ -6,7 +6,8 @@ import UniMusicSync, { DocTicket, Entry, NamespaceId } from "@/plugins/UniMusicS
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { Ref, watch } from "vue";
+import { partialDeepStrictEqual } from "assert";
+import { computed } from "vue";
 
 type Path = string;
 
@@ -27,34 +28,19 @@ export interface SyncData {
 }
 
 export const useSync = defineStore("UniMusicSync", () => {
-	const synchronizationData = useIDBKeyval<SyncData>("uniMusicSync", {
+	const $synchronizationData = useIDBKeyval<SyncData>("uniMusicSync", {
 		watchedNamespaces: {},
 		namespaces: {},
 	});
+	const synchronizationData = computed(() => $synchronizationData.data.value);
 
 	function log(...args: unknown[]): void {
 		console.debug("%cUniMusicSync:", "color: #9f00ff; font-weight: bold;", ...args);
 	}
 
-	async function data(): Promise<Ref<SyncData>> {
-		if (synchronizationData.isFinished) {
-			return synchronizationData.data;
-		} else {
-			await new Promise<void>((resolve) => {
-				const unwatch = watch(synchronizationData.isFinished, (isFinished) => {
-					if (isFinished) {
-						unwatch();
-						resolve();
-					}
-				});
-			});
-			return synchronizationData.data;
-		}
-	}
-
 	async function createNamespace(path: string): Promise<NamespaceId> {
 		const { namespace } = await UniMusicSync.createNamespace();
-		synchronizationData.data.value.namespaces[namespace] = path;
+		synchronizationData.value.namespaces[namespace] = path;
 		return namespace;
 	}
 
@@ -63,12 +49,19 @@ export const useSync = defineStore("UniMusicSync", () => {
 		return ticket;
 	}
 
+	async function deleteNamespace(namespace: NamespaceId): Promise<void> {
+		// FIXME: Delete it in iroh!!!
+		delete synchronizationData.value.namespaces[namespace];
+	}
+
 	function normalizeRelativePath(path: string): string {
 		path = decodeURIComponent(path);
 		// Convert windows-style path to be unix-like
 		path = path.replaceAll("\\", "/");
 		// Remove leading slashes
 		path = path.replace(/^\/+/, "");
+		// Remove leading slashes
+		path = path.replace(/\/+$/, "");
 
 		const segments = path.split(/\/+/);
 		segments.filter((segment) => {
@@ -85,6 +78,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 		if (!result.length) {
 			throw new Error(`Invalid path '${path}' results in being empty after normalization`);
 		}
+
 		return result;
 	}
 
@@ -149,7 +143,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 		log(`- Reconnecting`);
 		await UniMusicSync.reconnect();
 
-		const syncData = synchronizationData.data.value;
+		const syncData = synchronizationData.value;
 
 		const recordedInfo: Record<Path, FileInfo> = {};
 
@@ -249,7 +243,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 	}
 
 	async function importNamespace(ticket: DocTicket, path: string): Promise<NamespaceId> {
-		const syncData = synchronizationData.data.value;
+		const syncData = synchronizationData.value;
 
 		log(`Importing ticket ${ticket}`);
 		const { namespace } = await UniMusicSync.import({ ticket });
@@ -266,10 +260,12 @@ export const useSync = defineStore("UniMusicSync", () => {
 	}
 
 	return {
-		data,
+		data: synchronizationData,
+		normalizeRelativePath,
 		syncFiles,
 		importNamespace,
 		createNamespace,
+		deleteNamespace,
 		shareNamespace,
 	};
 });

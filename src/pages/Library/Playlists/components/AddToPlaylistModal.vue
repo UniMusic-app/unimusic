@@ -53,6 +53,10 @@ async function addToPlaylist(playlist: Playlist): Promise<void> {
 
 	playlist.songs.push(...songs);
 
+	const positionAnchor =
+		document.querySelector<HTMLElement>("#mini-music-player") ??
+		document.querySelector<HTMLElement>("ion-tab-bar") ??
+		undefined;
 	const toast = await toastController.create({
 		header: `Playlist "${playlist.title}"`,
 		message: `${songs.length} ${songs.length > 1 ? "songs" : "song"} added`,
@@ -61,7 +65,7 @@ async function addToPlaylist(playlist: Playlist): Promise<void> {
 		duration: 2000,
 		translucent: true,
 		swipeGesture: "vertical",
-		positionAnchor: "mini-music-player",
+		positionAnchor,
 	});
 	await toast.present();
 }

@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import { IonButton } from "@ionic/vue";
+import { IonNav, IonPage, onIonViewWillLeave } from "@ionic/vue";
+import { useTemplateRef } from "vue";
 
-import AppPage from "@/components/AppPage.vue";
+import SyncMainNav from "./components/MainNav.vue";
 
-import { useSync } from "@/stores/sync";
-import ImportSongsModal from "./components/ImportSongsModal.vue";
-import ShareSongsModal from "./components/ShareSongsModal.vue";
+const nav = useTemplateRef<{ $el: HTMLIonNavElement }>("nav");
 
-const sync = useSync();
+onIonViewWillLeave(async () => {
+	await nav.value?.$el.popToRoot({
+		duration: 100,
+	});
+});
 </script>
 
 <template>
-	<AppPage title="Sync">
-		<ion-button id="share-songs">Share songs</ion-button>
-		<ShareSongsModal trigger="share-songs" />
-		<ion-button id="import-songs">Import songs</ion-button>
-		<ImportSongsModal trigger="import-songs" />
-		<ion-button @click="sync.syncFiles()">Sync</ion-button>
-	</AppPage>
+	<ion-page>
+		<ion-nav ref="nav" :root="SyncMainNav" :root-params="{ nav: nav?.$el }" />
+	</ion-page>
 </template>
