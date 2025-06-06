@@ -14,6 +14,9 @@ importers:
       '@capacitor/app':
         specifier: ^7.0.1
         version: 7.0.1(@capacitor/core@7.2.0)
+      '@capacitor/barcode-scanner':
+        specifier: ^2.0.3
+        version: 2.0.3(@capacitor/core@7.2.0)
       '@capacitor/core':
         specifier: ^7.2.0
         version: 7.2.0
@@ -32,6 +35,9 @@ importers:
       '@capacitor/preferences':
         specifier: ^7.0.1
         version: 7.0.1(@capacitor/core@7.2.0)
+      '@capacitor/share':
+        specifier: ^7.0.1
+        version: 7.0.1(@capacitor/core@7.2.0)
       '@capacitor/status-bar':
         specifier: ^7.0.1
         version: 7.0.1(@capacitor/core@7.2.0)
@@ -41,6 +47,9 @@ importers:
       '@ionic/vue-router':
         specifier: ^8.5.5
         version: 8.5.5(@stencil/core@4.30.0)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+      '@unimusic/sync':
+        specifier: ^0.1.14
+        version: 0.1.14
       '@vueuse/components':
         specifier: ^13.1.0
         version: 13.1.0(vue@3.5.13(typescript@5.8.3))
@@ -77,6 +86,9 @@ importers:
       pinia:
         specifier: ^3.0.2
         version: 3.0.2(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
+      qr-code-styling:
+        specifier: ^1.9.2
+        version: 1.9.2
       urlpattern-polyfill:
         specifier: ^10.0.0
         version: 10.0.0
@@ -231,6 +243,11 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
+  '@capacitor/barcode-scanner@2.0.3':
+    resolution: {integrity: sha512-ZELdXMRR1fgCWDVbSJtmaEtQeWFknYq09hxJuFyyzqvd31OsexJLMKMFmlq9N+NMEW8jwHaWKa08GlEIxyjzOw==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+
   '@capacitor/cli@7.0.1':
     resolution: {integrity: sha512-KNKT25ZvNL8Gm+zxSxCq8n9FQYUBsZcAGs5lisQKHnDRz7tkTMmMNok+TlNlLn6to78J1k+OtBgpmfbFerpOng==}
     engines: {node: '>=20.0.0'}
@@ -264,6 +281,11 @@ packages:
 
   '@capacitor/preferences@7.0.1':
     resolution: {integrity: sha512-XF9jOHzvoIBZLwZr/EX6aVaUO1d8Mx7TwBLQS33pYHOliCW5knT5KUkFOXNNYxh9qqODYesee9xuQIKNJpQBag==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+
+  '@capacitor/share@7.0.1':
+    resolution: {integrity: sha512-7GAtWrb2inEWohC8E7mx38qAX6D9yqPDDnUtJaZ8JRpo15jjFRS40Cx388M8h4NlBWjV5NU3qf1sHXnyOBSJ5g==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -554,6 +576,9 @@ packages:
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
 
+  '@neon-rs/load@0.1.82':
+    resolution: {integrity: sha512-H4Gu2o5kPp+JOEhRrOQCnJnf7X6sv9FBLttM/wSbb4efsgFWeHzfU/ItZ01E5qqEk+U6QGdeVO7lxXIAtYHr5A==}
+
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -832,6 +857,34 @@ packages:
   '@typescript-eslint/visitor-keys@8.31.0':
     resolution: {integrity: sha512-QcGHmlRHWOl93o64ZUMNewCdwKGU6WItOU52H0djgNmn1EOrhVudrDzXz4OycCRSCPwFCDrE2iIt5vmuUdHxuQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@unimusic/darwin-arm64@0.1.14':
+    resolution: {integrity: sha512-GVE4gqs+qCZcbJvA7NwQjDhnsAmhYnEN1ufwpkCYGRPax89HogZskBCHswsT4OQywOGLhpV+kaVuHztj9bh62w==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@unimusic/darwin-x64@0.1.14':
+    resolution: {integrity: sha512-x4LLbCAVl26L2IQGf3txb5Djr4RLFaBSWW5FHNZqh/3Vhx4g/ON/+si7h/FY2xW3NG/nL5OCj6pTDv5GJYNC4A==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@unimusic/linux-arm64-gnu@0.1.14':
+    resolution: {integrity: sha512-LJc6L1Ta1Xw+dz9RyETzf0clg9O47lBKxTpt3Tzx5+iMcRB4v/lsTEl+FGEZSKLpPbwZbA5dqHQPdi5Q5WjONw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@unimusic/linux-x64-gnu@0.1.14':
+    resolution: {integrity: sha512-X6by9GBCxek6//jEVeBMpYva/cOy0PkE8m15ygTpUkSB+BrqDap+Vrb96MVRKSfvbGQ2iB0v8GEFFP3qCqDzHg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@unimusic/sync@0.1.14':
+    resolution: {integrity: sha512-dwITobXxYcqDK0lOuh9s82TUw9cvqMqWNvsV+tCNv2U0ObXmViTkj9J5Fz515/K+UjGH8dQGCCNtwC2Py8mx8g==}
+
+  '@unimusic/win32-x64-msvc@0.1.14':
+    resolution: {integrity: sha512-il0ICkFDR4kNJOqAzM3dBxfjpuaMJot+OZnmFWyA+FIfBbQIrBht8gZydw439+B1WbFFmMhzxcPqna4MT/tDVA==}
+    cpu: [x64]
+    os: [win32]
 
   '@vitejs/plugin-vue@5.2.3':
     resolution: {integrity: sha512-IYSLEQj4LgZZuoVpdSUCw3dIynTWQgPlaRP6iAvMle4My0HdYwr5g5wQAfwOeHQBmYwEkqF70nRpSilr6PoUDg==}
@@ -1474,6 +1527,9 @@ packages:
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
 
+  html5-qrcode@2.3.8:
+    resolution: {integrity: sha512-jsr4vafJhwoLVEDW3n1KvPnCCXWaQfRng0/EEYk1vNcQGcG/htAdhJX0be8YyqMoSz7+hZvOZSTAepsabiuhiQ==}
+
   http-cache-semantics@4.1.1:
     resolution: {integrity: sha512-er295DKPVsV82j5kw1Gjt+ADA/XYHsajl82cGNQG2eyoPkvgUhX+nDIyelzhIWbbsXP39EHcI6l5tYs2FYqYXQ==}
 
@@ -1864,6 +1920,13 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  qr-code-styling@1.9.2:
+    resolution: {integrity: sha512-RgJaZJ1/RrXJ6N0j7a+pdw3zMBmzZU4VN2dtAZf8ZggCfRB5stEQ3IoDNGaNhYY3nnZKYlYSLl5YkfWN5dPutg==}
+    engines: {node: '>=18.18.0'}
+
+  qrcode-generator@1.4.4:
+    resolution: {integrity: sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==}
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -2365,6 +2428,11 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.2.0
 
+  '@capacitor/barcode-scanner@2.0.3(@capacitor/core@7.2.0)':
+    dependencies:
+      '@capacitor/core': 7.2.0
+      html5-qrcode: 2.3.8
+
   '@capacitor/cli@7.0.1':
     dependencies:
       '@ionic/cli-framework-output': 2.2.8
@@ -2412,6 +2480,10 @@ snapshots:
       '@capacitor/core': 7.2.0
 
   '@capacitor/preferences@7.0.1(@capacitor/core@7.2.0)':
+    dependencies:
+      '@capacitor/core': 7.2.0
+
+  '@capacitor/share@7.0.1(@capacitor/core@7.2.0)':
     dependencies:
       '@capacitor/core': 7.2.0
 
@@ -2698,6 +2770,8 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
+  '@neon-rs/load@0.1.82': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -2953,6 +3027,31 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.31.0
       eslint-visitor-keys: 4.2.0
+
+  '@unimusic/darwin-arm64@0.1.14':
+    optional: true
+
+  '@unimusic/darwin-x64@0.1.14':
+    optional: true
+
+  '@unimusic/linux-arm64-gnu@0.1.14':
+    optional: true
+
+  '@unimusic/linux-x64-gnu@0.1.14':
+    optional: true
+
+  '@unimusic/sync@0.1.14':
+    dependencies:
+      '@neon-rs/load': 0.1.82
+    optionalDependencies:
+      '@unimusic/darwin-arm64': 0.1.14
+      '@unimusic/darwin-x64': 0.1.14
+      '@unimusic/linux-arm64-gnu': 0.1.14
+      '@unimusic/linux-x64-gnu': 0.1.14
+      '@unimusic/win32-x64-msvc': 0.1.14
+
+  '@unimusic/win32-x64-msvc@0.1.14':
+    optional: true
 
   '@vitejs/plugin-vue@5.2.3(vite@6.2.6(@types/node@22.15.3)(terser@5.39.0))(vue@3.5.13(typescript@5.8.3))':
     dependencies:
@@ -3649,6 +3748,8 @@ snapshots:
 
   hookable@5.5.3: {}
 
+  html5-qrcode@2.3.8: {}
+
   http-cache-semantics@4.1.1: {}
 
   http2-wrapper@1.0.3:
@@ -3998,6 +4099,12 @@ snapshots:
       once: 1.4.0
 
   punycode@2.3.1: {}
+
+  qr-code-styling@1.9.2:
+    dependencies:
+      qrcode-generator: 1.4.4
+
+  qrcode-generator@1.4.4: {}
 
   queue-microtask@1.2.3: {}
 

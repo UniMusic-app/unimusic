@@ -6,7 +6,7 @@ public class MusicKitAuthorizationPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "MusicKitAuthorizationPlugin"
     public let jsName = "MusicKitAuthorization"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "authorize", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "authorize", returnType: CAPPluginReturnPromise),
     ]
 
     @objc func authorize(_ call: CAPPluginCall) {
@@ -20,10 +20,10 @@ public class MusicKitAuthorizationPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     call.resolve([
                         "developerToken": developerToken,
-                        "musicUserToken": musicUserToken
+                        "musicUserToken": musicUserToken,
                     ])
                 } catch {
-                    call.reject("Failed to retrieve MusicKit tokens: \(error)");
+                    call.reject("Failed to retrieve MusicKit tokens: \(error)")
                 }
             case .notDetermined:
                 call.reject("User has not made a choice yet")

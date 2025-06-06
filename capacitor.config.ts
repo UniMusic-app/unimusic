@@ -20,6 +20,8 @@ const config: CapacitorConfig = {
 		"@capacitor/keyboard",
 		"@capacitor/preferences",
 		"@capacitor/status-bar",
+		"@capacitor/barcode-scanner",
+		"@capacitor/share",
 	],
 	android: {
 		adjustMarginsForEdgeToEdge: "auto",
@@ -30,6 +32,8 @@ const config: CapacitorConfig = {
 			"@capacitor/keyboard",
 			"@capacitor/preferences",
 			"@capacitor/status-bar",
+			"@capacitor/barcode-scanner",
+			"@capacitor/share",
 			"capacitor-music-controls-plugin",
 		],
 	},

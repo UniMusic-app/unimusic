@@ -3,9 +3,6 @@ import { toRaw } from "vue";
 import Fuse from "fuse.js";
 import { parseWebStream, selectCover } from "music-metadata";
 
-import LocalMusic from "@/plugins/LocalMusicPlugin";
-import { Capacitor } from "@capacitor/core";
-
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 
 import {
@@ -17,7 +14,7 @@ import {
 
 import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
-import { audioMimeTypeFromPath } from "@/utils/path";
+import { audioMimeTypeFromPath, getFileStream, getSongPaths } from "@/utils/path";
 import { Maybe } from "@/utils/types";
 import {
 	Album,
@@ -48,94 +45,6 @@ type _LocalArtistKey = ArtistKey<"local">;
 type LocalSong = Song<"local">;
 type LocalSongPreview = SongPreview<"local">;
 type LocalDisplayableArtist = DisplayableArtist<"local">;
-
-async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: string }> {
-	switch (getPlatform()) {
-		case "android": {
-			const { songs } = await LocalMusic.getSongs();
-			for (const song of songs) {
-				yield { id: song.id, filePath: song.path };
-			}
-			break;
-		}
-		case "electron": {
-			const musicPath = await ElectronMusicPlayer!.getMusicPath();
-			yield* traverseDirectory(musicPath);
-			break;
-		}
-		default:
-			yield* traverseDirectory("/");
-			break;
-	}
-}
-
-async function* traverseDirectory(path: string): AsyncGenerator<{ filePath: string }> {
-	if (getPlatform() === "electron") {
-		for (const filePath of await ElectronMusicPlayer!.traverseDirectory(path)) {
-			yield { filePath };
-		}
-	} else {
-		const { Directory, Filesystem } = await import("@capacitor/filesystem");
-
-		const { files } = await Filesystem.readdir({
-			path,
-			directory: Directory.Documents,
-		});
-
-		for (const file of files) {
-			// Ignore deleted files
-			if (file.name === ".Trash") {
-				continue;
-			}
-
-			const filePath = `${path}/${file.name}`;
-
-			if (file.type === "directory") {
-				yield* traverseDirectory(filePath);
-				continue;
-			}
-
-			yield { filePath };
-		}
-	}
-}
-
-async function getFileStream(path: string): Promise<ReadableStream<Uint8Array>> {
-	switch (getPlatform()) {
-		case "electron": {
-			const buffer = await ElectronMusicPlayer!.readFile(path);
-			const stream = new ReadableStream({
-				start(controller): void {
-					controller.enqueue(buffer);
-					controller.close();
-				},
-			});
-			return stream;
-		}
-		case "android": {
-			const fileSrc = Capacitor.convertFileSrc(path);
-			const response = await fetch(fileSrc);
-			if (!response.body) {
-				throw new Error(`Failed retrieving file stream for ${path}: body is empty.`);
-			}
-			return response.body;
-		}
-		default: {
-			const { Filesystem, Directory } = await import("@capacitor/filesystem");
-
-			const { uri } = await Filesystem.getUri({
-				path: path,
-				directory: Directory.Documents,
-			});
-			const fileSrc = Capacitor.convertFileSrc(uri);
-			const response = await fetch(fileSrc);
-			if (!response.body) {
-				throw new Error(`Failed retrieving file stream for ${path}: body is empty.`);
-			}
-			return response.body;
-		}
-	}
-}
 
 async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 	const stream = await getFileStream(path);
@@ -214,7 +123,7 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 }
 
 async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
-	const localSongs = getAllCached<LocalSong>("local", "song").toArray();
+	const localSongs = Array.from(getAllCached<LocalSong>("local", "song"));
 
 	if (clearCache) {
 		for (const song of localSongs) {
@@ -468,7 +377,7 @@ export class LocalMusicService extends MusicService<"local"> {
 	handleRefreshLibraryAlbums(): void {
 		// First we cleanup songs from albums, in case some were removed
 		// This also allows us to then remove albums that are empty
-		const localAlbums = getAllCached<LocalAlbum>("local", "album").toArray();
+		const localAlbums = Array.from(getAllCached<LocalAlbum>("local", "album"));
 
 		for (const album of localAlbums) {
 			album.songs.length = 0;

@@ -26,7 +26,6 @@ import {
 	trashOutline as deleteIcon,
 	pencil as editIcon,
 	play as playIcon,
-	listOutline as playlistIcon,
 	playOutline as playSongNextIcon,
 	shuffle as shuffleIcon,
 } from "ionicons/icons";

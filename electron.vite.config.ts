@@ -10,6 +10,9 @@ export default {
 			lib: {
 				entry: "./electron/main.ts",
 			},
+			rollupOptions: {
+				external: ["@unimusic/sync"],
+			},
 		},
 	},
 	preload: {
