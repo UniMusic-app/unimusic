@@ -36,7 +36,7 @@ async function generateTicket(): Promise<void> {
 		return;
 	}
 
-	const namespace = await sync.createNamespace(directory.value);
+	const namespace = await sync.getOrCreateNamespace(directory.value);
 	const sharedTicket = await sync.shareNamespace(namespace);
 
 	ticket.value = sharedTicket;

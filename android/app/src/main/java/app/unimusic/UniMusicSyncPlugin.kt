@@ -74,6 +74,26 @@ class UniMusicSyncPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun deleteNamespace(call: PluginCall) {
+        if (!::uniMusicSync.isInitialized) {
+            call.reject("UniMusicSync is not initialized")
+            return
+        }
+
+        val namespace = call.getString("namespace") ?: run {
+            call.reject("You must provide a 'namespace' option")
+            return
+        }
+
+        appScope.launch {
+            handleCallExceptions(call) {
+                uniMusicSync.deleteNamespace(namespace)
+                call.resolve()
+            }
+        }
+    }
+
+    @PluginMethod
     fun getAuthor(call: PluginCall) {
         if (!::uniMusicSync.isInitialized) {
             call.reject("UniMusicSync is not initialized")
@@ -118,7 +138,6 @@ class UniMusicSyncPlugin : Plugin() {
             call.reject("You must provide a 'namespace' option")
             return
         }
-
 
         appScope.launch {
             handleCallExceptions(call) {

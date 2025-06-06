@@ -7,7 +7,7 @@ import UniMusicSync, {
 	NamespaceId,
 	FileInfo as SyncFileInfo,
 } from "@/plugins/UniMusicSync";
-import { getPlatform, isElectron } from "@/utils/os";
+import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { computed } from "vue";
@@ -41,8 +41,11 @@ export const useSync = defineStore("UniMusicSync", () => {
 		console.debug("%cUniMusicSync:", "color: #9f00ff; font-weight: bold;", ...args);
 	}
 
-	// TODO: Get or create namespace
-	async function createNamespace(path: string): Promise<NamespaceId> {
+	async function getOrCreateNamespace(path: string): Promise<NamespaceId> {
+		for (const [namespace, namespacePath] of Object.entries(synchronizationData.value.namespaces)) {
+			if (path === namespacePath) return namespace;
+		}
+
 		const { namespace } = await UniMusicSync.createNamespace();
 		synchronizationData.value.namespaces[namespace] = path;
 		return namespace;
@@ -204,15 +207,20 @@ export const useSync = defineStore("UniMusicSync", () => {
 		for (const [namespace, directory] of Object.entries(syncData.namespaces)) {
 			log(`- Sync namespace ${namespace} (${directory})`);
 
-			await UniMusicSync.sync({ namespace });
+			try {
+				await UniMusicSync.sync({ namespace });
+			} catch (error) {
+				console.warn(error);
+				log(`- Sync failed, skipping namespace ${namespace}`);
+			}
+
 			const syncedFiles = await UniMusicSync.getFiles({ namespace });
 
-			log("synced files:", syncedFiles);
+			log("Files to sync:", syncedFiles);
 
 			const watchedDirectory = syncData.watchedDirectories[namespace];
 
 			const lastRecordedInfo = watchedDirectory?.lastRecordedInfo;
-			console.log("DIRECTORY:", directory);
 			for await (const { relativePath, absolutePath } of traverseRelativeDirectory(directory)) {
 				const syncPath = relativePath;
 
@@ -229,7 +237,6 @@ export const useSync = defineStore("UniMusicSync", () => {
 					await UniMusicSync.writeFile({ namespace, syncPath, sourcePath });
 				} else if (lastFileInfo?.entry && entry.contentHash !== lastFileInfo.entry.contentHash) {
 					log(`Updating ${syncPath} (New remote value | EXPORT)`);
-					// FIXME: Remove file if it exists on export
 					await UniMusicSync.exportHash({ fileHash: entry.contentHash, destinationPath: sourcePath });
 				} else if (lastFileInfo.mtime !== mtime || lastFileInfo.size !== size) {
 					log(`Updating ${syncPath} (File got modified)`);
@@ -247,24 +254,36 @@ export const useSync = defineStore("UniMusicSync", () => {
 			for (const syncPath of allFiles.difference(seenFiles)) {
 				const lastInfo = watchedDirectory?.lastRecordedInfo?.[syncPath];
 
+				console.log(watchedDirectory, lastInfo);
+
 				if (lastInfo) {
-					await UniMusicSync.deleteFile({ namespace, syncPath });
 					log(`Deleting ${syncPath} (Local deletion)`);
+					await UniMusicSync.deleteFile({ namespace, syncPath });
 					delete watchedDirectory!.lastRecordedInfo![syncPath];
 					continue;
 				}
 
 				let destinationPath = `${directory}/${syncPath}`;
-				log(`Retrieving ${syncPath} (Missing locally, saving to ${destinationPath})`);
 
-				if (getPlatform() === "ios") {
-					const { uri } = await Filesystem.getUri({
-						path: destinationPath,
-						directory: Directory.Documents,
-					});
-					destinationPath = decodeURIComponent(uri.replace("file://", ""));
+				switch (getPlatform()) {
+					case "ios": {
+						const { uri } = await Filesystem.getUri({
+							path: destinationPath,
+							directory: Directory.Documents,
+						});
+						destinationPath = decodeURIComponent(uri.replace("file://", ""));
+						break;
+					}
+					case "android": {
+						const { uri } = await StorageAccessFramework.ensureFile({
+							treeUri: directory,
+							path: syncPath,
+						});
+						destinationPath = uri;
+						break;
+					}
 				}
-
+				log(`Retrieving ${syncPath} (Missing locally, saving to ${destinationPath})`);
 				await UniMusicSync.export({ namespace, syncPath, destinationPath });
 			}
 
@@ -294,7 +313,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 		normalizeRelativePath,
 		syncFiles,
 		importNamespace,
-		createNamespace,
+		getOrCreateNamespace,
 		deleteNamespace,
 		shareNamespace,
 	};
