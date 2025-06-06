@@ -30,10 +30,10 @@ Development is currently prioritized for iOS and macOS, however first stable rel
 | Feature               | Status | Notes                                       |
 | --------------------- | :----: | ------------------------------------------- |
 | Unified search        |   ✅   |                                             |
-| Unified library       |   🟧   | Missing YouTube support and UI to add items |
 | Unified playlists     |   ✅   |                                             |
+| Media synchronisation |   ✅   | Not tested on Windows                       |
+| Unified library       |   🟧   | Missing YouTube support and UI to add items |
 | Metadata tagging      |   🟥   | Manual metadata edition is supported        |
-| Media synchronisation |   🟥   |                                             |
 | Lyrics                |   🟥   |                                             |
 
 ## Development
