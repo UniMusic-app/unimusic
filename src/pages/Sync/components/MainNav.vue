@@ -6,6 +6,7 @@ import {
 	IonItem,
 	IonList,
 	IonNote,
+	IonSpinner,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
@@ -60,7 +61,11 @@ const sync = useSync();
 			</ion-list>
 
 			<ion-list inset>
-				<ion-item lines="full" button @click="sync.syncFiles()" :detail="false">
+				<ion-item v-if="sync.status === 'syncing'" lines="full" :detail="false">
+					<ion-spinner slot="start" color="primary" />
+					Syncing...
+				</ion-item>
+				<ion-item v-else lines="full" button @click="sync.syncFiles()" :detail="false">
 					<ion-icon slot="start" :icon="syncIcon" color="primary" />
 					Sync Now
 				</ion-item>

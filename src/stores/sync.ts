@@ -10,7 +10,7 @@ import UniMusicSync, {
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 type Path = string;
 
@@ -36,6 +36,8 @@ export const useSync = defineStore("UniMusicSync", () => {
 		namespaces: {},
 	});
 	const synchronizationData = computed(() => $synchronizationData.data.value);
+
+	const status = ref<"idle" | "syncing">("idle");
 
 	function log(...args: unknown[]): void {
 		console.debug("%cUniMusicSync:", "color: #9f00ff; font-weight: bold;", ...args);
@@ -196,6 +198,12 @@ export const useSync = defineStore("UniMusicSync", () => {
 	}
 
 	async function syncFiles(): Promise<void> {
+		if (status.value === "syncing") {
+			return;
+		}
+
+		status.value = "syncing";
+
 		log(`- Reconnecting`);
 		await UniMusicSync.reconnect();
 		log(`- Reconnected`);
@@ -289,6 +297,9 @@ export const useSync = defineStore("UniMusicSync", () => {
 
 			syncData.watchedDirectories[namespace] = { lastRecordedInfo: recordedInfo };
 		}
+
+		log("Sync Finished");
+		status.value = "idle";
 	}
 
 	async function importNamespace(ticket: DocTicket, path: string): Promise<NamespaceId> {
@@ -309,6 +320,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 	}
 
 	return {
+		status,
 		data: synchronizationData,
 		normalizeRelativePath,
 		syncFiles,

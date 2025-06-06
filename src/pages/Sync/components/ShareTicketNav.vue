@@ -181,8 +181,10 @@ async function share(): Promise<void> {
 
 	& > .ticket-qr-code {
 		display: block;
+		width: 100%;
 		max-width: 384px;
 		margin-inline: auto;
+		margin-bottom: 16px;
 	}
 
 	& > .ticket {
