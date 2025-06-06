@@ -116,7 +116,7 @@ async function share(): Promise<void> {
 			</ion-buttons>
 		</template>
 
-		<ion-content :fullscreen="true" id="share-ticket-content" class="ion-padding">
+		<ion-content id="share-ticket-content" class="ion-padding">
 			<header>
 				<ion-header collapse="condense">
 					<ion-toolbar>
@@ -179,11 +179,19 @@ async function share(): Promise<void> {
 		}
 	}
 
+	& > .ticket-qr-code {
+		display: block;
+		max-width: 384px;
+		margin-inline: auto;
+	}
+
 	& > .ticket {
 		display: flex;
 		justify-content: center;
-		width: 100%;
 		gap: 8px;
+		width: 100%;
+		max-width: 384px;
+		margin-inline: auto;
 
 		& > code {
 			position: relative;

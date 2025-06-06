@@ -63,7 +63,7 @@ async function changeDirectory(event: string): Promise<void> {
 			</ion-buttons>
 		</template>
 
-		<ion-content :fullscreen="true" id="share-songs-content" class="ion-padding">
+		<ion-content id="share-songs-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="shareIcon" color="primary" />
 				<ion-header collapse="condense">
@@ -111,6 +111,7 @@ async function changeDirectory(event: string): Promise<void> {
 
 		& > ion-icon {
 			font-size: 4rem;
+			width: 100%;
 		}
 
 		& > ion-header {

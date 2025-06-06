@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/UniMusic-app/unimusic-sync",
       "state" : {
-        "revision" : "e3d5a8cd1003ee2abe1ff4b0273b78592d8eca6a",
-        "version" : "0.1.8"
+        "revision" : "68fa5eaa8667626c256885bad13ee9e819193c2e",
+        "version" : "0.1.14"
       }
     }
   ],

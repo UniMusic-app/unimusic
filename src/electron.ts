@@ -3,12 +3,21 @@
  * @module
  */
 
-declare global {
-	interface $ElectronMusicPlayer {
-		// musickit:
-		authorizeMusicKit: () => Promise<string | undefined>;
+import type {
+	AuthorId,
+	DocTicket,
+	FileInfo,
+	Hash,
+	NamespaceId,
+	NodeId,
+} from "@/plugins/UniMusicSync";
 
-		// musicplayer:
+declare global {
+	interface $ElectronBridge {
+		musicKit: {
+			authorize(): Promise<string | undefined>;
+		};
+
 		fetch: (
 			input: string,
 			init: unknown,
@@ -19,23 +28,55 @@ declare global {
 			body: Uint8Array;
 			headers: Record<string, string>;
 		}>;
-		getMusicPath: () => Promise<string>;
-		readFile: (path: string) => Promise<Uint8Array>;
-		traverseDirectory: (path: string) => Promise<string[]>;
+
+		fileSystem: {
+			readFile: (path: string) => Promise<Uint8Array>;
+			statFile: (
+				path: string,
+			) => Promise<{ type: "file" | "directory"; mtime: number; ctime: number; size: number }>;
+			pickDirectory: () => Promise<string>;
+			traverseDirectory: (path: string) => Promise<string[]>;
+			getMusicPath: () => Promise<string>;
+		};
+
+		uniMusicSync: {
+			initialize(): Promise<void>;
+
+			createNamespace(): Promise<NamespaceId>;
+			deleteNamespace(namespace: NamespaceId): Promise<void>;
+
+			getAuthor(): Promise<AuthorId>;
+			getNodeId(): Promise<NodeId>;
+
+			getFiles(namespace: NamespaceId): Promise<FileInfo[]>;
+			writeFile(namespace: NamespaceId, sourcePath: string, syncPath: string): Promise<Hash>;
+			deleteFile(namespace: NamespaceId, syncPath: string): Promise<number>;
+			readFile(namespace: NamespaceId, syncPath: string): Promise<Uint8Array>;
+			readFileHash(fileHash: Hash): Promise<Uint8Array>;
+
+			export(namespace: NamespaceId, syncPath: string, destinationPath: string): Promise<void>;
+			exportHash(fileHash: Hash, destinationPath: string): Promise<void>;
+
+			share(namespace: NamespaceId): Promise<DocTicket>;
+			import(ticket: DocTicket): Promise<NamespaceId>;
+
+			sync(namespace: NamespaceId): Promise<void>;
+			reconnect(): Promise<void>;
+		};
 	}
 
 	// eslint-disable-next-line no-var
-	var $ElectronMusicPlayer: $ElectronMusicPlayer | undefined;
+	var $ElectronBridge: $ElectronBridge | undefined;
 
-	interface ElectronMusicPlayer extends $ElectronMusicPlayer {
+	interface ElectronBridge extends $ElectronBridge {
 		fetchShim: typeof globalThis.fetch;
 	}
 	// eslint-disable-next-line no-var
-	var ElectronMusicPlayer: ElectronMusicPlayer | undefined;
+	var ElectronBridge: ElectronBridge | undefined;
 }
 
-globalThis.ElectronMusicPlayer = {
-	...$ElectronMusicPlayer!,
+globalThis.ElectronBridge = {
+	...$ElectronBridge!,
 	/**
 	 * Fetch with Electron-sided implementation to work-around CORS without disabling Web Security
 	 */
@@ -75,7 +116,7 @@ globalThis.ElectronMusicPlayer = {
 			options = { ...init, headers };
 		}
 
-		const nativeResponse = await ElectronMusicPlayer!.fetch(url, options);
+		const nativeResponse = await ElectronBridge!.fetch(url, options);
 
 		return new Response(nativeResponse.body, {
 			status: nativeResponse.status,
@@ -86,11 +127,11 @@ globalThis.ElectronMusicPlayer = {
 };
 
 /** Prevent object from being overwritten */
-Object.defineProperty(globalThis, "ElectronMusicPlayer", {
+Object.defineProperty(globalThis, "ElectronBridge", {
 	writable: false,
 	configurable: false,
 	enumerable: false,
-	value: Object.freeze(globalThis.ElectronMusicPlayer),
+	value: Object.freeze(globalThis.ElectronBridge),
 });
 
 export {};

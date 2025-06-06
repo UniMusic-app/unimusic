@@ -14,13 +14,7 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
-import {
-	downloadOutline as importIcon,
-	compass as locationIcon,
-	earthOutline as namespacesIcon,
-	shareOutline as shareIcon,
-	syncOutline as syncIcon,
-} from "ionicons/icons";
+import { compass as locationIcon, earthOutline as namespacesIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
 
@@ -30,8 +24,8 @@ const sync = useSync();
 </script>
 
 <template>
-	<AppPage title="Namespaces" :show-content-header="false">
-		<ion-content :fullscreen="true" id="namespaces-page-content" class="ion-padding">
+	<AppPage title="Namespaces" back-button="Back" :show-content-header="false">
+		<ion-content id="namespaces-page-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="namespacesIcon" color="primary" />
 				<ion-header collapse="condense">
@@ -78,6 +72,7 @@ const sync = useSync();
 
 		& > ion-icon {
 			font-size: 4rem;
+			width: 100%;
 		}
 
 		& > ion-header {

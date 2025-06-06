@@ -2,11 +2,14 @@ import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { defineStore } from "pinia";
 
 import StorageAccessFramework from "@/plugins/StorageAccessFramework";
-import UniMusicSync, { DocTicket, Entry, NamespaceId } from "@/plugins/UniMusicSync";
-import { getPlatform } from "@/utils/os";
+import UniMusicSync, {
+	DocTicket,
+	NamespaceId,
+	FileInfo as SyncFileInfo,
+} from "@/plugins/UniMusicSync";
+import { getPlatform, isElectron } from "@/utils/os";
 import { audioMimeTypeFromPath } from "@/utils/path";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { partialDeepStrictEqual } from "assert";
 import { computed } from "vue";
 
 type Path = string;
@@ -15,7 +18,7 @@ interface FileInfo {
 	sourcePath: Path;
 	mtime: number;
 	size: number;
-	entry?: Entry;
+	entry?: SyncFileInfo;
 }
 
 interface DirectoryInfo {
@@ -23,13 +26,13 @@ interface DirectoryInfo {
 }
 
 export interface SyncData {
-	watchedNamespaces: Record<Path, DirectoryInfo>;
+	watchedDirectories: Record<NamespaceId, DirectoryInfo>;
 	namespaces: Record<NamespaceId, Path>;
 }
 
 export const useSync = defineStore("UniMusicSync", () => {
 	const $synchronizationData = useIDBKeyval<SyncData>("uniMusicSync", {
-		watchedNamespaces: {},
+		watchedDirectories: {},
 		namespaces: {},
 	});
 	const synchronizationData = computed(() => $synchronizationData.data.value);
@@ -38,6 +41,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 		console.debug("%cUniMusicSync:", "color: #9f00ff; font-weight: bold;", ...args);
 	}
 
+	// TODO: Get or create namespace
 	async function createNamespace(path: string): Promise<NamespaceId> {
 		const { namespace } = await UniMusicSync.createNamespace();
 		synchronizationData.value.namespaces[namespace] = path;
@@ -50,8 +54,9 @@ export const useSync = defineStore("UniMusicSync", () => {
 	}
 
 	async function deleteNamespace(namespace: NamespaceId): Promise<void> {
-		// FIXME: Delete it in iroh!!!
 		delete synchronizationData.value.namespaces[namespace];
+		delete synchronizationData.value.watchedDirectories[namespace];
+		await UniMusicSync.deleteNamespace({ namespace });
 	}
 
 	function normalizeRelativePath(path: string): string {
@@ -88,7 +93,11 @@ export const useSync = defineStore("UniMusicSync", () => {
 	): AsyncGenerator<{ relativePath: string; absolutePath: string }> {
 		switch (getPlatform()) {
 			case "electron": {
-				throw new Error("TODO");
+				for (const absolutePath of await ElectronBridge!.fileSystem.traverseDirectory(rootPath)) {
+					const relativePath = normalizeRelativePath(absolutePath.replace(rootPath, ""));
+					yield { absolutePath, relativePath };
+				}
+				break;
 			}
 			case "ios": {
 				const { files } = await Filesystem.readdir({
@@ -139,9 +148,54 @@ export const useSync = defineStore("UniMusicSync", () => {
 		}
 	}
 
+	async function getFileInfo(
+		absolutePath: string,
+		relativePath: string,
+		directory: string,
+	): Promise<FileInfo> {
+		switch (getPlatform()) {
+			case "electron": {
+				const { mtime, size } = await ElectronBridge!.fileSystem.statFile(absolutePath);
+
+				return {
+					sourcePath: absolutePath,
+					mtime,
+					size,
+				};
+			}
+			case "android": {
+				const { uri, mtime, size } = await StorageAccessFramework.stat({
+					treeUri: directory,
+					path: relativePath,
+				});
+
+				return {
+					sourcePath: uri,
+					mtime,
+					size,
+				};
+			}
+			case "ios": {
+				const { uri, mtime, size } = await Filesystem.stat({
+					path: absolutePath,
+					directory: Directory.Documents,
+				});
+
+				return {
+					sourcePath: uri,
+					mtime,
+					size,
+				};
+			}
+			default:
+				throw new Error("Unsupported");
+		}
+	}
+
 	async function syncFiles(): Promise<void> {
 		log(`- Reconnecting`);
 		await UniMusicSync.reconnect();
+		log(`- Reconnected`);
 
 		const syncData = synchronizationData.value;
 
@@ -155,62 +209,31 @@ export const useSync = defineStore("UniMusicSync", () => {
 
 			log("synced files:", syncedFiles);
 
-			const watchedDirectory = syncData.watchedNamespaces[namespace];
+			const watchedDirectory = syncData.watchedDirectories[namespace];
 
 			const lastRecordedInfo = watchedDirectory?.lastRecordedInfo;
+			console.log("DIRECTORY:", directory);
 			for await (const { relativePath, absolutePath } of traverseRelativeDirectory(directory)) {
-				if (!audioMimeTypeFromPath(relativePath)) continue;
-				log(`- Sync file ${relativePath}`);
-
 				const syncPath = relativePath;
+
+				if (!audioMimeTypeFromPath(syncPath)) continue;
+				log(`- Sync file ${syncPath}`);
 
 				const lastFileInfo = lastRecordedInfo?.[syncPath];
 
-				let sourcePath: string;
-				let mtime: number;
-				let size: number;
-				switch (getPlatform()) {
-					case "electron": {
-						throw new Error("todo");
-					}
-					case "android": {
-						const stat = await StorageAccessFramework.stat({
-							treeUri: directory,
-							path: relativePath,
-						});
-						sourcePath = stat.uri;
-						mtime = stat.mtime;
-						size = stat.size;
-						break;
-					}
-					case "ios": {
-						const stat = await Filesystem.stat({
-							path: absolutePath,
-							directory: Directory.Documents,
-						});
-						sourcePath = stat.uri;
-						mtime = stat.mtime;
-						size = stat.size;
-						break;
-					}
-					default:
-						throw new Error("unreachable");
-				}
-
+				const { sourcePath, mtime, size } = await getFileInfo(absolutePath, syncPath, directory);
 				const entry = syncedFiles[syncPath];
 
 				if (!entry || !lastFileInfo) {
 					log(`Updating ${syncPath} (New local entry)`);
-					await UniMusicSync.writeFile({ namespace, sourcePath, syncPath });
+					await UniMusicSync.writeFile({ namespace, syncPath, sourcePath });
 				} else if (lastFileInfo?.entry && entry.contentHash !== lastFileInfo.entry.contentHash) {
 					log(`Updating ${syncPath} (New remote value | EXPORT)`);
-					await UniMusicSync.exportHash({
-						fileHash: entry.contentHash,
-						destinationPath: sourcePath,
-					});
+					// FIXME: Remove file if it exists on export
+					await UniMusicSync.exportHash({ fileHash: entry.contentHash, destinationPath: sourcePath });
 				} else if (lastFileInfo.mtime !== mtime || lastFileInfo.size !== size) {
 					log(`Updating ${syncPath} (File got modified)`);
-					await UniMusicSync.writeFile({ namespace, sourcePath, syncPath });
+					await UniMusicSync.writeFile({ namespace, syncPath, sourcePath });
 				} else {
 					log(`File ${syncPath} already up to date`);
 				}
@@ -222,7 +245,14 @@ export const useSync = defineStore("UniMusicSync", () => {
 			const allFiles = new Set(Object.keys(syncedFiles));
 
 			for (const syncPath of allFiles.difference(seenFiles)) {
-				// TODO: Deleting files
+				const lastInfo = watchedDirectory?.lastRecordedInfo?.[syncPath];
+
+				if (lastInfo) {
+					await UniMusicSync.deleteFile({ namespace, syncPath });
+					log(`Deleting ${syncPath} (Local deletion)`);
+					delete watchedDirectory!.lastRecordedInfo![syncPath];
+					continue;
+				}
 
 				let destinationPath = `${directory}/${syncPath}`;
 				log(`Retrieving ${syncPath} (Missing locally, saving to ${destinationPath})`);
@@ -238,7 +268,7 @@ export const useSync = defineStore("UniMusicSync", () => {
 				await UniMusicSync.export({ namespace, syncPath, destinationPath });
 			}
 
-			syncData.watchedNamespaces[namespace] = { lastRecordedInfo: recordedInfo };
+			syncData.watchedDirectories[namespace] = { lastRecordedInfo: recordedInfo };
 		}
 	}
 

@@ -24,6 +24,7 @@
 		]
 	},
 	"dependencies": {
+		"@unimusic/sync": "^0.1.14",
 		"@capacitor/android": "^7.2.0",
 		"@capacitor/app": "^7.0.1",
 		"@capacitor/barcode-scanner": "^2.0.3",

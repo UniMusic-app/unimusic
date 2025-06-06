@@ -2,7 +2,7 @@ import { isElectron } from "@/utils/os";
 import { WebPlugin } from "@capacitor/core";
 import type { MusicKitAuthorizationPlugin, MusicKitTokens } from "../MusicKitAuthorization";
 
-// Web implementation of WebKitAuthorization
+// Electron and Web implementation of MusicKitAuthorization
 export class MusicKitAuthorization extends WebPlugin implements MusicKitAuthorizationPlugin {
 	async authorize(): Promise<{ developerToken: string; musicUserToken: string }> {
 		const authorizeMusicKit = async (): Promise<MusicKitTokens> => {
@@ -15,7 +15,7 @@ export class MusicKitAuthorization extends WebPlugin implements MusicKitAuthoriz
 			});
 
 			if (isElectron()) {
-				music.musicUserToken = await ElectronMusicPlayer!.authorizeMusicKit();
+				music.musicUserToken = await ElectronBridge!.musicKit.authorize();
 			} else {
 				await music.authorize();
 			}

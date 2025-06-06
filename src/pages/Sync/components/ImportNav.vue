@@ -37,7 +37,7 @@ function changeDirectory(event: string): void {
 
 <template>
 	<AppPage title="Import Songs" back-button="Back" :show-content-header="false">
-		<ion-content :fullscreen="true" id="import-songs-content" class="ion-padding">
+		<ion-content id="import-songs-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="importIcon" color="primary" />
 				<ion-header collapse="condense">
@@ -105,6 +105,7 @@ function changeDirectory(event: string): void {
 
 		& > ion-icon {
 			font-size: 4rem;
+			width: 100%;
 		}
 
 		& > ion-header {

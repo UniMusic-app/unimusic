@@ -1,29 +1,22 @@
 <script lang="ts" setup>
 import {
-	IonBreadcrumb,
-	IonBreadcrumbs,
 	IonButton,
 	IonContent,
 	IonHeader,
 	IonIcon,
 	IonInput,
 	IonItem,
-	IonList,
-	IonLoading,
 	IonNote,
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
-	toastController,
 } from "@ionic/vue";
 import {
-	addOutline as addIcon,
 	alertCircle as failureIcon,
 	downloadOutline as importIcon,
 	qrCodeOutline as qrImportIcon,
 	checkmarkOutline as successIcon,
 	ticketOutline as ticketIcon,
-	warningOutline as warningIcon,
 } from "ionicons/icons";
 import { onMounted, ref } from "vue";
 
@@ -113,7 +106,7 @@ async function importTicket(): Promise<void> {
 	<AppPage title="Import Songs" back-button="Back" :show-content-header="false">
 		<template #toolbar-end></template>
 
-		<ion-content :fullscreen="true" id="import-ticket-content" class="ion-padding">
+		<ion-content id="import-ticket-content" class="ion-padding">
 			<header>
 				<ion-spinner v-if="status === 'importing'" />
 				<ion-icon v-else-if="status === 'success'" :icon="successIcon" color="success" />
@@ -170,7 +163,9 @@ async function importTicket(): Promise<void> {
 
 		& > ion-icon {
 			font-size: 4rem;
+			width: 100%;
 		}
+
 		& > ion-spinner {
 			height: 4rem;
 			width: 3rem;

@@ -10,10 +10,10 @@ export interface MusicKitAuthorizationPlugin {
 }
 
 const MusicKitAuthorization = registerPlugin<MusicKitAuthorizationPlugin>("MusicKitAuthorization", {
-	web: () =>
-		import("./MusicKitAuthorization/web").then(
-			({ MusicKitAuthorization }) => new MusicKitAuthorization(),
-		),
+	async web() {
+		const { MusicKitAuthorization } = await import("./MusicKitAuthorization/web");
+		return new MusicKitAuthorization();
+	},
 });
 
 export default MusicKitAuthorization;

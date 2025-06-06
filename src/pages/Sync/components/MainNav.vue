@@ -31,8 +31,8 @@ const sync = useSync();
 </script>
 
 <template>
-	<AppPage title="Sync" :show-content-header="false">
-		<ion-content :fullscreen="true" id="sync-page-content" class="ion-padding">
+	<AppPage title="Sync" :show-content-header="false" :force-inline-view="false">
+		<ion-content id="sync-page-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="syncIcon" color="primary" />
 				<ion-header collapse="condense">
@@ -83,6 +83,7 @@ const sync = useSync();
 
 		& > ion-icon {
 			font-size: 4rem;
+			width: 100%;
 		}
 
 		& > ion-header {

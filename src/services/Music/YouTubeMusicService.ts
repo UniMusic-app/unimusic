@@ -454,7 +454,7 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		this.audio = audio;
 
 		// TODO: Proxy for web support
-		const fetch = isElectron() ? ElectronMusicPlayer!.fetchShim : window.capacitorFetch;
+		const fetch = isElectron() ? ElectronBridge!.fetchShim : window.capacitorFetch;
 
 		const tmp = await Innertube.create({
 			generate_session_locally: false,

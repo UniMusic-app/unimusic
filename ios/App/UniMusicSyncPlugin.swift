@@ -2,17 +2,18 @@ import Capacitor
 import UniformTypeIdentifiers
 import UniMusicSync
 
-// TODO: HANDLE ERRORS
 @objc(UniMusicSyncPlugin)
 public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "UniMusicSyncPlugin"
     public let jsName = "UniMusicSync"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "createNamespace", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "deleteNamespace", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getAuthor", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getNodeId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getFiles", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "writeFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "readFile", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "readFileHash", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "share", returnType: CAPPluginReturnPromise),
@@ -58,6 +59,27 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.resolve([
                     "namespace": namespace,
                 ])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
+        }
+    }
+
+    @objc public func deleteNamespace(_ call: CAPPluginCall) {
+        guard let uniMusicSync else {
+            call.reject("UniMusicSync is not initialized")
+            return
+        }
+
+        guard let namespace = call.getString("namespace") else {
+            call.reject("You must provide a 'namespace' option")
+            return
+        }
+
+        Task {
+            do {
+                try await uniMusicSync.deleteNamespace(namespace: namespace)
+                call.resolve()
             } catch {
                 call.reject(error.localizedDescription)
             }
@@ -110,14 +132,13 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         Task {
             do {
                 let files = try await uniMusicSync.getFiles(namespace)
-                
-                
+
                 var filesObject: PluginCallResultData = [:]
                 for entry in files {
                     if entry.isEmpty() {
                         continue
                     }
-                    
+
                     let key = entry.key()
                     filesObject[key] = [
                         "key": key,
@@ -127,7 +148,7 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
                         "contentLen": entry.contentLen(),
                     ]
                 }
-                
+
                 call.resolve(filesObject)
             } catch {
                 call.reject(error.localizedDescription)
@@ -170,8 +191,34 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
                     "fileHash": fileHash,
                 ])
             } catch {
-                    call.reject(error.localizedDescription)
-                }
+                call.reject(error.localizedDescription)
+            }
+        }
+    }
+
+    @objc public func deleteFile(_ call: CAPPluginCall) {
+        guard let uniMusicSync else {
+            call.reject("UniMusicSync is not initialized")
+            return
+        }
+
+        guard let namespace = call.getString("namespace") else {
+            call.reject("You must provide a 'namespace' option")
+            return
+        }
+
+        guard let syncPath = call.getString("syncPath") else {
+            call.reject("You must provide a 'syncPath' option")
+            return
+        }
+
+        Task {
+            do {
+                let tombstoneHash = try await uniMusicSync.deleteFile(namespace, syncPath)
+                call.resolve()
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -193,13 +240,13 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
 
         Task {
             do {
-            let data = try await uniMusicSync.readFile(namespace, syncPath)
-            let dataType = UTType(filenameExtension: (syncPath as NSString).pathExtension)
-            let server = HTTPResponseServer(body: data, type: dataType)
-            let url = try await server.start()
-            call.resolve([
-                "url": url.absoluteString,
-            ])
+                let data = try await uniMusicSync.readFile(namespace, syncPath)
+                let dataType = UTType(filenameExtension: (syncPath as NSString).pathExtension)
+                let server = HTTPResponseServer(body: data, type: dataType)
+                let url = try await server.start()
+                call.resolve([
+                    "url": url.absoluteString,
+                ])
             } catch {
                 call.reject(error.localizedDescription)
             }
@@ -255,8 +302,12 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            try? await uniMusicSync.export(namespace, syncPath, destinationPath)
-            call.resolve()
+            do {
+                try await uniMusicSync.export(namespace, syncPath, destinationPath)
+                call.resolve()
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -346,8 +397,12 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         Task {
-            try? await uniMusicSync.sync(namespace)
-            call.resolve()
+            do {
+                try await uniMusicSync.sync(namespace)
+                call.resolve()
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 

@@ -48,6 +48,14 @@ class UniMusicSyncPlugin : Plugin() {
         }
     }
 
+    private inline fun handleCallExceptions(call: PluginCall, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            call.reject(e.message)
+        }
+    }
+
     @PluginMethod
     fun createNamespace(call: PluginCall) {
         if (!::uniMusicSync.isInitialized) {
@@ -56,10 +64,12 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val namespace = uniMusicSync.createNamespace()
-            val result = JSObject()
-            result.put("namespace", namespace)
-            call.resolve(result)
+            handleCallExceptions(call) {
+                val namespace = uniMusicSync.createNamespace()
+                val result = JSObject()
+                result.put("namespace", namespace)
+                call.resolve(result)
+            }
         }
     }
 
@@ -71,10 +81,12 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val namespace = uniMusicSync.createNamespace()
-            val result = JSObject()
-            result.put("namespace", namespace)
-            call.resolve(result)
+            handleCallExceptions(call) {
+                val namespace = uniMusicSync.createNamespace()
+                val result = JSObject()
+                result.put("namespace", namespace)
+                call.resolve(result)
+            }
         }
     }
 
@@ -86,10 +98,12 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val nodeId = uniMusicSync.getNodeId()
-            val result = JSObject()
-            result.put("nodeId", nodeId)
-            call.resolve(result)
+            handleCallExceptions(call) {
+                val nodeId = uniMusicSync.getNodeId()
+                val result = JSObject()
+                result.put("nodeId", nodeId)
+                call.resolve(result)
+            }
         }
     }
 
@@ -105,26 +119,29 @@ class UniMusicSyncPlugin : Plugin() {
             return
         }
 
-        appScope.launch {
-            val files = uniMusicSync.getFiles(namespace)
-            val result = JSObject()
 
-            for (entry in files) {
-                if (entry.isEmpty()) {
-                    continue
+        appScope.launch {
+            handleCallExceptions(call) {
+                val files = uniMusicSync.getFiles(namespace)
+                val result = JSObject()
+
+                for (entry in files) {
+                    if (entry.isEmpty()) {
+                        continue
+                    }
+
+                    val fileObject = JSObject()
+                    fileObject.put("key", entry.key())
+                    fileObject.put("author", entry.author())
+                    fileObject.put("timestamp", entry.timestamp())
+                    fileObject.put("contentHash", entry.contentHash())
+                    fileObject.put("contentLen", entry.contentLen())
+
+                    result.put(entry.key(), fileObject)
                 }
 
-                val fileObject = JSObject()
-                fileObject.put("key", entry.key())
-                fileObject.put("author", entry.author())
-                fileObject.put("timestamp", entry.timestamp())
-                fileObject.put("contentHash", entry.contentHash())
-                fileObject.put("contentLen", entry.contentLen())
-
-                result.put(entry.key(), fileObject)
+                call.resolve(result)
             }
-
-            call.resolve(result)
         }
     }
 
@@ -166,15 +183,42 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val inputStream = context.contentResolver.openInputStream(file.uri) ?: run {
-                call.reject("Failed to open input stream for ${file.uri}")
-                return@launch
+            handleCallExceptions(call) {
+                val inputStream = context.contentResolver.openInputStream(file.uri) ?: run {
+                    call.reject("Failed to open input stream for ${file.uri}")
+                    return@launch
+                }
+                val data = inputStream.use { inputStream.readBytes() }
+                val fileHash = uniMusicSync.writeFile(namespace, syncPath, data)
+                val result = JSObject()
+                result.put("fileHash", fileHash)
+                call.resolve(result)
             }
-            val data = inputStream.use { inputStream.readBytes() }
-            val fileHash = uniMusicSync.writeFile(namespace, syncPath, data)
-            val result = JSObject()
-            result.put("fileHash", fileHash)
-            call.resolve(result)
+        }
+    }
+
+    @PluginMethod
+    fun deleteFile(call: PluginCall) {
+        if (!::uniMusicSync.isInitialized) {
+            call.reject("UniMusicSync is not initialized")
+            return
+        }
+
+        val namespace = call.getString("namespace") ?: run {
+            call.reject("You must provide a 'namespace' option")
+            return
+        }
+
+        val syncPath = call.getString("syncPath") ?: run {
+            call.reject("You must provide a 'syncPath' option")
+            return
+        }
+
+        appScope.launch {
+            handleCallExceptions(call) {
+                uniMusicSync.deleteFile(namespace, syncPath)
+                call.resolve()
+            }
         }
     }
 
@@ -196,11 +240,13 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val data = uniMusicSync.readFile(namespace, syncPath)
-            val result = JSObject()
-            // TODO: Serve the file
-            result.put("url", "")
-            call.resolve(result)
+            handleCallExceptions(call) {
+                val data = uniMusicSync.readFile(namespace, syncPath)
+                val result = JSObject()
+                // TODO: Serve the file
+                result.put("url", "")
+                call.resolve(result)
+            }
         }
     }
 
@@ -217,11 +263,13 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val data = uniMusicSync.readFileHash(fileHash)
-            val result = JSObject()
-            // TODO: Serve the file
-            result.put("url", "")
-            call.resolve(result)
+            handleCallExceptions(call) {
+                val data = uniMusicSync.readFileHash(fileHash)
+                val result = JSObject()
+                // TODO: Serve the file
+                result.put("url", "")
+                call.resolve(result)
+            }
         }
     }
 
@@ -262,15 +310,17 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            // Since Android<->Rust filesystem interop would be a pain in the ass,
-            // we do similar things to what Rust does directly here
-            val outputStream = context.contentResolver.openOutputStream(file.uri) ?: run {
-                call.reject("Failed to open input stream for ${file.uri}")
-                return@launch
+            handleCallExceptions(call) {
+                // Since Android<->Rust filesystem interop would be a pain in the ass,
+                // we do similar things to what Rust does directly here
+                val outputStream = context.contentResolver.openOutputStream(file.uri) ?: run {
+                    call.reject("Failed to open input stream for ${file.uri}")
+                    return@launch
+                }
+                val data = uniMusicSync.readFile(namespace, syncPath)
+                outputStream.use { outputStream.write(data) }
+                call.resolve()
             }
-            val data = uniMusicSync.readFile(namespace, syncPath)
-            outputStream.use { outputStream.write(data) }
-            call.resolve()
         }
     }
 
@@ -306,15 +356,17 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            // Since Android<->Rust filesystem interop would be a pain in the ass,
-            // we do similar things to what Rust does directly here
-            val outputStream = context.contentResolver.openOutputStream(file.uri) ?: run {
-                call.reject("Failed to open input stream for ${file.uri}")
-                return@launch
+            handleCallExceptions(call) {
+                // Since Android<->Rust filesystem interop would be a pain in the ass,
+                // we do similar things to what Rust does directly here
+                val outputStream = context.contentResolver.openOutputStream(file.uri) ?: run {
+                    call.reject("Failed to open input stream for ${file.uri}")
+                    return@launch
+                }
+                val data = uniMusicSync.readFileHash(fileHash)
+                outputStream.use { outputStream.write(data) }
+                call.resolve()
             }
-            val data = uniMusicSync.readFileHash(fileHash)
-            outputStream.use { outputStream.write(data) }
-            call.resolve()
         }
     }
 
@@ -331,10 +383,12 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val ticket = uniMusicSync.share(namespace)
-            val result = JSObject()
-            result.put("ticket", ticket)
-            call.resolve(result)
+            handleCallExceptions(call) {
+                val ticket = uniMusicSync.share(namespace)
+                val result = JSObject()
+                result.put("ticket", ticket)
+                call.resolve(result)
+            }
         }
     }
 
@@ -351,17 +405,19 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            val namespace = try {
-                uniMusicSync.import(ticket)
-            } catch (e: Exception) {
-                System.err.println(e)
-                call.reject("Failed to import ticket")
-                return@launch
-            }
+            handleCallExceptions(call) {
+                val namespace = try {
+                    uniMusicSync.import(ticket)
+                } catch (e: Exception) {
+                    System.err.println(e)
+                    call.reject("Failed to import ticket")
+                    return@launch
+                }
 
-            val result = JSObject()
-            result.put("namespace", namespace)
-            call.resolve(result)
+                val result = JSObject()
+                result.put("namespace", namespace)
+                call.resolve(result)
+            }
         }
     }
 
@@ -378,12 +434,14 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            try {
-                uniMusicSync.sync(namespace)
-            } catch (e: Exception) {
-                System.err.println(e)
+            handleCallExceptions(call) {
+                try {
+                    uniMusicSync.sync(namespace)
+                } catch (e: Exception) {
+                    System.err.println(e)
+                }
+                call.resolve()
             }
-            call.resolve()
         }
     }
 
@@ -395,8 +453,10 @@ class UniMusicSyncPlugin : Plugin() {
         }
 
         appScope.launch {
-            uniMusicSync.reconnect()
-            call.resolve()
+            handleCallExceptions(call) {
+                uniMusicSync.reconnect()
+                call.resolve()
+            }
         }
     }
 }

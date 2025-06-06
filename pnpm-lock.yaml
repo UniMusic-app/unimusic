@@ -47,6 +47,9 @@ importers:
       '@ionic/vue-router':
         specifier: ^8.5.5
         version: 8.5.5(@stencil/core@4.30.0)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+      '@unimusic/sync':
+        specifier: ^0.1.14
+        version: 0.1.14
       '@vueuse/components':
         specifier: ^13.1.0
         version: 13.1.0(vue@3.5.13(typescript@5.8.3))
@@ -573,6 +576,9 @@ packages:
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
 
+  '@neon-rs/load@0.1.82':
+    resolution: {integrity: sha512-H4Gu2o5kPp+JOEhRrOQCnJnf7X6sv9FBLttM/wSbb4efsgFWeHzfU/ItZ01E5qqEk+U6QGdeVO7lxXIAtYHr5A==}
+
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -851,6 +857,34 @@ packages:
   '@typescript-eslint/visitor-keys@8.31.0':
     resolution: {integrity: sha512-QcGHmlRHWOl93o64ZUMNewCdwKGU6WItOU52H0djgNmn1EOrhVudrDzXz4OycCRSCPwFCDrE2iIt5vmuUdHxuQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@unimusic/darwin-arm64@0.1.14':
+    resolution: {integrity: sha512-GVE4gqs+qCZcbJvA7NwQjDhnsAmhYnEN1ufwpkCYGRPax89HogZskBCHswsT4OQywOGLhpV+kaVuHztj9bh62w==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@unimusic/darwin-x64@0.1.14':
+    resolution: {integrity: sha512-x4LLbCAVl26L2IQGf3txb5Djr4RLFaBSWW5FHNZqh/3Vhx4g/ON/+si7h/FY2xW3NG/nL5OCj6pTDv5GJYNC4A==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@unimusic/linux-arm64-gnu@0.1.14':
+    resolution: {integrity: sha512-LJc6L1Ta1Xw+dz9RyETzf0clg9O47lBKxTpt3Tzx5+iMcRB4v/lsTEl+FGEZSKLpPbwZbA5dqHQPdi5Q5WjONw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@unimusic/linux-x64-gnu@0.1.14':
+    resolution: {integrity: sha512-X6by9GBCxek6//jEVeBMpYva/cOy0PkE8m15ygTpUkSB+BrqDap+Vrb96MVRKSfvbGQ2iB0v8GEFFP3qCqDzHg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@unimusic/sync@0.1.14':
+    resolution: {integrity: sha512-dwITobXxYcqDK0lOuh9s82TUw9cvqMqWNvsV+tCNv2U0ObXmViTkj9J5Fz515/K+UjGH8dQGCCNtwC2Py8mx8g==}
+
+  '@unimusic/win32-x64-msvc@0.1.14':
+    resolution: {integrity: sha512-il0ICkFDR4kNJOqAzM3dBxfjpuaMJot+OZnmFWyA+FIfBbQIrBht8gZydw439+B1WbFFmMhzxcPqna4MT/tDVA==}
+    cpu: [x64]
+    os: [win32]
 
   '@vitejs/plugin-vue@5.2.3':
     resolution: {integrity: sha512-IYSLEQj4LgZZuoVpdSUCw3dIynTWQgPlaRP6iAvMle4My0HdYwr5g5wQAfwOeHQBmYwEkqF70nRpSilr6PoUDg==}
@@ -2736,6 +2770,8 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
+  '@neon-rs/load@0.1.82': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -2991,6 +3027,31 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.31.0
       eslint-visitor-keys: 4.2.0
+
+  '@unimusic/darwin-arm64@0.1.14':
+    optional: true
+
+  '@unimusic/darwin-x64@0.1.14':
+    optional: true
+
+  '@unimusic/linux-arm64-gnu@0.1.14':
+    optional: true
+
+  '@unimusic/linux-x64-gnu@0.1.14':
+    optional: true
+
+  '@unimusic/sync@0.1.14':
+    dependencies:
+      '@neon-rs/load': 0.1.82
+    optionalDependencies:
+      '@unimusic/darwin-arm64': 0.1.14
+      '@unimusic/darwin-x64': 0.1.14
+      '@unimusic/linux-arm64-gnu': 0.1.14
+      '@unimusic/linux-x64-gnu': 0.1.14
+      '@unimusic/win32-x64-msvc': 0.1.14
+
+  '@unimusic/win32-x64-msvc@0.1.14':
+    optional: true
 
   '@vitejs/plugin-vue@5.2.3(vite@6.2.6(@types/node@22.15.3)(terser@5.39.0))(vue@3.5.13(typescript@5.8.3))':
     dependencies:

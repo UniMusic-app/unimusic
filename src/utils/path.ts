@@ -1,7 +1,6 @@
 import LocalMusic from "@/plugins/LocalMusic";
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { relative } from "path";
 import { getPlatform } from "./os";
 
 export function audioMimeTypeFromPath(path: string): string | undefined {
@@ -52,7 +51,7 @@ export async function* getSongPaths(): AsyncGenerator<{ filePath: string; id?: s
 			break;
 		}
 		case "electron": {
-			const musicPath = await ElectronMusicPlayer!.getMusicPath();
+			const musicPath = await ElectronBridge!.fileSystem.getMusicPath();
 			yield* traverseDirectory(musicPath);
 			break;
 		}
@@ -105,7 +104,7 @@ export function pathBreadcrumbs(path: string): string[] {
 
 export async function* traverseDirectory(path: string): AsyncGenerator<{ filePath: string }> {
 	if (getPlatform() === "electron") {
-		for (const filePath of await ElectronMusicPlayer!.traverseDirectory(path)) {
+		for (const filePath of await ElectronBridge!.fileSystem.traverseDirectory(path)) {
 			yield { filePath };
 		}
 	} else {
@@ -137,7 +136,7 @@ export async function* traverseDirectory(path: string): AsyncGenerator<{ filePat
 export async function getFileStream(path: string): Promise<ReadableStream<Uint8Array>> {
 	switch (getPlatform()) {
 		case "electron": {
-			const buffer = await ElectronMusicPlayer!.readFile(path);
+			const buffer = await ElectronBridge!.fileSystem.readFile(path);
 			const stream = new ReadableStream({
 				start(controller): void {
 					controller.enqueue(buffer);
