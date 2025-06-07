@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 import AppPage from "@/components/AppPage.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
@@ -30,9 +30,10 @@ import {
 	shuffle as shuffleIcon,
 } from "ionicons/icons";
 
-import { filledPlaylist } from "@/services/Music/objects";
+import { Filled, filledPlaylist, Playlist, PlaylistType } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useNavigation } from "@/stores/navigation";
+import { watchAsync } from "@/utils/vue";
 import { useRoute } from "vue-router";
 
 const musicPlayer = useMusicPlayer();
@@ -40,10 +41,32 @@ const navigation = useNavigation();
 const router = useIonRouter();
 const route = useRoute();
 
-const playlist = computed(() => {
-	const playlist = musicPlayer.state.getPlaylist(route.params.id as string);
-	return playlist && filledPlaylist(playlist);
-});
+const playlist = ref<Filled<Playlist>>();
+
+watchAsync(
+	() => [route.params.playlistType, route.params.playlistId],
+	async ([playlistType, playlistId]) => {
+		if (!playlistType || !playlistId) return;
+
+		if (playlistType === "unimusic") {
+			const localPlaylist = musicPlayer.state.getPlaylist(playlistId as string);
+			if (localPlaylist) {
+				playlist.value = filledPlaylist(localPlaylist);
+				return;
+			}
+		}
+
+		const libraryPlaylist = await musicPlayer.services.getPlaylist(
+			playlistType as PlaylistType,
+			playlistId as string,
+		);
+		if (libraryPlaylist) {
+			playlist.value = filledPlaylist(libraryPlaylist);
+		}
+	},
+	{ immediate: true },
+);
+
 const isEmpty = computed(() => !playlist.value?.songs.length);
 const totalDuration = computed(() => {
 	const songs = playlist?.value?.songs ?? [];

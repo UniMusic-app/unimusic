@@ -9,8 +9,12 @@ import {
 	Artist,
 	ArtistPreview,
 	Filled,
+	Playlist,
+	PlaylistPreview,
+	PlaylistType,
 	Song,
 	SongPreview,
+	SongType,
 } from "@/services/Music/objects";
 import { abortableAsyncGenerator, racedIterators } from "@/utils/iterators";
 import { Maybe } from "@/utils/types";
@@ -86,6 +90,43 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		});
 	}
 
+	async function retrievePlaylist(
+		playlist: Playlist<SongType> | PlaylistPreview<SongType>,
+	): Promise<Playlist> {
+		if (playlist.kind === "playlistPreview") {
+			return await getPlaylistFromPreview(playlist);
+		}
+		return playlist;
+	}
+
+	async function getPlaylistFromPreview(
+		playlistPreview: PlaylistPreview<SongType>,
+	): Promise<Playlist> {
+		const service = getService(playlistPreview.type)!;
+		const playlist = await service.getPlaylistFromPreview(playlistPreview);
+		return playlist;
+	}
+
+	async function getPlaylist(type: PlaylistType, id: string): Promise<Maybe<Playlist>> {
+		return await getService(type)?.getPlaylist(id);
+	}
+
+	function libraryPlaylists(): AsyncGenerator<PlaylistPreview | Playlist> {
+		const iterators: AsyncGenerator<PlaylistPreview | Playlist>[] = [];
+		for (const service of enabledServices.value) {
+			if (!service.handleGetLibraryPlaylists) continue;
+			iterators.push(service.getLibraryPlaylists());
+		}
+
+		return abortableAsyncGenerator(racedIterators(iterators));
+	}
+
+	async function refreshLibraryPlaylists(): Promise<void> {
+		await withAllServices((service) => {
+			return service.handleRefreshLibraryPlaylists && service.refreshLibraryPlaylists();
+		});
+	}
+
 	function libraryAlbums(): AsyncGenerator<AlbumPreview | Album> {
 		const iterators: AsyncGenerator<AlbumPreview | Album>[] = [];
 		for (const service of enabledServices.value) {
@@ -139,7 +180,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return await Promise.all(songs.filter((song) => song?.available).map(retrieveSong));
 	}
 
-	async function getSong(type: Song["type"], id: string): Promise<Maybe<Song>> {
+	async function getSong(type: SongType, id: string): Promise<Maybe<Song>> {
 		return await getService(type)?.getSong(id);
 	}
 
@@ -150,7 +191,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return album;
 	}
 
-	async function getAlbum(type: Song["type"], id: string): Promise<Maybe<Album>> {
+	async function getAlbum(type: SongType, id: string): Promise<Maybe<Album>> {
 		return await getService(type)?.getAlbum(id);
 	}
 
@@ -164,7 +205,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		return await getService(song.type)?.getSongsAlbum(song);
 	}
 
-	async function getArtist(type: Song["type"], id: string): Promise<Maybe<Artist>> {
+	async function getArtist(type: SongType, id: string): Promise<Maybe<Artist>> {
 		return await getService(type)?.getArtist(id);
 	}
 
@@ -196,6 +237,15 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	}
 	// #endregion
 
+	setTimeout(async () => {
+		const musicKit = getService("musickit")!;
+		const previews = await Array.fromAsync(musicKit.getLibraryPlaylists());
+		console.log("Previews", previews);
+		for (const preview of previews) {
+			console.log(preview.title, await musicKit.getPlaylist(preview.id));
+		}
+	}, 1000);
+
 	return {
 		registeredServices,
 		enabledServices,
@@ -222,6 +272,11 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		libraryAlbums,
 		refreshLibraryAlbums,
 		getSongsAlbum,
+
+		getPlaylist,
+		retrievePlaylist,
+		libraryPlaylists,
+		refreshLibraryPlaylists,
 
 		getArtist,
 		getArtistsSongs,

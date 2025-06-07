@@ -261,9 +261,7 @@ export class LocalMusicService extends MusicService<"local"> {
 		return songPreview;
 	}
 
-	async *handleGetLibraryArtists(options?: {
-		signal?: AbortSignal;
-	}): AsyncGenerator<LocalArtistPreview | LocalArtist> {
+	async *handleGetLibraryArtists(): AsyncGenerator<LocalArtistPreview | LocalArtist> {
 		let iterator = getAllCached<LocalArtistPreview>("local", "artistPreview");
 		const first = iterator.next();
 		if (first.done) {
@@ -274,7 +272,6 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 
 		for (const album of iterator) {
-			if (options?.signal?.aborted) return;
 			yield album;
 		}
 	}
@@ -358,7 +355,7 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 	}
 
-	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<LocalAlbum> {
+	async *handleGetLibraryAlbums(): AsyncGenerator<LocalAlbum> {
 		let iterator = getAllCached<LocalAlbum>("local", "album");
 		const first = iterator.next();
 		if (first.done) {
@@ -369,7 +366,6 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 
 		for (const album of iterator) {
-			if (options?.signal?.aborted) return;
 			yield album;
 		}
 	}

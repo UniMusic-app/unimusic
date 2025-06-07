@@ -29,6 +29,8 @@ import {
 	generateCacheMethod,
 	getKey,
 	Playlist,
+	PlaylistPreview,
+	PlaylistSong,
 	Song,
 	SongKey,
 	SongPreview,
@@ -45,6 +47,9 @@ type MusicKitAlbumSong = AlbumSong<"musickit">;
 type MusicKitArtist = Artist<"musickit">;
 type MusicKitArtistPreview = ArtistPreview<"musickit">;
 type _MusicKitArtistKey = ArtistKey<"musickit">;
+type MusicKitPlaylist = Playlist<"musickit">;
+type MusicKitPlaylistPreview = PlaylistPreview<"musickit">;
+type MusicKitPlaylistSong = PlaylistSong<"musickit">;
 type MusicKitSong = Song<"musickit">;
 type MusicKitSongKey = SongKey<"musickit">;
 type MusicKitSongPreview = SongPreview<"musickit", true>;
@@ -282,6 +287,57 @@ export async function musicKitSong(
 	});
 }
 
+export async function musicKitPlaylist(album: MusicKit.Playlists): Promise<MusicKitPlaylist> {
+	const { id, attributes, relationships } = album;
+
+	const title = attributes?.name ?? "Unknown title";
+	const artwork = await extractArtwork(id, attributes?.artwork);
+
+	const songs: MusicKitPlaylistSong[] = [];
+	const tracks = relationships?.tracks?.data;
+	if (tracks) {
+		for (const track of tracks) {
+			const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
+			const songPreview: MusicKitSongPreview = cached ?? cache(musicKitSongPreview(track));
+			songs.push(getKey(songPreview));
+		}
+	}
+
+	return cache<MusicKitPlaylist>({
+		type: "musickit",
+		kind: "playlist",
+		id,
+
+		title,
+		artwork,
+
+		songs,
+	});
+}
+
+export function musicKitPlaylistPreview(playlist: MusicKit.Playlists): MusicKitPlaylistPreview {
+	const { id, attributes } = playlist;
+
+	const title = attributes?.name ?? "Unknown title";
+	let artwork: Maybe<LocalImage>;
+	if (attributes?.artwork) {
+		const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
+		artwork = {
+			url: artworkUrl,
+			style: { bgColor: `#${attributes.artwork.bgColor ?? "000"}` },
+		};
+	}
+
+	return {
+		id,
+		type: "musickit",
+		kind: "playlistPreview",
+
+		title,
+		artwork,
+	};
+}
+
 export async function musicKitAlbum(album: MusicKit.Albums): Promise<MusicKitAlbum> {
 	const { id, attributes, relationships } = album;
 
@@ -454,9 +510,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		yield* terms;
 	}
 
-	async *handleGetLibraryArtists(options?: {
-		signal?: AbortSignal;
-	}): AsyncGenerator<MusicKitArtistPreview | MusicKitArtist> {
+	async *handleGetLibraryArtists(): AsyncGenerator<MusicKitArtistPreview | MusicKitArtist> {
 		const response = await this.music!.api.music<
 			MusicKit.LibraryArtistsResponse,
 			MusicKit.LibraryArtistsQuery
@@ -468,7 +522,6 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		if (!artists.length) return;
 
 		for (const artist of artists) {
-			if (options?.signal?.aborted) return;
 			yield getCached("artist", artist.id) ??
 				getCached("artistPreview", artist.id) ??
 				cache(musicKitArtistPreview(artist));
@@ -497,7 +550,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		const artist = response.data?.data?.[0];
 		if (!artist) return;
 
-		return cache(await musicKitArtist(artist));
+		return cache(musicKitArtist(artist));
 	}
 
 	async *handleGetArtistsSongs(
@@ -532,9 +585,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		}
 	}
 
-	async *handleGetLibraryAlbums(options?: {
-		signal?: AbortSignal;
-	}): AsyncGenerator<MusicKitAlbumPreview> {
+	async *handleGetLibraryAlbums(): AsyncGenerator<MusicKitAlbumPreview> {
 		const response = await this.music!.api.music<MusicKit.AlbumsResponse, MusicKit.AlbumsQuery>(
 			`/v1/me/library/albums`,
 			{ include: ["artists"] },
@@ -544,7 +595,6 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		if (!albums.length) return;
 
 		for (const album of albums) {
-			if (options?.signal?.aborted) return;
 			yield cache(musicKitAlbumPreview(album));
 		}
 	}
@@ -613,7 +663,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return album;
 	}
 
-	async handleGetPlaylist(url: URL): Promise<Maybe<Playlist>> {
+	async handleGetPlaylistFromUrl(url: URL): Promise<Maybe<Playlist>> {
 		let endpoint: string | undefined;
 
 		const { pathname } = url;
@@ -685,6 +735,51 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			artwork,
 			songs,
 		});
+	}
+
+	async handleGetPlaylistFromPreview(
+		playlistPreview: PlaylistPreview<"musickit">,
+	): Promise<MusicKitPlaylist> {
+		const playlist = await this.getPlaylist(playlistPreview.id);
+		if (!playlist) {
+			throw new Error(`Failed to find playlist for playlistPreview: ${playlistPreview.id}`);
+		}
+		return playlist;
+	}
+
+	async handleGetPlaylist(id: string, useCache = true): Promise<Maybe<MusicKitPlaylist>> {
+		if (useCache) {
+			const cachedPlaylist = getCached("playlist", id);
+			if (cachedPlaylist) return cachedPlaylist;
+		}
+
+		const idType = musicKitIdType(id);
+
+		const response = await this.music!.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
+			idType === "catalog"
+				? `/v1/catalog/{{storefrontId}}/playlists/${id}`
+				: `/v1/me/library/playlists/${id}`,
+			{ include: ["tracks"] },
+		);
+
+		const album = response.data?.data?.[0];
+		if (!album) return;
+
+		return cache(musicKitPlaylist(album));
+	}
+
+	async *handleGetLibraryPlaylists(): AsyncGenerator<MusicKitPlaylistPreview> {
+		const response = await this.music!.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
+			`/v1/me/library/playlists`,
+			{ include: [] },
+		);
+
+		const playlists = response.data.data;
+		if (!playlists.length) return;
+
+		for (const playlist of playlists) {
+			yield cache(musicKitPlaylistPreview(playlist));
+		}
 	}
 
 	async *handleSearchForItems(
@@ -761,10 +856,6 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return cache(await musicKitPreviewToSong(songPreview));
 	}
 
-	async handleRefreshLibrarySongs(): Promise<void> {
-		// TODO: Unimplemented
-	}
-
 	async handleGetSong(songId: string, useCache = true): Promise<MusicKitSong> {
 		if (useCache) {
 			const cachedSong = getCached("song", songId);
@@ -787,7 +878,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			throw new Error(`Failed to find a song with id: ${songId}`);
 		}
 
-		return cache(await musicKitSong(responseSong));
+		return cache(musicKitSong(responseSong));
 	}
 
 	async handleRefreshSong(song: MusicKitSong): Promise<MusicKitSong> {

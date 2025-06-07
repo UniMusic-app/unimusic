@@ -1,10 +1,9 @@
 import { LocalImage } from "@/stores/local-images";
 import { getCachedFromKey } from "./cache";
 import { Filled, Identifiable } from "./shared";
-import type { SongKey } from "./song";
+import type { SongKey, SongPreviewKey, SongType } from "./song";
 
-// TODO: Support in-place playlists on MusicKit
-type PlaylistType = "unimusic";
+export type PlaylistType = SongType | "unimusic";
 type PlaylistId = string;
 
 export interface Playlist<Type extends PlaylistType = PlaylistType> extends Identifiable {
@@ -15,7 +14,31 @@ export interface Playlist<Type extends PlaylistType = PlaylistType> extends Iden
 	title: string;
 	artwork?: LocalImage;
 
-	songs: SongKey[];
+	songs: PlaylistSong<Type>[];
+}
+
+export type PlaylistSong<Type extends PlaylistType> = Type extends SongType
+	? SongKey<Type> | SongPreviewKey<Type>
+	: SongKey | SongPreviewKey;
+
+export interface PlaylistPreview<Type extends PlaylistType = PlaylistType> extends Identifiable {
+	type: Type;
+	id: PlaylistId;
+	kind: "playlistPreview";
+
+	title: string;
+	artwork?: LocalImage;
+}
+
+export function filledPlaylistPreview(playlistPreview: PlaylistPreview): Filled<PlaylistPreview> {
+	return {
+		type: playlistPreview.type,
+		id: playlistPreview.id,
+		kind: "playlistPreview",
+
+		title: playlistPreview.title,
+		artwork: playlistPreview.artwork,
+	};
 }
 
 export function filledPlaylist(playlist: Playlist): Filled<Playlist> {
