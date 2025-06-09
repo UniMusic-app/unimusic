@@ -12,6 +12,9 @@ import {
 	IonItem,
 	IonList,
 	IonModal,
+	IonNote,
+	IonSelect,
+	IonSelectOption,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
@@ -19,7 +22,9 @@ import {
 import { LocalImage } from "@/stores/local-images";
 import { useMusicPlayer } from "@/stores/music-player";
 
+import { PlaylistType } from "@/services/Music/objects";
 import { generateUUID } from "@/utils/crypto";
+import { songTypeToDisplayName } from "@/utils/songs";
 import { usePresentingElement } from "@/utils/vue";
 
 const { trigger } = defineProps<{ trigger: string }>();
@@ -30,6 +35,7 @@ const presentingElement = usePresentingElement();
 
 const playlistId = ref(generateUUID());
 const playlistTitle = ref("");
+const playlistType = ref<PlaylistType>("unimusic");
 const artwork = ref<LocalImage>();
 const modified = computed(() => !!(playlistTitle.value || artwork.value));
 const canCreate = computed(() => !!playlistTitle.value);
@@ -40,18 +46,22 @@ function resetModal(): void {
 	artwork.value = undefined;
 }
 
-function create(): void {
+async function create(): Promise<void> {
 	if (!canCreate.value) return;
 
-	musicPlayer.state.addPlaylist({
-		id: playlistId.value,
-		kind: "playlist",
-		type: "unimusic",
+	if (playlistType.value === "unimusic") {
+		musicPlayer.state.addPlaylist({
+			id: playlistId.value,
+			kind: "playlist",
+			type: "unimusic",
 
-		title: playlistTitle.value,
-		artwork: toRaw(artwork.value),
-		songs: [],
-	});
+			title: playlistTitle.value,
+			artwork: toRaw(artwork.value),
+			songs: [],
+		});
+	} else {
+		await musicPlayer.services.createPlaylist(playlistType.value, playlistTitle.value, artwork.value);
+	}
 
 	resetModal();
 	modal.value?.$el.dismiss("createdPlaylist");
@@ -105,22 +115,35 @@ async function canDismiss(reason?: "createdPlaylist"): Promise<boolean> {
 			</ion-toolbar>
 		</ion-header>
 
-		<ion-content id="add-playlist-content" :fullscreen="true">
+		<ion-content id="add-playlist-content">
 			<LocalImagePicker :id="playlistId" @input="artwork = $event.value" />
 
 			<ion-list>
 				<ion-item>
 					<ion-input aria-label="Playlist Title" placeholder="Playlist Title" v-model="playlistTitle" />
 				</ion-item>
+
+				<ion-item lines="none">
+					<ion-select label="Playlist Type" placeholder="UniMusic" v-model="playlistType">
+						<ion-select-option value="unimusic">UniMusic</ion-select-option>
+						<template v-for="service in musicPlayer.services.registeredServices" :key="service.type">
+							<ion-select-option v-if="service.handleCreatePlaylist" :value="service.type">
+								{{ songTypeToDisplayName(service.type) }}
+							</ion-select-option>
+						</template>
+					</ion-select>
+				</ion-item>
 			</ion-list>
+
+			<ion-note class="ion-margin-horizontal">
+				UniMusic playlists are stored locally and allow you to add songs from multiple services at once.
+			</ion-note>
 		</ion-content>
 	</ion-modal>
 </template>
 
 <style scoped>
 #add-playlist-content {
-	text-align: center;
-
 	& > h1 {
 		font-weight: bold;
 		margin-bottom: 0.25rem;
@@ -172,6 +195,11 @@ async function canDismiss(reason?: "createdPlaylist"): Promise<boolean> {
 				text-align: center;
 			}
 		}
+	}
+
+	& > ion-note {
+		display: block;
+		text-wrap: pretty;
 	}
 }
 </style>

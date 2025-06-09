@@ -29,6 +29,7 @@ import {
 	generateCacheMethod,
 	getKey,
 	Playlist,
+	PlaylistId,
 	PlaylistPreview,
 	PlaylistSong,
 	Song,
@@ -498,6 +499,62 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		super();
 	}
 
+	// NOTE: Apple does not allow us to set custom playlist artwork as of now.
+	// see: https://developer.apple.com/forums/thread/707608
+	//
+	// NOTE: Apple does not allow us to delete playlists as well as items from them as of now.
+	// NOTE: Apple does not allow us to modify playlists as of now.
+	// see: https://developer.apple.com/forums/thread/107807
+	async handleCreatePlaylist(title: string, _artwork?: LocalImage): Promise<PlaylistId> {
+		const request: MusicKit.LibraryPlaylistCreationRequest = {
+			attributes: {
+				name: title,
+				description: `Playlist ${title}, created by UniMusic`,
+			},
+		};
+
+		const response = await this.music!.api.music<MusicKit.LibraryPlaylistsResponse, unknown>(
+			`/v1/me/library/playlists`,
+			{},
+			{
+				fetchOptions: {
+					method: "POST",
+					body: JSON.stringify(request),
+				},
+			},
+		);
+
+		const [playlist] = response.data.data;
+		if (!playlist) {
+			throw new Error("Failed to create a playlist");
+		}
+
+		return playlist.id;
+	}
+
+	async handleAddSongsToPlaylist(
+		id: PlaylistId,
+		songs: (MusicKitSong | MusicKitSongPreview)[],
+	): Promise<void> {
+		const request: MusicKit.LibraryPlaylistTracksRequest = {
+			data: songs.map((song) => ({
+				type: song.data?.musicVideo ? "music-videos" : "songs",
+				id: song.id,
+			})),
+		};
+
+		await this.music!.api.music<MusicKit.LibraryPlaylistsResponse, unknown>(
+			`/v1/me/library/playlists/${id}/tracks`,
+			{},
+			{
+				fetchOptions: {
+					method: "POST",
+					body: JSON.stringify(request),
+				},
+			},
+		);
+	}
+
 	async *handleGetSearchHints(term: string): AsyncGenerator<string> {
 		if (!term) return [];
 
@@ -747,12 +804,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return playlist;
 	}
 
-	async handleGetPlaylist(id: string, useCache = true): Promise<Maybe<MusicKitPlaylist>> {
-		if (useCache) {
-			const cachedPlaylist = getCached("playlist", id);
-			if (cachedPlaylist) return cachedPlaylist;
-		}
-
+	async handleGetPlaylist(id: string): Promise<Maybe<MusicKitPlaylist>> {
 		const idType = musicKitIdType(id);
 
 		const response = await this.music!.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(

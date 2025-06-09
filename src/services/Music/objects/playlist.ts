@@ -4,7 +4,7 @@ import { Filled, Identifiable } from "./shared";
 import type { SongKey, SongPreviewKey, SongType } from "./song";
 
 export type PlaylistType = SongType | "unimusic";
-type PlaylistId = string;
+export type PlaylistId = string;
 
 export interface Playlist<Type extends PlaylistType = PlaylistType> extends Identifiable {
 	type: Type;

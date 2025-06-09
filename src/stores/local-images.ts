@@ -197,6 +197,29 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		log("getBlobUrl -> image missing");
 	}
 
+	function getDataOrExternalUrl(localImage: LocalImage): Maybe<string> {
+		log("getDataOrExternalUrl", localImage?.url ?? localImage?.id);
+
+		if (localImage.url) return localImage.url;
+
+		let imageData = localImageInfo.data.value?.[localImage.id!];
+		while (isIndirect(imageData)) {
+			log(`getDataOrExternalUrl -> indirect (${imageData.key})`);
+			imageData = localImageInfo.data.value?.[imageData.key!];
+		}
+
+		if (!imageData) {
+			log("getDataOrExternalUrl -> image missing");
+			return;
+		}
+
+		const fileReader = new FileReader();
+		fileReader.readAsDataURL(new Blob([imageData.buffer]));
+		const dataUrl = fileReader.result as string;
+
+		return dataUrl;
+	}
+
 	// Deduplicate images
 	// Only one original copy is kept, and duplicates are pointer to that image
 	function deduplicate(): void {
@@ -242,6 +265,7 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		associateImage,
 		getUrl,
 		getBlobUrl,
+		getDataOrExternalUrl,
 		getStyle,
 		deduplicate,
 	};

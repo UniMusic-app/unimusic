@@ -1,15 +1,12 @@
 <script lang="ts">
+import { PlaylistModifications } from "@/services/Music/MusicService";
 import { Filled, Playlist } from "@/services/Music/objects";
-import { LocalImage } from "@/stores/local-images";
 
-export interface PlaylistEditEvent {
-	title: string;
-	artwork?: LocalImage;
-}
+export type PlaylistEditEvent = PlaylistModifications;
 </script>
 
 <script lang="ts" setup>
-import { computed, ref, toRaw, useTemplateRef } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 
 import LocalImagePicker from "@/components/LocalImagePicker.vue";
 import {
@@ -26,7 +23,7 @@ import {
 	IonToolbar,
 } from "@ionic/vue";
 
-import { usePresentingElement } from "@/utils/vue";
+import { stateSnapshot, usePresentingElement } from "@/utils/vue";
 
 const { trigger, playlist } = defineProps<{
 	trigger: string;
@@ -47,10 +44,17 @@ const canEdit = computed(() => !!playlistTitle.value && modified.value);
 function edit(): void {
 	if (!canEdit.value) return;
 
-	emit("change", {
-		title: playlistTitle.value,
-		artwork: toRaw(artwork.value),
-	});
+	const modifications: PlaylistModifications = {};
+
+	if (artwork.value !== playlist.artwork) {
+		modifications.artwork = stateSnapshot(artwork.value);
+	}
+
+	if (playlistTitle.value !== playlist.title) {
+		modifications.title = playlistTitle.value;
+	}
+
+	emit("change", modifications);
 
 	modal.value?.$el.dismiss("editedPlaylist");
 }

@@ -7,7 +7,7 @@ import { useMusicPlayerState } from "@/stores/music-state";
 import { AuthorizationService } from "@/services/Authorization/AuthorizationService";
 import { Service } from "@/services/Service";
 
-import { useLocalImages } from "@/stores/local-images";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { useSongMetadata } from "@/stores/metadata";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useMusicServices } from "@/stores/music-services";
@@ -21,6 +21,7 @@ import {
 	ArtistPreview,
 	Filled,
 	Playlist,
+	PlaylistId,
 	PlaylistPreview,
 	Song,
 	SongPreview,
@@ -50,6 +51,11 @@ export class SilentError extends Error {
 	constructor(message?: string, options?: ErrorOptions) {
 		super(message, options);
 	}
+}
+
+export interface PlaylistModifications {
+	title?: string;
+	artwork?: LocalImage;
 }
 
 export type SearchFilter = "top-results" | "songs" | "artists" | "albums";
@@ -235,6 +241,80 @@ export abstract class MusicService<
 
 			return fallback;
 		}
+	}
+
+	handleCreatePlaylist?(title: string, artwork?: LocalImage): PlaylistId | Promise<PlaylistId>;
+	async createPlaylist(title: string, artwork?: LocalImage): Promise<PlaylistId> {
+		this.log("createPlaylist");
+		await this.initialize();
+
+		if (!this.handleCreatePlaylist) {
+			throw new Error("This service does not support createPlaylist");
+		}
+
+		const id = await this.withUnrecoverableErrorHandling(this.handleCreatePlaylist, title, artwork);
+		return id;
+	}
+
+	handleDeletePlaylist?(title: string, artwork?: LocalImage): PlaylistId | Promise<PlaylistId>;
+	async deletePlaylist(title: string, artwork?: LocalImage): Promise<PlaylistId> {
+		this.log("deletePlaylist");
+		await this.initialize();
+
+		if (!this.handleDeletePlaylist) {
+			throw new Error("This service does not support deletePlaylist");
+		}
+
+		const id = await this.withUnrecoverableErrorHandling(this.handleDeletePlaylist, title, artwork);
+		return id;
+	}
+
+	handleModifyPlaylist?(id: PlaylistId, modifications: PlaylistModifications): void | Promise<void>;
+	async modifyPlaylist(id: PlaylistId, modifications: PlaylistModifications): Promise<void> {
+		this.log("modifyPlaylist");
+		await this.initialize();
+
+		if (!this.handleModifyPlaylist) {
+			throw new Error("This service does not support modifyPlaylist");
+		}
+
+		await this.withUnrecoverableErrorHandling(this.handleModifyPlaylist, id, modifications);
+	}
+
+	handleAddSongsToPlaylist?(
+		id: PlaylistId,
+		songs: (Song<Type> | SongPreview<Type, true>)[],
+	): void | Promise<void>;
+	async addSongsToPlaylist(
+		id: PlaylistId,
+		songs: (Song<Type> | SongPreview<Type, true>)[],
+	): Promise<void> {
+		this.log("addSongsToPlaylist");
+		await this.initialize();
+
+		if (!this.handleAddSongsToPlaylist) {
+			throw new Error("This service does not support addSongsToPlaylist");
+		}
+
+		await this.withUnrecoverableErrorHandling(this.handleAddSongsToPlaylist, id, songs);
+	}
+
+	handleRemoveSongsFromPlaylist?(
+		id: PlaylistId,
+		song: (Song<Type> | SongPreview<Type, true>)[],
+	): void | Promise<void>;
+	async removeSongsFromPlaylist(
+		id: PlaylistId,
+		song: (Song<Type> | SongPreview<Type, true>)[],
+	): Promise<void> {
+		this.log("removeSongsFromPlaylist");
+		await this.initialize();
+
+		if (!this.handleRemoveSongsFromPlaylist) {
+			throw new Error("This service does not support removeSongsFromPlaylist");
+		}
+
+		await this.withUnrecoverableErrorHandling(this.handleRemoveSongsFromPlaylist, id, song);
 	}
 
 	handleSearchForItems?(

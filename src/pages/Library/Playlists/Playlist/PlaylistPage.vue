@@ -30,7 +30,8 @@ import {
 	shuffle as shuffleIcon,
 } from "ionicons/icons";
 
-import { Filled, filledPlaylist, Playlist, PlaylistType } from "@/services/Music/objects";
+import { MusicService } from "@/services/Music/MusicService";
+import { Filled, filledPlaylist, Playlist, SongType } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useNavigation } from "@/stores/navigation";
 import { watchAsync } from "@/utils/vue";
@@ -42,14 +43,18 @@ const router = useIonRouter();
 const route = useRoute();
 
 const playlist = ref<Filled<Playlist>>();
+const service = ref<MusicService>();
+
+const forceUpdate = ref(0);
 
 watchAsync(
-	() => [route.params.playlistType, route.params.playlistId],
+	() => [route.params.playlistType, route.params.playlistId, forceUpdate.value],
 	async ([playlistType, playlistId]) => {
 		if (!playlistType || !playlistId) return;
 
 		if (playlistType === "unimusic") {
 			const localPlaylist = musicPlayer.state.getPlaylist(playlistId as string);
+			service.value = undefined;
 			if (localPlaylist) {
 				playlist.value = filledPlaylist(localPlaylist);
 				return;
@@ -57,10 +62,12 @@ watchAsync(
 		}
 
 		const libraryPlaylist = await musicPlayer.services.getPlaylist(
-			playlistType as PlaylistType,
+			playlistType as SongType,
 			playlistId as string,
 		);
+		console.log(libraryPlaylist);
 		if (libraryPlaylist) {
+			service.value = musicPlayer.services.getService(playlistType as SongType);
 			playlist.value = filledPlaylist(libraryPlaylist);
 		}
 	},
@@ -78,26 +85,40 @@ const deleteActionSheetButtons: ActionSheetButton[] = [
 	{ text: "Cancel", role: "cancel" },
 ];
 
-function playPlaylist(shuffle = false): void {
-	musicPlayer.state.setQueue(playlist.value!.songs.filter((song) => song.available));
+async function playPlaylist(shuffle = false): Promise<void> {
+	if (!playlist.value) return;
+
+	const songs = await Promise.all(
+		playlist.value.songs
+			.filter((song) => song.available)
+			.map((song) => musicPlayer.services.retrieveSong(song)),
+	);
+
+	musicPlayer.state.setQueue(songs);
+
 	if (shuffle) {
 		musicPlayer.state.shuffleQueue();
 	}
 	musicPlayer.state.queueIndex = 0;
 }
 
-function editPlaylist(event: PlaylistEditEvent): void {
+async function editPlaylist(event: PlaylistEditEvent): Promise<void> {
 	if (!playlist.value) return;
-	playlist.value.title = event.title;
-	playlist.value.artwork = event.artwork;
+
+	if (service.value) {
+		await service.value.modifyPlaylist(playlist.value.id, event);
+	} else {
+		Object.assign(musicPlayer.state.playlists[playlist.value.id]!, event);
+		forceUpdate.value += 1;
+	}
 }
 
 function onDeleteActionDismiss(event: CustomEvent): void {
 	if (typeof event.detail !== "object" || !playlist.value) return;
 
 	if (event.detail?.role === "destructive") {
-		musicPlayer.state.removePlaylist(playlist.value.id);
 		router.back();
+		musicPlayer.state.removePlaylist(playlist.value.id);
 	}
 }
 </script>
@@ -106,23 +127,29 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 	<AppPage :title="playlist?.title" :show-content-header="false" back-button="Playlists">
 		<template #toolbar-end>
 			<ion-buttons>
-				<ion-button id="edit-playlist">
+				<ion-button v-if="!service || service.handleModifyPlaylist" id="edit-playlist">
 					<ion-icon slot="icon-only" :icon="editIcon" />
 				</ion-button>
-				<ion-button id="delete-playlist">
+				<ion-button v-if="!service || service.handleDeletePlaylist" id="delete-playlist">
 					<ion-icon slot="icon-only" :icon="deleteIcon" />
 				</ion-button>
 			</ion-buttons>
 		</template>
 
 		<ion-action-sheet
+			v-if="playlist && (!service || service.handleDeletePlaylist)"
 			trigger="delete-playlist"
 			:header="`Are you sure you want to delete playlist ${playlist?.title}?`"
 			:buttons="deleteActionSheetButtons"
 			@didDismiss="onDeleteActionDismiss"
 		/>
 
-		<PlaylistEditModal v-if="playlist" :playlist trigger="edit-playlist" @change="editPlaylist" />
+		<PlaylistEditModal
+			v-if="playlist && (!service || service.handleModifyPlaylist)"
+			:playlist
+			trigger="edit-playlist"
+			@change="editPlaylist"
+		/>
 
 		<div id="playlist-content" v-if="playlist">
 			<LocalImg :src="playlist.artwork" />

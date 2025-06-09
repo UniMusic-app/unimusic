@@ -102,6 +102,56 @@ declare global {
 			 */
 			data: MusicKit.Songs[];
 		}
+
+		/**
+		 * The attributes for a library playlist creation request object.
+		 * @see https://developer.apple.com/documentation/applemusicapi/libraryplaylistcreationrequest/attributes-data.dictionary
+		 */
+		interface LibraryPlaylistCreationRequestAttributes {
+			name: string;
+			description?: string;
+		}
+
+		/**
+		 * A request to create a new playlist in a user’s library.
+		 * @see https://developer.apple.com/documentation/applemusicapi/libraryplaylistcreationrequest
+		 */
+		interface LibraryPlaylistCreationRequest {
+			attributes: LibraryPlaylistCreationRequestAttributes;
+		}
+
+		/**
+		 * An object that represents a single track when added to a library playlist in a request.
+		 */
+		interface LibraryPlaylistTracksRequestData {
+			/** The unique identifier of the library playlist track. */
+			id: string;
+			/** The type of the track to be added. The possible values are library-music-videos, library-songs, music-videos, or songs. */
+			type: MusicKit.TrackType;
+		}
+
+		/**
+		 * A request to add tracks to a library playlist.
+		 * @see https://developer.apple.com/documentation/applemusicapi/libraryplaylisttracksrequest
+		 */
+		interface LibraryPlaylistTracksRequest {
+			/**
+			 * A list of dictionaries with information about the tracks to add.
+			 */
+			data: LibraryPlaylistTracksRequestData[];
+		}
+
+		/**
+		 * The response to a library playlists request.
+		 * @see https://developer.apple.com/documentation/applemusicapi/libraryplaylistsresponse
+		 */
+		interface LibraryPlaylistsResponse {
+			/**
+			 * The LibraryPlaylists included in the response for the request.
+			 * Actual type is LibraryPlaylists[]
+			 */
+			data: Playlists[];
+		}
 	}
 }
 

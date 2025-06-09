@@ -21,35 +21,42 @@ import {
 import { useMusicPlayer } from "@/stores/music-player";
 
 import AppPage from "@/components/AppPage.vue";
+import SkeletonItem from "@/components/SkeletonItem.vue";
 import { Playlist, PlaylistPreview } from "@/services/Music/objects";
-import { useSessionStorage } from "@vueuse/core";
-import { onUpdated, ref } from "vue";
+import { useLocalStorage } from "@vueuse/core";
+import { onMounted, ref } from "vue";
 import PlaylistAddModal from "./components/PlaylistAddModal.vue";
 import PlaylistImportModal from "./components/PlaylistImportModal.vue";
 
 const musicPlayer = useMusicPlayer();
 
-const libraryPlaylists = useSessionStorage<(Playlist | PlaylistPreview)[]>("libraryPlaylists", []);
+const libraryPlaylists = useLocalStorage<(Playlist | PlaylistPreview)[]>("libraryPlaylists", []);
 const isLoading = ref(libraryPlaylists.value.length === 0);
-onUpdated(async () => {
-	if (!libraryPlaylists.value.length) {
-		isLoading.value = true;
-		for await (const playlist of musicPlayer.services.libraryPlaylists()) {
-			console.log("Playlist", playlist);
-			libraryPlaylists.value.push(playlist);
-		}
-		isLoading.value = false;
+onMounted(async () => {
+	isLoading.value = true;
+
+	const playlists: (Playlist | PlaylistPreview)[] = [];
+	for await (const playlist of musicPlayer.services.libraryPlaylists()) {
+		playlists.push(playlist);
 	}
+	playlists.push(...musicPlayer.state.getAllPlaylists());
+
+	libraryPlaylists.value = playlists;
+	isLoading.value = false;
 });
 
 async function refreshPlaylistLibrary(event: RefresherCustomEvent): Promise<void> {
 	isLoading.value = true;
 	await musicPlayer.services.refreshLibraryPlaylists();
+	const playlists: (Playlist | PlaylistPreview)[] = [];
 	libraryPlaylists.value.length = 0;
+
 	for await (const playlist of musicPlayer.services.libraryPlaylists()) {
-		console.log("Playlist", playlist);
-		libraryPlaylists.value.push(playlist);
+		playlists.push(playlist);
 	}
+	playlists.push(...musicPlayer.state.getAllPlaylists());
+
+	libraryPlaylists.value = playlists;
 	isLoading.value = false;
 	await event.target.complete();
 }
@@ -75,7 +82,10 @@ async function refreshPlaylistLibrary(event: RefresherCustomEvent): Promise<void
 		<PlaylistImportModal trigger="import-playlist" />
 		<PlaylistAddModal trigger="add-playlist" />
 
-		<ion-list id="playlists-content">
+		<ion-list v-if="!libraryPlaylists.length && isLoading" id="playlists-list">
+			<SkeletonItem v-for="i in 25" :key="i" />
+		</ion-list>
+		<ion-list id="playlists-list">
 			<ion-item
 				v-for="playlist in libraryPlaylists"
 				:key="playlist.id"
@@ -99,7 +109,7 @@ async function refreshPlaylistLibrary(event: RefresherCustomEvent): Promise<void
 <style>
 /**  TODO: Clean up CSS in playlist routes */
 
-#playlists-content {
+#playlists-list {
 	background: transparent;
 	& > ion-item {
 		--background: transparent;

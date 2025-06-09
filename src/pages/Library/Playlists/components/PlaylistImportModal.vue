@@ -205,8 +205,6 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 <style scoped>
 #import-playlist-content,
 #playlist-preview {
-	text-align: center;
-
 	& > h1 {
 		font-weight: bold;
 		margin-bottom: 0.25rem;
@@ -257,6 +255,11 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 				}
 			}
 		}
+	}
+
+	& > ion-note {
+		display: block;
+		text-wrap: pretty;
 	}
 }
 
