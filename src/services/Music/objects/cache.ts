@@ -6,6 +6,7 @@ import { Maybe } from "@/utils/types";
 import { stateSnapshot } from "@/utils/vue";
 import { Album, AlbumPreview } from "./album";
 import { Artist, ArtistPreview } from "./artist";
+import { Playlist, PlaylistPreview } from "./playlist";
 import { Song, SongPreview, SongType } from "./song";
 
 // TODO: In the future it would be a good idea to use more organised cache storage
@@ -19,6 +20,8 @@ export function generateCacheMethod<const Type extends SongType>(type: Type) {
 	interface ItemMap {
 		album: Album<Type>;
 		albumPreview: AlbumPreview<Type>;
+		playlist: Playlist<Type>;
+		playlistPreview: PlaylistPreview<Type>;
 		artist: Artist<Type>;
 		artistPreview: ArtistPreview<Type>;
 		song: Song<Type>;

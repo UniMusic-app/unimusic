@@ -35,7 +35,7 @@ public class UniMusicSyncPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     override public func load() {
-        Task {
+        Task(priority: .background) {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
             let syncPath = documentsPath.appendingPathComponent("UniMusicSync")
             do {

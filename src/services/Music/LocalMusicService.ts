@@ -16,6 +16,7 @@ import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath, getFileStream, getSongPaths } from "@/utils/path";
 import { Maybe } from "@/utils/types";
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import {
 	Album,
 	AlbumSong,
@@ -137,8 +138,6 @@ async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
 	// Required for Documents folder to show up in Files
 	// NOTE: Hidden file doesn't work
 	if (getPlatform() === "ios") {
-		const { Filesystem, Directory, Encoding } = await import("@capacitor/filesystem");
-
 		try {
 			await Filesystem.writeFile({
 				path: "/readme.txt",
@@ -261,9 +260,7 @@ export class LocalMusicService extends MusicService<"local"> {
 		return songPreview;
 	}
 
-	async *handleGetLibraryArtists(options?: {
-		signal?: AbortSignal;
-	}): AsyncGenerator<LocalArtistPreview | LocalArtist> {
+	async *handleGetLibraryArtists(): AsyncGenerator<LocalArtistPreview | LocalArtist> {
 		let iterator = getAllCached<LocalArtistPreview>("local", "artistPreview");
 		const first = iterator.next();
 		if (first.done) {
@@ -274,7 +271,6 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 
 		for (const album of iterator) {
-			if (options?.signal?.aborted) return;
 			yield album;
 		}
 	}
@@ -358,7 +354,7 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 	}
 
-	async *handleGetLibraryAlbums(options?: { signal?: AbortSignal }): AsyncGenerator<LocalAlbum> {
+	async *handleGetLibraryAlbums(): AsyncGenerator<LocalAlbum> {
 		let iterator = getAllCached<LocalAlbum>("local", "album");
 		const first = iterator.next();
 		if (first.done) {
@@ -369,7 +365,6 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 
 		for (const album of iterator) {
-			if (options?.signal?.aborted) return;
 			yield album;
 		}
 	}

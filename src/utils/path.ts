@@ -108,8 +108,6 @@ export async function* traverseDirectory(path: string): AsyncGenerator<{ filePat
 			yield { filePath };
 		}
 	} else {
-		const { Directory, Filesystem } = await import("@capacitor/filesystem");
-
 		const { files } = await Filesystem.readdir({
 			path,
 			directory: Directory.Documents,

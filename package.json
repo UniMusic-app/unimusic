@@ -24,7 +24,6 @@
 		]
 	},
 	"dependencies": {
-		"@unimusic/sync": "^0.1.14",
 		"@capacitor/android": "^7.2.0",
 		"@capacitor/app": "^7.0.1",
 		"@capacitor/barcode-scanner": "^2.0.3",
@@ -38,6 +37,7 @@
 		"@capacitor/status-bar": "^7.0.1",
 		"@ionic/vue": "^8.5.5",
 		"@ionic/vue-router": "^8.5.5",
+		"@unimusic/sync": "^0.1.14",
 		"@vueuse/components": "^13.1.0",
 		"@vueuse/core": "^13.1.0",
 		"@vueuse/integrations": "^13.1.0",
@@ -60,6 +60,7 @@
 		"@capacitor/cli": "7.0.1",
 		"@eslint/js": "^9.25.1",
 		"@types/node": "^22.15.3",
+		"@vitejs/plugin-legacy": "^6.1.1",
 		"@vitejs/plugin-vue": "^5.2.3",
 		"@vue/eslint-config-typescript": "^14.5.0",
 		"@vue/test-utils": "^2.4.6",

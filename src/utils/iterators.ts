@@ -4,7 +4,9 @@ export async function* racedIterators<T>(
 	type Item = [AsyncIterator<T>, IteratorResult<T>?, Promise<Item>?];
 
 	const iteratorStack = [...iteratorsIterable];
+	if (!iteratorStack.length) return;
 	const promises = new Set<Promise<Item>>();
+
 	do {
 		let iterator: AsyncIterator<T> | undefined;
 		while ((iterator = iteratorStack.pop())) {

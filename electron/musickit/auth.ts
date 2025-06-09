@@ -12,7 +12,6 @@ const authClientTemplate = Handlebars.compile(AuthTemplate);
 //  - Open website that calls MusicKit.Instance.authorize in the web browser
 //  - After authorization send the token to the server
 export async function authorizeMusicKit(): Promise<string | undefined> {
-	// FIXME: iOS 16 doesnt have Promise.withResolvers, add polyfills for old features
 	const { promise, resolve, reject } = Promise.withResolvers<string | undefined>();
 
 	let serverUrl: string;

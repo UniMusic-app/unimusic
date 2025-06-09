@@ -1,12 +1,12 @@
 import { useLocalStorage } from "@vueuse/core";
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { defineStore } from "pinia";
-import { computed, ref, shallowRef, toRaw, watch } from "vue";
+import { computed, ref, shallowRef, watch } from "vue";
 
 import { Playlist, Song } from "@/services/Music/objects";
 import { generateUUID } from "@/utils/crypto";
 import { Maybe } from "@/utils/types";
-import { useLoadingCounter } from "@/utils/vue";
+import { stateSnapshot, useLoadingCounter } from "@/utils/vue";
 
 interface QueueSong {
 	id: string;
@@ -64,7 +64,7 @@ export const useMusicPlayerState = defineStore("MusicPlayerState", () => {
 	const currentSong = computed<Maybe<Song>>(() => currentQueueSong.value?.song);
 
 	function songToQueueSong(song: Song): QueueSong {
-		return { id: generateUUID(), song: toRaw(song) };
+		return { id: generateUUID(), song: stateSnapshot(song) };
 	}
 
 	function setQueue(songs: Song[]): void {

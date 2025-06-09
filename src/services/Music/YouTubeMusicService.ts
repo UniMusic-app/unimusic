@@ -683,7 +683,7 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		}
 	}
 
-	async handleGetPlaylist(idOrUrl: URL): Promise<Maybe<Playlist>> {
+	async handleGetPlaylistFromUrl(idOrUrl: URL): Promise<Maybe<Playlist>> {
 		const youtubeId = idOrUrl.searchParams.get("list");
 		if (!youtubeId) {
 			return;

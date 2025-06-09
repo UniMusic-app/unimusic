@@ -45,7 +45,7 @@ const loading = ref(false);
 const canLoad = computed(() => serviceType.value && url.value && !loading.value);
 
 const supportedServices = computed(() =>
-	musicPlayer.services.enabledServices.filter((service) => !!service.handleGetPlaylist),
+	musicPlayer.services.enabledServices.filter((service) => !!service.handleGetPlaylistFromUrl),
 );
 
 function resetModal(): void {
@@ -68,7 +68,7 @@ async function loadPlaylist(): Promise<void> {
 
 	try {
 		const service = musicPlayer.services.getService(serviceType.value);
-		playlist.value = await service?.getPlaylist(new URL(url.value));
+		playlist.value = await service?.getPlaylistFromUrl(new URL(url.value));
 		loading.value = false;
 		return;
 	} catch (error) {
@@ -205,8 +205,6 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 <style scoped>
 #import-playlist-content,
 #playlist-preview {
-	text-align: center;
-
 	& > h1 {
 		font-weight: bold;
 		margin-bottom: 0.25rem;
@@ -257,6 +255,11 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 				}
 			}
 		}
+	}
+
+	& > ion-note {
+		display: block;
+		text-wrap: pretty;
 	}
 }
 

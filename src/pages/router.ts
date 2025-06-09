@@ -43,7 +43,7 @@ const routes: RouteRecordRaw[] = [
 	{ path: "/items/albums/song/:songType/:songId", name: "Songs Album", component: AlbumPage },
 
 	{ path: "/library/playlists", name: "Playlists", component: PlaylistsPage },
-	{ path: "/items/playlists/:id", name: "Playlist", component: PlaylistPage },
+	{ path: "/items/playlists/:playlistType/:playlistId", name: "Playlist", component: PlaylistPage },
 ];
 
 const router = createRouter({

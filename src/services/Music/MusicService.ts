@@ -7,7 +7,7 @@ import { useMusicPlayerState } from "@/stores/music-state";
 import { AuthorizationService } from "@/services/Authorization/AuthorizationService";
 import { Service } from "@/services/Service";
 
-import { useLocalImages } from "@/stores/local-images";
+import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { useSongMetadata } from "@/stores/metadata";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useMusicServices } from "@/stores/music-services";
@@ -21,6 +21,8 @@ import {
 	ArtistPreview,
 	Filled,
 	Playlist,
+	PlaylistId,
+	PlaylistPreview,
 	Song,
 	SongPreview,
 	SongType,
@@ -49,6 +51,11 @@ export class SilentError extends Error {
 	constructor(message?: string, options?: ErrorOptions) {
 		super(message, options);
 	}
+}
+
+export interface PlaylistModifications {
+	title?: string;
+	artwork?: LocalImage;
 }
 
 export type SearchFilter = "top-results" | "songs" | "artists" | "albums";
@@ -236,6 +243,80 @@ export abstract class MusicService<
 		}
 	}
 
+	handleCreatePlaylist?(title: string, artwork?: LocalImage): PlaylistId | Promise<PlaylistId>;
+	async createPlaylist(title: string, artwork?: LocalImage): Promise<PlaylistId> {
+		this.log("createPlaylist");
+		await this.initialize();
+
+		if (!this.handleCreatePlaylist) {
+			throw new Error("This service does not support createPlaylist");
+		}
+
+		const id = await this.withUnrecoverableErrorHandling(this.handleCreatePlaylist, title, artwork);
+		return id;
+	}
+
+	handleDeletePlaylist?(title: string, artwork?: LocalImage): PlaylistId | Promise<PlaylistId>;
+	async deletePlaylist(title: string, artwork?: LocalImage): Promise<PlaylistId> {
+		this.log("deletePlaylist");
+		await this.initialize();
+
+		if (!this.handleDeletePlaylist) {
+			throw new Error("This service does not support deletePlaylist");
+		}
+
+		const id = await this.withUnrecoverableErrorHandling(this.handleDeletePlaylist, title, artwork);
+		return id;
+	}
+
+	handleModifyPlaylist?(id: PlaylistId, modifications: PlaylistModifications): void | Promise<void>;
+	async modifyPlaylist(id: PlaylistId, modifications: PlaylistModifications): Promise<void> {
+		this.log("modifyPlaylist");
+		await this.initialize();
+
+		if (!this.handleModifyPlaylist) {
+			throw new Error("This service does not support modifyPlaylist");
+		}
+
+		await this.withUnrecoverableErrorHandling(this.handleModifyPlaylist, id, modifications);
+	}
+
+	handleAddSongsToPlaylist?(
+		id: PlaylistId,
+		songs: (Song<Type> | SongPreview<Type, true>)[],
+	): void | Promise<void>;
+	async addSongsToPlaylist(
+		id: PlaylistId,
+		songs: (Song<Type> | SongPreview<Type, true>)[],
+	): Promise<void> {
+		this.log("addSongsToPlaylist");
+		await this.initialize();
+
+		if (!this.handleAddSongsToPlaylist) {
+			throw new Error("This service does not support addSongsToPlaylist");
+		}
+
+		await this.withUnrecoverableErrorHandling(this.handleAddSongsToPlaylist, id, songs);
+	}
+
+	handleRemoveSongsFromPlaylist?(
+		id: PlaylistId,
+		song: (Song<Type> | SongPreview<Type, true>)[],
+	): void | Promise<void>;
+	async removeSongsFromPlaylist(
+		id: PlaylistId,
+		song: (Song<Type> | SongPreview<Type, true>)[],
+	): Promise<void> {
+		this.log("removeSongsFromPlaylist");
+		await this.initialize();
+
+		if (!this.handleRemoveSongsFromPlaylist) {
+			throw new Error("This service does not support removeSongsFromPlaylist");
+		}
+
+		await this.withUnrecoverableErrorHandling(this.handleRemoveSongsFromPlaylist, id, song);
+	}
+
 	handleSearchForItems?(
 		term: string,
 		filter: SearchFilter,
@@ -314,18 +395,14 @@ export abstract class MusicService<
 		localImages.deduplicate();
 	}
 
-	handleGetLibraryAlbums?(options?: {
-		signal?: AbortSignal;
-	}): AnyGenerator<AlbumPreview<Type> | Album<Type>>;
-	async *getLibraryAlbums(options?: {
-		signal?: AbortSignal;
-	}): AsyncGenerator<AlbumPreview<Type> | Album<Type>> {
+	handleGetLibraryAlbums?(): AnyGenerator<AlbumPreview<Type> | Album<Type>>;
+	async *getLibraryAlbums(): AsyncGenerator<AlbumPreview<Type> | Album<Type>> {
 		this.log("getLibraryAlbums");
 		if (!this.handleGetLibraryAlbums) {
 			throw new Error("This service does not support getLibraryAlbums");
 		}
 
-		const albums = await this.withErrorHandling(undefined!, this.handleGetLibraryAlbums, options);
+		const albums = await this.withErrorHandling(undefined!, this.handleGetLibraryAlbums);
 		if (!albums) return;
 
 		yield* albums;
@@ -341,18 +418,14 @@ export abstract class MusicService<
 		await this.withErrorHandling(undefined!, this.handleRefreshLibraryAlbums);
 	}
 
-	handleGetLibraryArtists?(options?: {
-		signal?: AbortSignal;
-	}): AnyGenerator<ArtistPreview<Type> | Artist<Type>>;
-	async *getLibraryArtists(options?: {
-		signal?: AbortSignal;
-	}): AsyncGenerator<ArtistPreview<Type> | Artist<Type>> {
+	handleGetLibraryArtists?(): AnyGenerator<ArtistPreview<Type> | Artist<Type>>;
+	async *getLibraryArtists(): AsyncGenerator<ArtistPreview<Type> | Artist<Type>> {
 		this.log("getLibraryArtists");
 		if (!this.handleGetLibraryArtists) {
 			throw new Error("This service does not support getLibraryArtists");
 		}
 
-		const artists = await this.withErrorHandling(undefined!, this.handleGetLibraryArtists, options);
+		const artists = await this.withErrorHandling(undefined!, this.handleGetLibraryArtists);
 		if (!artists) return;
 
 		yield* artists;
@@ -400,15 +473,70 @@ export abstract class MusicService<
 		return await this.withUnrecoverableErrorHandling(this.handleGetAlbumFromPreview, albumPreview);
 	}
 
-	handleGetPlaylist?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
-	async getPlaylist(url: URL): Promise<Maybe<Playlist>> {
+	handleGetPlaylistFromUrl?(url: URL): Maybe<Playlist> | Promise<Maybe<Playlist>>;
+	async getPlaylistFromUrl(url: URL): Promise<Maybe<Playlist>> {
 		this.log("getPlaylist");
+		if (!this.handleGetPlaylistFromUrl) {
+			throw new Error("This service does not support getPlaylist");
+		}
+
+		const playlist = await this.withErrorHandling(undefined, this.handleGetPlaylistFromUrl, url);
+		return playlist;
+	}
+
+	handleGetPlaylistFromPreview?(
+		playlistPreview: PlaylistPreview<Type>,
+	): Playlist<Type> | Promise<Playlist<Type>>;
+	async getPlaylistFromPreview(playlistPreview: PlaylistPreview<Type>): Promise<Playlist<Type>> {
+		this.log("getPlaylistFromPreview");
+
+		if (!this.handleGetPlaylistFromPreview) {
+			throw new Error("This service does not support getPlaylistFromPreview");
+		}
+
+		const playlist = await this.withUnrecoverableErrorHandling(
+			this.handleGetPlaylistFromPreview,
+			playlistPreview,
+		);
+		return playlist;
+	}
+
+	handleGetPlaylist?(id: string): Maybe<Playlist<Type>> | Promise<Maybe<Playlist<Type>>>;
+	async getPlaylist(id: string): Promise<Maybe<Playlist<Type>>> {
+		this.log("getPlaylist");
+		await this.initialize();
+
 		if (!this.handleGetPlaylist) {
 			throw new Error("This service does not support getPlaylist");
 		}
 
-		const playlist = await this.withErrorHandling(undefined, this.handleGetPlaylist, url);
+		const playlist = await this.withErrorHandling(undefined, this.handleGetPlaylist, id);
 		return playlist;
+	}
+
+	handleRefreshLibraryPlaylists?(): void | Promise<void>;
+	async refreshLibraryPlaylists(): Promise<void> {
+		this.log("refreshLibraryPlaylists");
+		if (!this.handleRefreshLibraryPlaylists) {
+			throw new Error("This service does not support refreshLibraryPlaylists");
+		}
+		await this.withErrorHandling(undefined, this.handleRefreshLibraryPlaylists);
+
+		const localImages = useLocalImages();
+		localImages.deduplicate();
+	}
+
+	handleGetLibraryPlaylists?(): AnyGenerator<Playlist<Type> | PlaylistPreview<Type>>;
+	async *getLibraryPlaylists(): AsyncGenerator<Playlist<Type> | PlaylistPreview<Type>> {
+		this.log("getLibraryPlaylists");
+		if (!this.handleGetLibraryPlaylists) {
+			throw new Error("This service does not support getLibraryPlaylists");
+		}
+
+		const playlists = await this.withErrorHandling(undefined!, this.handleGetLibraryPlaylists);
+		if (!playlists) return;
+
+		yield* playlists;
 	}
 
 	handleGetArtist?(id: string): Maybe<Artist<Type>> | Promise<Maybe<Artist<Type>>>;
