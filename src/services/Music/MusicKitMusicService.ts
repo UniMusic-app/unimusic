@@ -805,19 +805,44 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	}
 
 	async handleGetPlaylist(id: string): Promise<Maybe<MusicKitPlaylist>> {
+		const music = this.music!;
 		const idType = musicKitIdType(id);
 
-		const response = await this.music!.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
+		const response = await music.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
 			idType === "catalog"
 				? `/v1/catalog/{{storefrontId}}/playlists/${id}`
 				: `/v1/me/library/playlists/${id}`,
 			{ include: ["tracks"] },
 		);
 
-		const album = response.data?.data?.[0];
-		if (!album) return;
+		const playlist = response.data?.data?.[0];
+		if (!playlist) return;
 
-		return cache(musicKitPlaylist(album));
+		const parsedPlaylist = await musicKitPlaylist(playlist);
+
+		// Playlist has more than 100 tracks, fetch them all
+		if (playlist.relationships?.tracks.next) {
+			let tracksResponse = await music.api.music<MusicKit.SongsResponse>(
+				playlist.relationships?.tracks.next,
+			);
+
+			while (true) {
+				const tracks = tracksResponse?.data?.data;
+				if (!tracks) break;
+
+				for (const track of tracks) {
+					const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
+					const songPreview: MusicKitSongPreview = cached ?? cache(musicKitSongPreview(track));
+					parsedPlaylist.songs.push(getKey(songPreview));
+				}
+
+				if (!tracksResponse.data.next) break;
+
+				tracksResponse = await music.api.music(tracksResponse.data.next);
+			}
+		}
+
+		return cache(parsedPlaylist);
 	}
 
 	async *handleGetLibraryPlaylists(): AsyncGenerator<MusicKitPlaylistPreview> {
