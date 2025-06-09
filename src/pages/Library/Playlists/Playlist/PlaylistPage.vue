@@ -31,9 +31,16 @@ import {
 } from "ionicons/icons";
 
 import { MusicService } from "@/services/Music/MusicService";
-import { Filled, filledPlaylist, Playlist, SongType } from "@/services/Music/objects";
+import {
+	Filled,
+	filledPlaylist,
+	getCached,
+	Playlist,
+	PlaylistType,
+} from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import { useNavigation } from "@/stores/navigation";
+import { Maybe } from "@/utils/types";
 import { watchAsync } from "@/utils/vue";
 import { useRoute } from "vue-router";
 
@@ -45,29 +52,45 @@ const route = useRoute();
 const playlist = ref<Filled<Playlist>>();
 const service = ref<MusicService>();
 
+const supports = computed(() => {
+	const isUniMusic = playlist.value?.type === "unimusic";
+
+	return {
+		edit: isUniMusic || !!service?.value?.handleModifyPlaylist,
+		delete: isUniMusic || !!service?.value?.handleDeletePlaylist,
+	};
+});
+
 const forceUpdate = ref(0);
 
 watchAsync(
-	() => [route.params.playlistType, route.params.playlistId, forceUpdate.value],
+	() =>
+		[
+			route.params.playlistType as Maybe<PlaylistType>,
+			route.params.playlistId as Maybe<string>,
+			forceUpdate.value,
+		] as const,
 	async ([playlistType, playlistId]) => {
 		if (!playlistType || !playlistId) return;
 
+		service.value = undefined;
+
 		if (playlistType === "unimusic") {
-			const localPlaylist = musicPlayer.state.getPlaylist(playlistId as string);
-			service.value = undefined;
+			const localPlaylist = musicPlayer.state.getPlaylist(playlistId);
 			if (localPlaylist) {
 				playlist.value = filledPlaylist(localPlaylist);
 				return;
 			}
 		}
 
-		const libraryPlaylist = await musicPlayer.services.getPlaylist(
-			playlistType as SongType,
-			playlistId as string,
-		);
-		console.log(libraryPlaylist);
+		const cachedPlaylist = getCached<Playlist>(playlistType, playlistId, "playlist");
+		if (cachedPlaylist) {
+			playlist.value = filledPlaylist(cachedPlaylist);
+		}
+
+		const libraryPlaylist = await musicPlayer.services.getPlaylist(playlistType, playlistId);
 		if (libraryPlaylist) {
-			service.value = musicPlayer.services.getService(playlistType as SongType);
+			service.value = musicPlayer.services.getService(playlistType);
 			playlist.value = filledPlaylist(libraryPlaylist);
 		}
 	},
@@ -127,25 +150,25 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 	<AppPage :title="playlist?.title" :show-content-header="false" back-button="Playlists">
 		<template #toolbar-end>
 			<ion-buttons>
-				<ion-button v-if="!service || service.handleModifyPlaylist" id="edit-playlist">
+				<ion-button v-if="supports.edit" id="edit-playlist">
 					<ion-icon slot="icon-only" :icon="editIcon" />
 				</ion-button>
-				<ion-button v-if="!service || service.handleDeletePlaylist" id="delete-playlist">
+				<ion-button v-if="supports.delete" id="delete-playlist">
 					<ion-icon slot="icon-only" :icon="deleteIcon" />
 				</ion-button>
 			</ion-buttons>
 		</template>
 
 		<ion-action-sheet
-			v-if="playlist && (!service || service.handleDeletePlaylist)"
+			v-if="playlist && supports.delete"
 			trigger="delete-playlist"
-			:header="`Are you sure you want to delete playlist ${playlist?.title}?`"
+			:header="`Are you sure you want to delete playlist ${playlist.title}?`"
 			:buttons="deleteActionSheetButtons"
 			@didDismiss="onDeleteActionDismiss"
 		/>
 
 		<PlaylistEditModal
-			v-if="playlist && (!service || service.handleModifyPlaylist)"
+			v-if="playlist && supports.edit"
 			:playlist
 			trigger="edit-playlist"
 			@change="editPlaylist"
