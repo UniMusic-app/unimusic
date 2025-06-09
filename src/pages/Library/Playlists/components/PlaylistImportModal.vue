@@ -281,6 +281,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 	border-radius: 12px 12px 0 0;
 	background-color: var(--ion-color-light);
 	animation: appear 750ms;
+	text-align: center;
 
 	& > #preview-headline {
 		font-size: 2.25rem;
