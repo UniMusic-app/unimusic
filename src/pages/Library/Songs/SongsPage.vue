@@ -8,20 +8,20 @@ import GenericSongItem from "@/components/GenericSongItem.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
 import { Song } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
-import { useSessionStorage } from "@vueuse/core";
+import { useLocalStorage } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
 
-const librarySongs = useSessionStorage<Song[]>("librarySongs", []);
+const librarySongs = useLocalStorage<Song[]>("librarySongs", []);
 const isLoading = ref(librarySongs.value.length === 0);
 onUpdated(async () => {
-	if (!librarySongs.value.length) {
-		isLoading.value = true;
-		for await (const song of musicPlayer.services.librarySongs()) {
-			librarySongs.value.push(song);
-		}
-		isLoading.value = false;
+	isLoading.value = true;
+	const songs: Song[] = [];
+	for await (const song of musicPlayer.services.librarySongs()) {
+		songs.push(song);
 	}
+	librarySongs.value = songs;
+	isLoading.value = false;
 });
 
 async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
@@ -42,7 +42,7 @@ async function refreshSongLibrary(event: RefresherCustomEvent): Promise<void> {
 			<ion-refresher-content />
 		</ion-refresher>
 
-		<ion-list v-if="isLoading" class="songs-list">
+		<ion-list v-if="!librarySongs.length && isLoading" class="songs-list">
 			<SkeletonItem v-for="i in 25" :key="i" />
 		</ion-list>
 		<ion-list v-else class="songs-list">

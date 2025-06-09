@@ -8,20 +8,20 @@ import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
 import SkeletonCard from "@/components/SkeletonCard.vue";
 import { Album, AlbumPreview } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
-import { useSessionStorage } from "@vueuse/core";
+import { useLocalStorage } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
 
-const libraryAlbums = useSessionStorage<(Album | AlbumPreview)[]>("libraryAlbums", []);
+const libraryAlbums = useLocalStorage<(Album | AlbumPreview)[]>("libraryAlbums", []);
 const isLoading = ref(libraryAlbums.value.length === 0);
 onUpdated(async () => {
-	if (!libraryAlbums.value.length) {
-		isLoading.value = true;
-		for await (const album of musicPlayer.services.libraryAlbums()) {
-			libraryAlbums.value.push(album);
-		}
-		isLoading.value = false;
+	isLoading.value = true;
+	const albums: (Album | AlbumPreview)[] = [];
+	for await (const album of musicPlayer.services.libraryAlbums()) {
+		albums.push(album);
 	}
+	libraryAlbums.value = albums;
+	isLoading.value = false;
 });
 
 async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
@@ -42,7 +42,7 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 			<ion-refresher-content />
 		</ion-refresher>
 
-		<div v-if="isLoading" class="album-cards">
+		<div v-if="!libraryAlbums.length && isLoading" class="album-cards">
 			<SkeletonCard v-for="i in 25" :key="i" />
 		</div>
 		<div v-else class="album-cards">
