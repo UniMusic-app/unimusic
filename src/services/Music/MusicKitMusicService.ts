@@ -63,7 +63,8 @@ export function extractDisplayableArtists(
 	if (!artists) {
 		return [];
 	} else if (typeof artists === "string") {
-		return [{ title: artists }];
+		const actualArtists = artists.split(" & ");
+		return actualArtists.map((artist) => ({ title: artist }));
 	}
 
 	const keys: MusicKitDisplayableArtist[] = [];
@@ -492,6 +493,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	type = "musickit" as const;
 	available = true;
 
+	audioElement?: HTMLAudioElement;
 	music?: MusicKit.MusicKitInstance;
 	authorization = new MusicKitAuthorizationService();
 
@@ -1002,7 +1004,13 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 		music.repeatMode = MusicKit.PlayerRepeatMode.none;
 		music.addEventListener("playbackTimeDidChange", () => {
-			this.dispatchEvent(new MusicServiceEvent("timeupdate", this.music!.currentPlaybackTime));
+			// NOTE: For whatever reason Apple rounds the event value...
+			this.dispatchEvent(
+				new MusicServiceEvent(
+					"timeupdate",
+					this.audioElement?.currentTime ?? this.music!.currentPlaybackTime,
+				),
+			);
 		});
 		music.addEventListener("mediaCanPlay", () => {
 			this.dispatchEvent(new MusicServiceEvent("playing"));
@@ -1042,6 +1050,8 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			} else {
 				await music.setQueue({ song: song.id, startPlaying: true, startTime: 0 });
 			}
+
+			this.audioElement = document.querySelector("#apple-music-player") ?? undefined;
 		} catch (error) {
 			console.log("err:", error);
 

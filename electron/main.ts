@@ -19,6 +19,7 @@ const ALLOWED_URLS = [
 	"https://*.googleusercontent.com",
 	"https://*.mzstatic.com",
 	"https://*.ytimg.com",
+	"https://lrclib.net",
 ];
 const ALLOWED_URL_PATTERNS = ALLOWED_URLS.map((url) => new URLPattern(url));
 
