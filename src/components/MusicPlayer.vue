@@ -13,7 +13,6 @@ import {
 	IonModal,
 	IonNote,
 	IonRange,
-	IonReorder,
 	IonReorderGroup,
 	IonSpinner,
 	ItemReorderCustomEvent,
@@ -21,8 +20,6 @@ import {
 import {
 	albumsOutline as albumIcon,
 	personOutline as artistIcon,
-	pencilOutline as editIcon,
-	ellipsisHorizontal as ellipsisIcon,
 	volumeHigh as highVolumeIcon,
 	volumeLow as lowVolumeIcon,
 	musicalNotes as lyricsIcon,
@@ -92,6 +89,8 @@ watchAsync(
 		}
 	},
 );
+
+// FIXME: pressing while paused looks goofy
 watch(time, (time) => {
 	const syncedLyrics = lyrics.value?.syncedLyrics;
 	if (!syncedLyrics) return;
@@ -154,7 +153,7 @@ function reorderQueue(event: ItemReorderCustomEvent): void {
 	event.detail.complete();
 }
 
-function toggleView(view: "queue" | "lyrics") {
+function toggleView(view: "queue" | "lyrics"): void {
 	if (currentView.value === view) {
 		currentView.value = "artwork";
 	} else {
@@ -188,6 +187,7 @@ function toggleView(view: "queue" | "lyrics") {
 				<template v-if="lyrics?.syncedLyrics">
 					<ion-item
 						v-for="({ line, timestamp }, i) in lyrics?.syncedLyrics"
+						:key="timestamp"
 						class="lyrics-line live"
 						:class="{ current: i === lyricsIndex }"
 						@click="musicPlayer.seekToTime(timestamp)"
@@ -207,6 +207,7 @@ function toggleView(view: "queue" | "lyrics") {
 				<template v-else-if="lyrics?.lyrics">
 					<ion-item
 						v-for="(line, i) in lyrics?.lyrics"
+						:key="i"
 						class="lyrics-line"
 						:class="{ current: i === lyricsIndex }"
 						lines="none"
@@ -562,7 +563,7 @@ function toggleView(view: "queue" | "lyrics") {
 
 			background: transparent;
 			--background: transparent;
-			padding-block: 16px;
+			padding-bottom: 16px;
 
 			& > ion-item {
 				--background: transparent;
@@ -573,11 +574,13 @@ function toggleView(view: "queue" | "lyrics") {
 				font-size: 1.5rem;
 				font-weight: bold;
 				padding-block: 8px;
+				padding-right: 1rem;
 
 				transition: font-size, filter, opacity, 250ms;
 
 				&.current {
 					font-size: 1.55rem;
+					padding-right: 0;
 				}
 
 				&.live:not(.current):not(.attribution):not(:hover) {

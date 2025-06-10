@@ -228,7 +228,7 @@ void app.whenReady().then(async () => {
 	});
 
 	ipcMain.handle("unimusicsync:import", async (_, ticket) => {
-		const namespace = await uniMusicSync.importFile(ticket);
+		const namespace = await uniMusicSync.importTicket(ticket);
 		return namespace;
 	});
 

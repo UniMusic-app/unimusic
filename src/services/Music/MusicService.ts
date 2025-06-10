@@ -14,7 +14,7 @@ import { useMusicServices } from "@/stores/music-services";
 
 import { Maybe } from "@/utils/types";
 
-import { LRCLIBLyricsService } from "@/services/Lyrics/LRCLibLyricsService";
+import { LRCLIBLyricsService } from "@/services/Lyrics/LRCLIBLyricsService";
 import { Lyrics, LyricsService } from "@/services/Lyrics/LyricsService";
 import {
 	Album,
