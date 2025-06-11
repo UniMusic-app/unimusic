@@ -933,6 +933,9 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	}
 
 	async handleGetSongFromPreview(songPreview: MusicKitSongPreview): Promise<MusicKitSong> {
+		const cached = getCached("song", songPreview.id);
+		if (cached) return cached;
+
 		return cache(await musicKitPreviewToSong(songPreview));
 	}
 
