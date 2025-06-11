@@ -63,7 +63,8 @@ export function extractDisplayableArtists(
 	if (!artists) {
 		return [];
 	} else if (typeof artists === "string") {
-		const actualArtists = artists.split(" & ");
+		// Split strings like "Bobby, Bingo & Bart" into ["Bobby", "Bingo", "Bart"]
+		const actualArtists = artists.split(/\s*(?:&|,)\s+/);
 		return actualArtists.map((artist) => ({ title: artist }));
 	}
 
