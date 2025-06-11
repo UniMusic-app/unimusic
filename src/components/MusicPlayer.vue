@@ -90,7 +90,6 @@ watchAsync(
 	},
 );
 
-// FIXME: pressing while paused looks goofy
 watch(time, (time) => {
 	const syncedLyrics = lyrics.value?.syncedLyrics;
 	if (!syncedLyrics) return;
@@ -98,12 +97,15 @@ watch(time, (time) => {
 	const index = syncedLyrics.findLastIndex((line) => time >= line.timestamp);
 	lyricsIndex.value = index;
 
-	const element = lyricsElement.value!.$el as HTMLElement;
-	const lineElement = element.querySelector<HTMLElement>(".lyrics-line.current");
-	if (!lineElement) return;
-	element.scrollTo({
-		top: lineElement.offsetTop - 32,
-		behavior: "smooth",
+	requestAnimationFrame(() => {
+		const element = lyricsElement.value!.$el as HTMLElement;
+		const lineElement = element.querySelector<HTMLElement>(".lyrics-line.current");
+		if (!lineElement) return;
+
+		element.scrollTo({
+			top: lineElement.offsetTop - 32,
+			behavior: "smooth",
+		});
 	});
 });
 
