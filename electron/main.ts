@@ -19,6 +19,7 @@ const ALLOWED_URLS = [
 	"https://*.googleusercontent.com",
 	"https://*.mzstatic.com",
 	"https://*.ytimg.com",
+	"https://lrclib.net",
 ];
 const ALLOWED_URL_PATTERNS = ALLOWED_URLS.map((url) => new URLPattern(url));
 
@@ -227,7 +228,7 @@ void app.whenReady().then(async () => {
 	});
 
 	ipcMain.handle("unimusicsync:import", async (_, ticket) => {
-		const namespace = await uniMusicSync.importFile(ticket);
+		const namespace = await uniMusicSync.importTicket(ticket);
 		return namespace;
 	});
 

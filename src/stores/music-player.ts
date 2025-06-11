@@ -70,6 +70,10 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const hasPrevious = computed(() => state.queueIndex > 0);
 	const hasNext = computed(() => state.queue.length > state.queueIndex + 1);
 
+	async function seekToTime(time: number): Promise<void> {
+		await currentService?.value?.seekToTime(time);
+	}
+
 	async function setQueueIndex(index: number): Promise<void> {
 		if (index < 0 || index >= state.queue.length) {
 			throw new Error(`Tried to set queue index outside of queue bounds (index = ${index})`);
@@ -271,7 +275,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		get: () => state.time / state.duration,
 		set: async (progress) => {
 			const time = progress * state.duration;
-			await currentService?.value?.seekToTime(time);
+			await seekToTime(time);
 		},
 	});
 
@@ -287,6 +291,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 		hasNext,
 		skipNext,
 		setQueueIndex,
+		seekToTime,
 
 		playSongNow,
 		playSongNext,

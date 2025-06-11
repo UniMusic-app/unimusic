@@ -17,7 +17,7 @@ import {
 } from "@ionic/vue";
 import { addOutline as addIcon, listOutline as playlistIcon } from "ionicons/icons";
 
-import { PlaylistPreview, SongKey, SongType } from "@/services/Music/objects";
+import { PlaylistPreview, SongType } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 
 const musicPlayer = useMusicPlayer();
@@ -156,7 +156,7 @@ export async function openAddToPlaylistModal(item: Item): Promise<void> {
 						class="playlist-item"
 						v-for="playlist in servicePlaylists"
 						:key="playlist.id"
-						@click="addToPlaylist(playlist)"
+						@click="addToPlaylist(playlist as Playlist<SongType> | PlaylistPreview<SongType>)"
 						button
 						:detail="false"
 					>

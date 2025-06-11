@@ -3,6 +3,7 @@ import { computed, reactive } from "vue";
 
 import { MusicService, SearchFilter, SearchResultItem } from "@/services/Music/MusicService";
 
+import { Lyrics } from "@/services/Lyrics/LyricsService";
 import {
 	Album,
 	AlbumPreview,
@@ -234,6 +235,10 @@ export const useMusicServices = defineStore("MusicServices", () => {
 
 		yield* service.getArtistsSongs(artist);
 	}
+
+	async function getLyrics(song: Song): Promise<Maybe<Lyrics>> {
+		return await getService(song.type)?.getLyrics(song);
+	}
 	// #endregion
 
 	// #region Registering services
@@ -265,6 +270,8 @@ export const useMusicServices = defineStore("MusicServices", () => {
 
 		searchHints,
 		searchForItems,
+
+		getLyrics,
 
 		getSong,
 		refreshSong,
