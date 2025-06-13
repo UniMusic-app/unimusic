@@ -12,11 +12,14 @@ import {
 	SearchResultItem,
 } from "@/services/Music/MusicService";
 
+const metadataService = new MusicBrainzLyricsService();
+
 import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath, getFileStream, getSongPaths } from "@/utils/path";
 import { Maybe } from "@/utils/types";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
+import { MusicBrainzLyricsService } from "../Metadata/MusicBrainzMetadataService";
 import {
 	Album,
 	AlbumSong,
@@ -74,9 +77,11 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		}
 	}
 
+	const fileName = path.split("\\").pop()!.split("/").pop()!;
+
 	const isrc = common.isrc;
 	const album = common.album;
-	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
+	const title = common.title ?? fileName;
 	const duration = format.duration;
 	const genres = common.genre ?? [];
 
@@ -96,7 +101,7 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		artwork = { id };
 	}
 
-	return {
+	const song: LocalSong = {
 		type: "local",
 		kind: "song",
 
@@ -121,6 +126,24 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 			trackNumber,
 		},
 	};
+
+	if (!album || !common.title) {
+		// FIXME: Add proper queue to not block parsing while fetching metadata
+		console.log("BEFORE METADATA:", common, format.duration);
+
+		const fileStream = await getFileStream(path);
+		const metadata = await metadataService.getMetadata({
+			id,
+			duration,
+			fileName,
+			fileStream,
+		});
+
+		Object.assign(song, metadata);
+		console.log("METADATA:", metadata);
+	}
+
+	return song;
 }
 
 async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {

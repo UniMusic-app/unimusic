@@ -11,7 +11,9 @@ import { addon as uniMusicSync } from "@unimusic/sync";
 import { authorizeMusicKit } from "./musickit/auth";
 
 const ALLOWED_URLS = [
+	// MusicKit
 	"https://*.apple.com",
+	// YouTube
 	"https://youtube.com",
 	"https://*.youtube.com",
 	"https://*.googlevideo.com",
@@ -19,7 +21,16 @@ const ALLOWED_URLS = [
 	"https://*.googleusercontent.com",
 	"https://*.mzstatic.com",
 	"https://*.ytimg.com",
+	// Song Lyrics
 	"https://lrclib.net",
+	// Music Metadata
+	"https://musicbrainz.org",
+	"https://api.acoustid.org",
+	"http://coverartarchive.org",
+	"https://coverartarchive.org",
+	"http://archive.org",
+	"https://archive.org",
+	"https://*.archive.org",
 ];
 const ALLOWED_URL_PATTERNS = ALLOWED_URLS.map((url) => new URLPattern(url));
 

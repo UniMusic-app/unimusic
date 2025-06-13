@@ -6,6 +6,7 @@ import { filledDisplayableArtist, Song, SongPreview, SongType } from "../Music/o
 import { Lyrics, LyricsService, parseLyricsLines, parseSyncLyricsLines } from "./LyricsService";
 
 const LRCLIB_ENDPOINT = "https://lrclib.net/api/";
+const APP_USER_AGENT = `UniMusic ${import.meta.env.VITE_APP_NAME} (https://github.com/unimusic-app/unimusic)`;
 
 interface LRCLIBGetResponse {
 	id: number;
@@ -38,7 +39,7 @@ export class LRCLIBLyricsService extends LyricsService {
 			url.searchParams.set("artist_name", displayableArtist.title);
 
 		try {
-			const response = await fetch(url);
+			const response = await fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
 			if (!response.ok) return;
 
 			const json: LRCLIBGetResponse = await response.json();

@@ -32,9 +32,9 @@ Development is currently prioritized for iOS and macOS, however first stable rel
 | Unified search        |   ✅   |                                             |
 | Unified playlists     |   ✅   |                                             |
 | Lyrics                |   ✅   |                                             |
+| Metadata tagging      |   ✅   |                                             |
 | Media synchronisation |   ✅   | Not tested on Windows                       |
 | Unified library       |   🟧   | Missing YouTube support and UI to add items |
-| Metadata tagging      |   🟥   | Manual metadata edition is supported        |
 
 ## Development
 

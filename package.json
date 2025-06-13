@@ -37,6 +37,7 @@
 		"@capacitor/status-bar": "^7.0.1",
 		"@ionic/vue": "^8.5.5",
 		"@ionic/vue-router": "^8.5.5",
+		"@unimusic/chromaprint": "^0.1.2",
 		"@unimusic/sync": "^0.1.14",
 		"@vueuse/components": "^13.1.0",
 		"@vueuse/core": "^13.1.0",
