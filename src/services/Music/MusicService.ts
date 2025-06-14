@@ -85,7 +85,8 @@ export abstract class MusicService<
 
 	state = useMusicPlayerState();
 	services = useMusicServices();
-	metadata = useSongMetadata();
+
+	#metadata = useSongMetadata();
 
 	initialized = false;
 	initialPlayed = false;
@@ -395,7 +396,7 @@ export abstract class MusicService<
 		const songs = await this.withErrorHandling(undefined!, this.handleGetLibrarySongs);
 
 		for await (const song of songs) {
-			yield this.metadata.applyMetadata(song);
+			yield this.#metadata.applyMetadata(song);
 		}
 
 		return songs;
@@ -599,7 +600,7 @@ export abstract class MusicService<
 
 		const song = await this.withErrorHandling(undefined, this.handleGetSong, songId);
 		if (song) {
-			this.metadata.applyMetadata(song);
+			this.#metadata.applyMetadata(song);
 			return song;
 		}
 	}
@@ -614,10 +615,10 @@ export abstract class MusicService<
 			return;
 		}
 
-		this.metadata.applyMetadata(refreshed);
+		this.#metadata.applyMetadata(refreshed);
 		for (const { song } of this.state.queue) {
 			if (song.id === refreshed.id) {
-				this.metadata.applyMetadata(song);
+				this.#metadata.applyMetadata(song);
 				Object.assign(song, refreshed);
 			}
 		}
