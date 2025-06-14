@@ -161,13 +161,6 @@ void app.whenReady().then(async () => {
 			}
 		}
 
-		try {
-			for (const relativePath of await fs.readdir(path, { recursive: true })) {
-				filePaths.push(join(path, relativePath));
-			}
-		} catch (error) {
-			console.error(`Failed to traverse ${path}:`, error);
-		}
 		return filePaths;
 	});
 	//#endregion
