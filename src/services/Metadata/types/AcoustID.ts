@@ -36,6 +36,7 @@ export interface AcoustIDRecording {
 	id: string;
 	title: string;
 	artists: AcoustIDArtist[];
+	duration: number;
 
 	releasegroups: AcoustIDReleaseGroup[];
 }

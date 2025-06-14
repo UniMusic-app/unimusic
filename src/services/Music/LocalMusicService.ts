@@ -77,11 +77,9 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		}
 	}
 
-	const fileName = path.split("\\").pop()!.split("/").pop()!;
-
 	const isrc = common.isrc;
 	const album = common.album;
-	const title = common.title ?? fileName;
+	const title = common.title;
 	const duration = format.duration;
 	const genres = common.genre ?? [];
 
@@ -101,7 +99,7 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		artwork = { id };
 	}
 
-	const song: LocalSong = {
+	return {
 		type: "local",
 		kind: "song",
 
@@ -126,24 +124,6 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 			trackNumber,
 		},
 	};
-
-	if (!album || !common.title) {
-		// FIXME: Add proper queue to not block parsing while fetching metadata
-		console.log("BEFORE METADATA:", common, format.duration);
-
-		const fileStream = await getFileStream(path);
-		const metadata = await metadataService.getMetadata({
-			id,
-			duration,
-			fileName,
-			fileStream,
-		});
-
-		Object.assign(song, metadata);
-		console.log("METADATA:", metadata);
-	}
-
-	return song;
 }
 
 async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
@@ -175,6 +155,7 @@ async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
 	}
 
 	try {
+		const missingMetadata: LocalSong[] = [];
 		for await (const { filePath, id } of getSongPaths()) {
 			// Skip non-audio file types
 			// We ignore this check for android, since it uses MediaStore API
@@ -186,10 +167,106 @@ async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
 			// We have to hash it to prevent clashing with routes when used as a route parameter.
 			const fileId = id ?? String(generateHash(filePath));
 
+			console.log("Parsing", filePath);
 			const song = await parseLocalSong(filePath, fileId);
-			cache(song);
-			yield song;
+
+			if (!song.title) {
+				missingMetadata.push(song);
+			} else {
+				cache(song);
+				yield song;
+			}
 		}
+
+		// TODO: Support lazy-loading metadata or doing it in the background
+		const promises: Promise<LocalSong>[] = [];
+		for (const song of missingMetadata) {
+			if (promises.length >= 32) {
+				yield* await Promise.all(promises);
+				promises.length = 0;
+			}
+
+			const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
+
+			let songTitle: string | undefined;
+			let songArtists: string[] | undefined;
+
+			// Try to guess title and artists of a song from its fileName
+			// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
+			//
+			//  Possible groups:
+			//  - title - Song Title
+			//  - artists - Song Artists (unparsed)
+			//  - feat - Additional artists that have been noted separately (unparsed)
+			//  - extension - File extension
+			const fileNamePatterns = [
+				// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
+				/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
+
+				// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
+				/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
+
+				// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
+				/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
+
+				// Michael Jackson - Billie Jean (Official Video)
+				// Michael Jackson — Billie Jean (lyrics) [HD]
+				// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
+				// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
+				/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
+
+				// Michael Jackson - Billie Jean
+				// Michael Jackson - Billie Jean.wav
+				/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
+
+				// いめ44「遊び」feat. 歌愛ユキ
+				// いめ44「遊び」feat. 歌愛ユキ.mp3
+				/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
+
+				// Billie Jean
+				// Billie Jean (Official Video)
+				/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
+			];
+
+			// artist_a, artist_b & artist_c
+			// artist_a & artist_b & artist_c
+			// artist_a x artist_b x artist_c
+			const artistsPattern = /\s+(?:&|,|x)\s+/;
+
+			for (const pattern of fileNamePatterns) {
+				const match = fileName.match(pattern);
+				if (!match) continue;
+
+				const { title, artists, feat } = match.groups!;
+
+				const parsedArtists = [];
+				if (artists) parsedArtists.push(...artists.split(artistsPattern));
+				if (feat) parsedArtists.push(...feat.split(artistsPattern));
+
+				songTitle = title;
+				songArtists = parsedArtists;
+				break;
+			}
+
+			if (!songTitle) {
+				console.warn("Failed to guess song title from", fileName);
+				continue;
+			}
+
+			promises.push(
+				metadataService
+					.getMetadata({
+						id: song.id,
+						duration: song.duration,
+						title: songTitle,
+						artists: songArtists,
+						filePath: song.data.path,
+					})
+					.then((metadata) => Object.assign(song, metadata)),
+			);
+		}
+
+		yield* await Promise.all(promises);
 	} catch (error) {
 		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
 	}

@@ -1,5 +1,8 @@
 import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { getFileStream } from "@/utils/path";
+import { RateLimiter } from "@/utils/rate-limiter";
 import { Maybe } from "@/utils/types";
+import { useIDBKeyvalAsync } from "@/utils/vue";
 import { processAudioFile } from "@unimusic/chromaprint";
 import { Metadata, MetadataLookup, MetadataService } from "./MetadataService";
 import { AcoustIDResponse } from "./types/AcoustID";
@@ -7,11 +10,27 @@ import { MusicBrainzResponse } from "./types/MusicBrainz";
 
 const MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/";
 const ACOUSTID_ENDPOINT = "https://api.acoustid.org/v2/lookup";
-const COVERTARTARCHIVE_ENDPOINT = "https://coverartarchive.org/";
+const COVERARTARCHIVE_ENDPOINT = "https://coverartarchive.org/";
 const APP_USER_AGENT = `UniMusic/${import.meta.env.VITE_APP_NAME} (https://github.com/unimusic-app/unimusic)`;
 
-// TODO: Cache fetched metadata
-// TODO: Put proper ratelimits in place
+const cachedMetadata = await useIDBKeyvalAsync<Record<string, Metadata>>(
+	"musicBrainzMetadataCache",
+	{},
+);
+
+const rateLimiter = new RateLimiter({
+	// 1 request per second
+	// see: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting#Source_IP_address
+	"musicbrainz.org": 1000,
+
+	// 3 requests per second
+	// see: https://acoustid.org/webservice
+	"api.acoustid.org": 1000 / 3,
+
+	// NOTE: for now Covert Art Archive does not have rate limits in place
+	//       see: https://musicbrainz.org/doc/Cover_Art_Archive/API#Rate_limiting_rules
+});
+
 export class MusicBrainzLyricsService extends MetadataService {
 	logName = "MusicBrainzMetadataService";
 	logColor = "#EB753B";
@@ -23,9 +42,9 @@ export class MusicBrainzLyricsService extends MetadataService {
 	): Promise<Maybe<LocalImage>> {
 		this.log("Getting artwork for release", id);
 
-		const url = new URL(`${type}/${id}/front`, COVERTARTARCHIVE_ENDPOINT);
+		const url = new URL(`${type}/${id}/front`, COVERARTARCHIVE_ENDPOINT);
 
-		const response = await fetch(url);
+		const response = await fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
 		if (!response.ok) {
 			throw new Error(`Failed to get artwork for ${type}: ${id}`);
 		}
@@ -35,7 +54,8 @@ export class MusicBrainzLyricsService extends MetadataService {
 		const localImages = useLocalImages();
 		await localImages.associateImage(lookup.id, image);
 
-		this.log("Got artwork for ${type}", id);
+		this.log(`Got artwork for ${type}`, id);
+
 		return { id: lookup.id };
 	}
 
@@ -51,7 +71,7 @@ export class MusicBrainzLyricsService extends MetadataService {
 		url.searchParams.set("meta", "compress recordings releases releasegroups tracks");
 		url.searchParams.set("fingerprint", fingerprint);
 
-		const response = await fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
+		const response = await rateLimiter.fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
 		if (!response.ok) {
 			throw new Error("Failed to lookup metadata by fingerprint");
 		}
@@ -61,14 +81,30 @@ export class MusicBrainzLyricsService extends MetadataService {
 		const [result] = json.results;
 		if (!result) return;
 
+		// Only AcoustID trackId present without metadata
+		if (!result?.recordings) {
+			this.log("AcoustID did not return any recordings (metadata missing)");
+			return;
+		}
+
 		const [recording] = result.recordings;
 		if (!recording) return;
 
+		// Only MusicBrainz id present, try to fetch it
+		if (!recording.releasegroups) {
+			this.log("No release groups present, fetching metadata directly from MusicBrainz");
+
+			const url = new URL(`recording/${recording.id}`, MUSICBRAINZ_ENDPOINT);
+			url.searchParams.set("fmt", "json");
+
+			const response = await rateLimiter.fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
+			const json: MusicBrainzResponse = await response.json();
+			const metadata = await this.#parseMusicBrainzMetadata(lookup, json);
+			return metadata;
+		}
+
 		const [releaseGroup] = recording.releasegroups;
 		if (!releaseGroup) return;
-
-		const [release] = releaseGroup.releases;
-		if (!release) return;
 
 		this.log("Got metadata from fingerprint");
 
@@ -85,6 +121,53 @@ export class MusicBrainzLyricsService extends MetadataService {
 			this.log(`Failed to get artwork for`, lookup, metadata);
 			console.error(error);
 		}
+
+		cachedMetadata.value[lookup.id] = metadata;
+		cachedMetadata.value[fingerprint] = metadata;
+
+		return metadata;
+	}
+
+	async #parseMusicBrainzMetadata(
+		lookup: MetadataLookup,
+		response: MusicBrainzResponse,
+	): Promise<Maybe<Metadata>> {
+		const metadata: Metadata = {};
+
+		if (!response.recordings) {
+			this.log("MusicBrainz does not have recordings information");
+			return;
+		}
+
+		const [recording] = response.recordings;
+		if (!recording) return;
+
+		const [release] = recording.releases;
+		if (!release) return;
+
+		this.log("Got metadata from lookup", release);
+
+		const releaseGroup = release["release-group"];
+
+		metadata.title = recording.title;
+		if (releaseGroup["primary-type"] === "Album") {
+			metadata.album = releaseGroup.title;
+		}
+		metadata.artists =
+			release["artist-credit"]?.map((artist) => ({
+				id: artist.id,
+				title: artist.name,
+			})) ?? [];
+
+		try {
+			const artwork = await this.#getArtwork(lookup, "release-group", release["release-group"].id);
+			metadata.artwork = artwork;
+		} catch (error) {
+			this.log(`Failed to get artwork for`, lookup, metadata);
+			console.error(error);
+		}
+
+		cachedMetadata.value[lookup.id] = metadata;
 
 		return metadata;
 	}
@@ -114,58 +197,42 @@ export class MusicBrainzLyricsService extends MetadataService {
 		url.searchParams.set("query", query);
 		url.searchParams.set("fmt", "json");
 
-		const response = await fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
+		const response = await rateLimiter.fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
 		if (!response.ok) {
 			throw new Error("Failed to lookup metadata");
 		}
 
 		const json: MusicBrainzResponse = await response.json();
-
-		const metadata: Metadata = {};
-
-		const [recording] = json.recordings;
-		if (!recording) return;
-
-		const [release] = recording.releases;
-		if (!release) return;
-
-		this.log("Got metadata from lookup");
-
-		const releaseGroup = release["release-group"];
-
-		metadata.title = recording.title;
-		if (releaseGroup["primary-type"] === "Album") {
-			metadata.album = releaseGroup.title;
-		}
-		metadata.artists = release["artist-credit"].map((artist) => ({
-			id: artist.id,
-			title: artist.name,
-		}));
-
-		try {
-			const artwork = await this.#getArtwork(lookup, "release-group", release["release-group"].id);
-			metadata.artwork = artwork;
-		} catch (error) {
-			this.log(`Failed to get artwork for`, lookup, metadata);
-			console.error(error);
-		}
-
+		const metadata = await this.#parseMusicBrainzMetadata(lookup, json);
 		return metadata;
 	}
 
 	async handleGetMetadata(lookup: MetadataLookup): Promise<Maybe<Metadata>> {
-		try {
-			console.time("Fingerprint");
-			const fileBuffer = await new Response(lookup.fileStream).arrayBuffer();
-			const [fingerprint] = await Array.fromAsync(processAudioFile(fileBuffer));
-			this.log("Fingerprint:", fingerprint?.slice(0, 10) + "...");
-			console.timeEnd("Fingerprint");
+		const cached = cachedMetadata.value[lookup.id];
+		if (cached) {
+			this.log("Metadata cache hit for", lookup, cached);
+			return cached;
+		}
 
-			if (!fingerprint) {
-				this.log("Failed to read any fingerprint from a file", lookup);
-			} else {
-				const metadata = await this.#getMetadataFromFingerprint(lookup, fingerprint);
-				if (metadata) return metadata;
+		try {
+			if (lookup.filePath) {
+				const fileStream = await getFileStream(lookup.filePath);
+				const fileBuffer = await new Response(fileStream).arrayBuffer();
+				const [fingerprint] = await Array.fromAsync(processAudioFile(fileBuffer));
+				this.log("Fingerprint:", fingerprint?.slice(0, 10) + "...");
+
+				if (!fingerprint) {
+					this.log("Failed to read any fingerprint from a file", lookup);
+				} else {
+					const cached = cachedMetadata.value[fingerprint];
+					if (cached) {
+						this.log("Metadata cache hit from fingerprint for", lookup);
+						return cached;
+					}
+
+					const metadata = await this.#getMetadataFromFingerprint(lookup, fingerprint);
+					if (metadata) return metadata;
+				}
 			}
 		} catch (error) {
 			this.log("Failed to retrieve metadata using fingerprint");
@@ -173,16 +240,6 @@ export class MusicBrainzLyricsService extends MetadataService {
 		}
 
 		try {
-			// Try to guess song title and artists from file name if they are missing
-			if (lookup.fileName) {
-				// TODO: Add more patterns
-				const [artists, songTitle] = lookup.fileName.split(/\s+?-\s+?/);
-				if (!lookup.title) lookup.title = songTitle?.replace(/\(.+/, "").trim();
-				if (!lookup.artists) lookup.artists = artists?.split(/\s*(?:&|,)\s+/);
-
-				this.log("Adjusted lookup:", lookup);
-			}
-
 			const metadata = await this.#getMetadataFromLookup(lookup);
 			return metadata;
 		} catch (error) {

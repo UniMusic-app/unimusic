@@ -27,17 +27,16 @@ export interface MetadataLookup {
 	duration?: number;
 	isrc?: string;
 
-	fileStream?: ReadableStream<Uint8Array>;
-	fileName?: string;
+	filePath?: string;
 }
 
 export abstract class MetadataService extends Service {
 	handleGetMetadata?(lookup: MetadataLookup): Maybe<Metadata> | Promise<Maybe<Metadata>>;
 	async getMetadata(lookup: MetadataLookup): Promise<Maybe<Metadata>> {
-		this.log("getMetadataFromSong");
+		this.log("getMetadata");
 
 		if (!this.handleGetMetadata) {
-			throw new Error("This service does not support getMetadataFromString");
+			throw new Error("This service does not support getMetadata");
 		}
 
 		const metadata = await this.handleGetMetadata(lookup);
