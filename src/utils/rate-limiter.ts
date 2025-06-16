@@ -5,8 +5,7 @@ export interface RateLimits {
 interface RateLimitRequest {
 	url: URL;
 	init?: RequestInit;
-	resolve(response: Response): void;
-	reject(error?: unknown): void;
+	promise: PromiseWithResolvers<Response>;
 }
 
 export interface RateLimitData {
@@ -30,12 +29,12 @@ export class RateLimiter {
 		const domain = url.hostname;
 		const data = (this.data[domain] ??= { polling: false, lastCall: 0, queue: [] });
 
-		const { resolve, reject, promise } = Promise.withResolvers<Response>();
+		const promise = Promise.withResolvers<Response>();
 
-		data.queue.push({ url, init, resolve, reject });
+		data.queue.push({ url, init, promise });
 		if (!data.polling) this.#poll(domain);
 
-		return await promise;
+		return await promise.promise;
 	}
 
 	#poll(domain: string): void {
@@ -63,9 +62,9 @@ export class RateLimiter {
 	async #fetch(request: RateLimitRequest): Promise<void> {
 		try {
 			const response = await fetch(request.url, request.init);
-			request.resolve(response);
+			request.promise.resolve(response);
 		} catch (error) {
-			request.reject(error);
+			request.promise.reject(error);
 		}
 	}
 }

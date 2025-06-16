@@ -1,6 +1,8 @@
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { getFileStream } from "@/utils/path";
+import { PromiseQueue } from "@/utils/promise-queue.ts";
 import { RateLimiter } from "@/utils/rate-limiter";
+import { sleep } from "@/utils/time";
 import { Maybe } from "@/utils/types";
 import { useIDBKeyvalAsync } from "@/utils/vue";
 import { processAudioFile } from "@unimusic/chromaprint";
@@ -17,6 +19,8 @@ const cachedMetadata = await useIDBKeyvalAsync<Record<string, Metadata>>(
 	"musicBrainzMetadataCache",
 	{},
 );
+
+const fingerprintQueue = new PromiseQueue<string>();
 
 const rateLimiter = new RateLimiter({
 	// 1 request per second
@@ -218,7 +222,14 @@ export class MusicBrainzLyricsService extends MetadataService {
 			if (lookup.filePath) {
 				const fileStream = await getFileStream(lookup.filePath);
 				const fileBuffer = await new Response(fileStream).arrayBuffer();
-				const [fingerprint] = await Array.fromAsync(processAudioFile(fileBuffer));
+				const fingerprint = await fingerprintQueue.push(async () => {
+					const [fingerprint] = await Array.fromAsync(processAudioFile(fileBuffer));
+					// This delay is necessary, because for whatever reason chrome can just crash
+					// If files are decoded in quick succession
+					await sleep(1000);
+					return fingerprint!;
+				});
+
 				this.log("Fingerprint:", fingerprint?.slice(0, 10) + "...");
 
 				if (!fingerprint) {

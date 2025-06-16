@@ -77,9 +77,9 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		}
 	}
 
+	const title = common.title;
 	const isrc = common.isrc;
 	const album = common.album;
-	const title = common.title;
 	const duration = format.duration;
 	const genres = common.genre ?? [];
 
@@ -122,154 +122,10 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 			path,
 			discNumber,
 			trackNumber,
+			hasMetadata: !!common.title,
+			includedMetadata: !!common.title,
 		},
 	};
-}
-
-async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
-	const localSongs = Array.from(getAllCached<LocalSong>("local", "song"));
-
-	if (clearCache) {
-		for (const song of localSongs) {
-			removeFromCache(song);
-		}
-	} else if (localSongs.length) {
-		yield* localSongs;
-		return;
-	}
-
-	// Required for Documents folder to show up in Files
-	// NOTE: Hidden file doesn't work
-	if (getPlatform() === "ios") {
-		try {
-			await Filesystem.writeFile({
-				path: "/readme.txt",
-				data:
-					"Place your music files in this directory. They should be automatically recognized by the app.",
-				encoding: Encoding.UTF8,
-				directory: Directory.Documents,
-			});
-		} catch (error) {
-			console.log("Errored on writing readme.txt:", error instanceof Error ? error.message : error);
-		}
-	}
-
-	try {
-		const missingMetadata: LocalSong[] = [];
-		for await (const { filePath, id } of getSongPaths()) {
-			// Skip non-audio file types
-			// We ignore this check for android, since it uses MediaStore API
-			// and content paths don't have an extension
-			if (getPlatform() !== "android" && !audioMimeTypeFromPath(filePath)) continue;
-
-			// Instead of generating UUID and then managing the proper song object
-			// We use hashed filePath as an alternative id.
-			// We have to hash it to prevent clashing with routes when used as a route parameter.
-			const fileId = id ?? String(generateHash(filePath));
-
-			console.log("Parsing", filePath);
-			const song = await parseLocalSong(filePath, fileId);
-
-			if (!song.title) {
-				missingMetadata.push(song);
-			} else {
-				cache(song);
-				yield song;
-			}
-		}
-
-		// TODO: Support lazy-loading metadata or doing it in the background
-		const promises: Promise<LocalSong>[] = [];
-		for (const song of missingMetadata) {
-			if (promises.length >= 32) {
-				yield* await Promise.all(promises);
-				promises.length = 0;
-			}
-
-			const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
-
-			let songTitle: string | undefined;
-			let songArtists: string[] | undefined;
-
-			// Try to guess title and artists of a song from its fileName
-			// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
-			//
-			//  Possible groups:
-			//  - title - Song Title
-			//  - artists - Song Artists (unparsed)
-			//  - feat - Additional artists that have been noted separately (unparsed)
-			//  - extension - File extension
-			const fileNamePatterns = [
-				// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
-				/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
-
-				// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
-				/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
-
-				// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
-				/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
-
-				// Michael Jackson - Billie Jean (Official Video)
-				// Michael Jackson — Billie Jean (lyrics) [HD]
-				// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
-				// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
-				/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
-
-				// Michael Jackson - Billie Jean
-				// Michael Jackson - Billie Jean.wav
-				/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
-
-				// いめ44「遊び」feat. 歌愛ユキ
-				// いめ44「遊び」feat. 歌愛ユキ.mp3
-				/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
-
-				// Billie Jean
-				// Billie Jean (Official Video)
-				/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
-			];
-
-			// artist_a, artist_b & artist_c
-			// artist_a & artist_b & artist_c
-			// artist_a x artist_b x artist_c
-			const artistsPattern = /\s+(?:&|,|x)\s+/;
-
-			for (const pattern of fileNamePatterns) {
-				const match = fileName.match(pattern);
-				if (!match) continue;
-
-				const { title, artists, feat } = match.groups!;
-
-				const parsedArtists = [];
-				if (artists) parsedArtists.push(...artists.split(artistsPattern));
-				if (feat) parsedArtists.push(...feat.split(artistsPattern));
-
-				songTitle = title;
-				songArtists = parsedArtists;
-				break;
-			}
-
-			if (!songTitle) {
-				console.warn("Failed to guess song title from", fileName);
-				continue;
-			}
-
-			promises.push(
-				metadataService
-					.getMetadata({
-						id: song.id,
-						duration: song.duration,
-						title: songTitle,
-						artists: songArtists,
-						filePath: song.data.path,
-					})
-					.then((metadata) => Object.assign(song, metadata)),
-			);
-		}
-
-		yield* await Promise.all(promises);
-	} catch (error) {
-		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
-	}
 }
 
 export class LocalMusicService extends MusicService<"local"> {
@@ -301,6 +157,173 @@ export class LocalMusicService extends MusicService<"local"> {
 	}
 
 	handleDeinitialization(): void {}
+
+	async *#parseLocalSongs(): AsyncGenerator<LocalSong> {
+		const localSongs = new Map(
+			getAllCached<LocalSong>("local", "song").map((song) => [song.data.path, song]),
+		);
+
+		console.log(localSongs);
+
+		// Required for Documents folder to show up in Files
+		// NOTE: Hidden file doesn't work
+		if (getPlatform() === "ios") {
+			try {
+				await Filesystem.writeFile({
+					path: "/readme.txt",
+					data:
+						"Place your music files in this directory. They should be automatically recognized by the app.",
+					encoding: Encoding.UTF8,
+					directory: Directory.Documents,
+				});
+			} catch (error) {
+				console.log("Errored on writing readme.txt:", error instanceof Error ? error.message : error);
+			}
+		}
+
+		try {
+			const missingMetadata: LocalSong[] = [];
+			for await (const { filePath, id } of getSongPaths()) {
+				// Don't reparse songs that have been already parsed and have metadata
+				const localSong = localSongs.get(filePath);
+				if (localSong?.data?.hasMetadata) {
+					this.log("Already parsed", filePath);
+					yield localSong;
+					localSongs.delete(filePath);
+					continue;
+				}
+
+				// Skip non-audio file types
+				// We ignore this check for android, since it uses MediaStore API
+				// and content paths don't have an extension
+				if (getPlatform() !== "android" && !audioMimeTypeFromPath(filePath)) continue;
+
+				// Instead of generating UUID and then managing the proper song object
+				// We use hashed filePath as an alternative id.
+				// We have to hash it to prevent clashing with routes when used as a route parameter.
+				const fileId = id ?? String(generateHash(filePath));
+
+				this.log("Parsing", filePath);
+				const song = await parseLocalSong(filePath, fileId);
+
+				if (!song.data.hasMetadata) {
+					// We still yield the songs so users can immediately interact with them
+					// Metadata will progressively be updated in the background
+					missingMetadata.push(song);
+				}
+
+				cache(song);
+				yield song;
+			}
+
+			const promises: Promise<LocalSong>[] = [];
+			for (const song of missingMetadata) {
+				const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
+
+				let songTitle: string | undefined;
+				let songArtists: string[] | undefined;
+
+				// Try to guess title and artists of a song from its fileName
+				// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
+				//
+				//  Possible groups:
+				//  - title - Song Title
+				//  - artists - Song Artists (unparsed)
+				//  - feat - Additional artists that have been noted separately (unparsed)
+				//  - extension - File extension
+				const fileNamePatterns = [
+					// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
+					/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
+
+					// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
+					/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
+
+					// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
+					/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
+
+					// Michael Jackson - Billie Jean (Official Video)
+					// Michael Jackson — Billie Jean (lyrics) [HD]
+					// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
+					// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
+					/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
+
+					// Michael Jackson - Billie Jean
+					// Michael Jackson - Billie Jean.wav
+					/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
+
+					// いめ44「遊び」feat. 歌愛ユキ
+					// いめ44「遊び」feat. 歌愛ユキ.mp3
+					/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
+
+					// Billie Jean
+					// Billie Jean (Official Video)
+					/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
+				];
+
+				// artist_a, artist_b & artist_c
+				// artist_a & artist_b & artist_c
+				// artist_a x artist_b x artist_c
+				const artistsPattern = /(?:\s+(?:&|x)\s+)|(?:\s*,\s+)/;
+
+				for (const pattern of fileNamePatterns) {
+					const match = fileName.match(pattern);
+					if (!match) continue;
+
+					const { title, artists, feat } = match.groups!;
+
+					const parsedArtists = [];
+					if (artists) parsedArtists.push(...artists.split(artistsPattern));
+					if (feat) parsedArtists.push(...feat.split(artistsPattern));
+
+					songTitle = title;
+					songArtists = parsedArtists;
+					break;
+				}
+
+				this.log("Missing metadata, trying to get one for", song.data.path);
+
+				if (!songTitle) {
+					this.log("Failed to guess song title from", fileName);
+					continue;
+				}
+
+				this.log(`Guessed title and artists for ${song.data.path}:`, songTitle, songArtists);
+
+				song.title = songTitle;
+				song.artists = songArtists?.map((artist) => ({ title: artist })) ?? [];
+				cache(song);
+
+				const promise = metadataService
+					.getMetadata({
+						id: song.id,
+						duration: song.duration,
+						title: songTitle,
+						artists: songArtists,
+						filePath: song.data.path,
+					})
+					.then((metadata) => {
+						const songWithMetadata = Object.assign(song, metadata);
+						songWithMetadata.data.hasMetadata = !!metadata;
+						return cache(songWithMetadata);
+					});
+
+				promises.push(promise);
+			}
+
+			yield* promises;
+
+			// Remove songs that have been deleted
+			for (const [path, song] of localSongs) {
+				this.log("File no longer exists, removing metadata:", path);
+				removeFromCache(song);
+			}
+
+			this.log("Finished parsing songs");
+		} catch (error) {
+			this.log("Failed to parse songs");
+			console.error(error);
+		}
+	}
 
 	handleGetSongsAlbum(song: LocalSong): Maybe<LocalAlbum> {
 		const songKey = getKey(song);
@@ -536,12 +559,18 @@ export class LocalMusicService extends MusicService<"local"> {
 	}
 
 	async *handleGetLibrarySongs(): AsyncGenerator<LocalSong> {
-		yield* getLocalSongs();
+		let empty = true;
+		for (const song of getAllCached<LocalSong>("local", "song")) {
+			yield song;
+			empty = false;
+		}
+
+		if (empty) yield* this.#parseLocalSongs();
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {
 		this.#fuses.clear();
-		await Array.fromAsync(getLocalSongs(true));
+		await Array.fromAsync(this.#parseLocalSongs());
 	}
 
 	handleGetSong(songId: string): Maybe<LocalSong> {
