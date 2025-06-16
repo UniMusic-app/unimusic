@@ -196,6 +196,7 @@ useEventListener("resize", update);
 			<div class="music-player-wrapper">
 				<div class="view-content">
 					<LocalImg
+						size="large"
 						ref="artwork"
 						:style="{
 							'--top': `${artworkBounding?.top}px`,

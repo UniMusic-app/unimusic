@@ -1,6 +1,6 @@
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { getFileStream } from "@/utils/path";
-import { PromiseQueue } from "@/utils/promise-queue.ts";
+import { PromiseQueue } from "@/utils/promise-queue";
 import { RateLimiter } from "@/utils/rate-limiter";
 import { sleep } from "@/utils/time";
 import { Maybe } from "@/utils/types";

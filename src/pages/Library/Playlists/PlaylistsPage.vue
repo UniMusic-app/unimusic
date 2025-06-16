@@ -92,6 +92,7 @@ async function refreshPlaylistLibrary(event: RefresherCustomEvent): Promise<void
 				:router-link="`/items/playlists/${playlist.type}/${playlist.id}`"
 			>
 				<LocalImg
+					size="large"
 					slot="start"
 					:src="playlist.artwork"
 					:alt="`Artwork for playlist '${playlist.title}'`"

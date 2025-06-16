@@ -37,7 +37,7 @@ async function changeArtwork(): Promise<void> {
 
 <template>
 	<div class="local-image-picker">
-		<LocalImg :src="image" :alt="`Image picker preview`" @click="imagePicker?.click()" />
+		<LocalImg size="large" :src="image" :alt="`Image picker preview`" @click="imagePicker?.click()" />
 		<input ref="imagePicker" type="file" accept="image/*" @change="changeArtwork" />
 	</div>
 </template>
