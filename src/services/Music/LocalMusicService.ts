@@ -12,14 +12,11 @@ import {
 	SearchResultItem,
 } from "@/services/Music/MusicService";
 
-const metadataService = new MusicBrainzLyricsService();
-
 import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath, getFileStream, getSongPaths } from "@/utils/path";
 import { Maybe } from "@/utils/types";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
-import { MusicBrainzLyricsService } from "../Metadata/MusicBrainzMetadataService";
 import {
 	Album,
 	AlbumSong,
@@ -133,6 +130,7 @@ export class LocalMusicService extends MusicService<"local"> {
 	logColor = "#ddd480";
 	type = "local" as const;
 	available = getPlatform() !== "web";
+	description = "Listen to your local collection of music";
 
 	audio?: HTMLAudioElement;
 
@@ -216,101 +214,103 @@ export class LocalMusicService extends MusicService<"local"> {
 				yield song;
 			}
 
-			const promises: Promise<LocalSong>[] = [];
-			for (const song of missingMetadata) {
-				const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
+			if (this.services.canGetMetadata()) {
+				const promises: Promise<LocalSong>[] = [];
+				for (const song of missingMetadata) {
+					const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
 
-				let songTitle: string | undefined;
-				let songArtists: string[] | undefined;
+					let songTitle: string | undefined;
+					let songArtists: string[] | undefined;
 
-				// Try to guess title and artists of a song from its fileName
-				// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
-				//
-				//  Possible groups:
-				//  - title - Song Title
-				//  - artists - Song Artists (unparsed)
-				//  - feat - Additional artists that have been noted separately (unparsed)
-				//  - extension - File extension
-				const fileNamePatterns = [
-					// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
-					/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
+					// Try to guess title and artists of a song from its fileName
+					// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
+					//
+					//  Possible groups:
+					//  - title - Song Title
+					//  - artists - Song Artists (unparsed)
+					//  - feat - Additional artists that have been noted separately (unparsed)
+					//  - extension - File extension
+					const fileNamePatterns = [
+						// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
+						/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
 
-					// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
-					/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
+						// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
+						/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
 
-					// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
-					/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
+						// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
+						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
 
-					// Michael Jackson - Billie Jean (Official Video)
-					// Michael Jackson — Billie Jean (lyrics) [HD]
-					// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
-					// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
-					/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
+						// Michael Jackson - Billie Jean (Official Video)
+						// Michael Jackson — Billie Jean (lyrics) [HD]
+						// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
+						// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
+						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
 
-					// Michael Jackson - Billie Jean
-					// Michael Jackson - Billie Jean.wav
-					/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
+						// Michael Jackson - Billie Jean
+						// Michael Jackson - Billie Jean.wav
+						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
 
-					// いめ44「遊び」feat. 歌愛ユキ
-					// いめ44「遊び」feat. 歌愛ユキ.mp3
-					/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
+						// いめ44「遊び」feat. 歌愛ユキ
+						// いめ44「遊び」feat. 歌愛ユキ.mp3
+						/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
 
-					// Billie Jean
-					// Billie Jean (Official Video)
-					/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
-				];
+						// Billie Jean
+						// Billie Jean (Official Video)
+						/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
+					];
 
-				// artist_a, artist_b & artist_c
-				// artist_a & artist_b & artist_c
-				// artist_a x artist_b x artist_c
-				const artistsPattern = /(?:\s+(?:&|x)\s+)|(?:\s*,\s+)/;
+					// artist_a, artist_b & artist_c
+					// artist_a & artist_b & artist_c
+					// artist_a x artist_b x artist_c
+					const artistsPattern = /(?:\s+(?:&|x)\s+)|(?:\s*,\s+)/;
 
-				for (const pattern of fileNamePatterns) {
-					const match = fileName.match(pattern);
-					if (!match) continue;
+					for (const pattern of fileNamePatterns) {
+						const match = fileName.match(pattern);
+						if (!match) continue;
 
-					const { title, artists, feat } = match.groups!;
+						const { title, artists, feat } = match.groups!;
 
-					const parsedArtists = [];
-					if (artists) parsedArtists.push(...artists.split(artistsPattern));
-					if (feat) parsedArtists.push(...feat.split(artistsPattern));
+						const parsedArtists = [];
+						if (artists) parsedArtists.push(...artists.split(artistsPattern));
+						if (feat) parsedArtists.push(...feat.split(artistsPattern));
 
-					songTitle = title;
-					songArtists = parsedArtists;
-					break;
+						songTitle = title;
+						songArtists = parsedArtists;
+						break;
+					}
+
+					this.log("Missing metadata, trying to get one for", song.data.path);
+
+					if (!songTitle) {
+						this.log("Failed to guess song title from", fileName);
+						continue;
+					}
+
+					this.log(`Guessed title and artists for ${song.data.path}:`, songTitle, songArtists);
+
+					song.title = songTitle;
+					song.artists = songArtists?.map((artist) => ({ title: artist })) ?? [];
+					cache(song);
+
+					const promise = this.services
+						.getMetadata({
+							id: song.id,
+							duration: song.duration,
+							title: songTitle,
+							artists: songArtists,
+							filePath: song.data.path,
+						})
+						.then((metadata) => {
+							const songWithMetadata = Object.assign(song, metadata);
+							songWithMetadata.data.hasMetadata = !!metadata;
+							return cache(songWithMetadata);
+						});
+
+					promises.push(promise);
 				}
 
-				this.log("Missing metadata, trying to get one for", song.data.path);
-
-				if (!songTitle) {
-					this.log("Failed to guess song title from", fileName);
-					continue;
-				}
-
-				this.log(`Guessed title and artists for ${song.data.path}:`, songTitle, songArtists);
-
-				song.title = songTitle;
-				song.artists = songArtists?.map((artist) => ({ title: artist })) ?? [];
-				cache(song);
-
-				const promise = metadataService
-					.getMetadata({
-						id: song.id,
-						duration: song.duration,
-						title: songTitle,
-						artists: songArtists,
-						filePath: song.data.path,
-					})
-					.then((metadata) => {
-						const songWithMetadata = Object.assign(song, metadata);
-						songWithMetadata.data.hasMetadata = !!metadata;
-						return cache(songWithMetadata);
-					});
-
-				promises.push(promise);
+				yield* promises;
 			}
-
-			yield* promises;
 
 			// Remove songs that have been deleted
 			for (const [path, song] of localSongs) {

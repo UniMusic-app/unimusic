@@ -32,7 +32,12 @@ const sync = useSync();
 </script>
 
 <template>
-	<AppPage title="Sync" :show-content-header="false" :force-inline-view="false">
+	<AppPage
+		title="Sync"
+		back-button="Settings"
+		:show-content-header="false"
+		:force-inline-view="false"
+	>
 		<ion-content id="sync-page-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="syncIcon" color="primary" />

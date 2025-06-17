@@ -14,8 +14,6 @@ import { useMusicServices } from "@/stores/music-services";
 
 import { Maybe } from "@/utils/types";
 
-import { LRCLIBLyricsService } from "@/services/Lyrics/LRCLIBLyricsService";
-import { Lyrics, LyricsService } from "@/services/Lyrics/LyricsService";
 import {
 	Album,
 	AlbumPreview,
@@ -79,9 +77,9 @@ export abstract class MusicService<
 	abstract logName: string;
 	abstract type: Type;
 	abstract available: boolean;
+	abstract description: string;
 
 	authorization?: AuthorizationService;
-	lyrics: LyricsService = new LRCLIBLyricsService();
 
 	state = useMusicPlayerState();
 	services = useMusicServices();
@@ -245,21 +243,6 @@ export abstract class MusicService<
 
 			return fallback;
 		}
-	}
-
-	async handleGetLyrics?(song: Song<Type> | SongPreview<Type>): Promise<Maybe<Lyrics>> {
-		const lyrics = await this.lyrics.getLyricsFromSong(song);
-		return lyrics;
-	}
-	async getLyrics(song: Song<Type> | SongPreview<Type>): Promise<Maybe<Lyrics>> {
-		this.log("getLyrics");
-
-		if (!this.handleGetLyrics) {
-			throw new Error("This service does not support getLyrics");
-		}
-
-		const lyrics = await this.handleGetLyrics(song);
-		return lyrics;
 	}
 
 	handleCreatePlaylist?(title: string, artwork?: LocalImage): PlaylistId | Promise<PlaylistId>;

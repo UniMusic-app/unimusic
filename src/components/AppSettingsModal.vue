@@ -1,4 +1,5 @@
 <template>
+	<!-- TODO: Remove this -->
 	<ion-header>
 		<ion-toolbar>
 			<ion-title>User</ion-title>

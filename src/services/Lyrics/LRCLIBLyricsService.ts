@@ -1,12 +1,9 @@
-// This service implements Lyrics
-// https://github.com/tranxuanthang/lrclib
-
 import { Maybe } from "@/utils/types";
 import { filledDisplayableArtist, Song, SongPreview, SongType } from "../Music/objects";
 import { Lyrics, LyricsService, parseLyricsLines, parseSyncLyricsLines } from "./LyricsService";
 
 const LRCLIB_ENDPOINT = "https://lrclib.net/api/";
-const APP_USER_AGENT = `UniMusic ${import.meta.env.VITE_APP_NAME} (https://github.com/unimusic-app/unimusic)`;
+const APP_USER_AGENT = `${import.meta.env.VITE_APP_NAME}/${import.meta.env.VITE_APP_VERSION} (https://github.com/unimusic-app/unimusic)`;
 
 interface LRCLIBGetResponse {
 	id: number;
@@ -20,8 +17,11 @@ interface LRCLIBGetResponse {
 }
 
 export class LRCLIBLyricsService extends LyricsService {
+	name = "LRCLIB";
 	logName = "LRCLIBLyricsService";
 	logColor = "#000042";
+	description = "Lyrics service provided by lrclib.net";
+	available = true; // getPlatform() !== "web";
 
 	async handleGetLyricsFromSong<Type extends SongType>(
 		song: Song<Type> | SongPreview<Type>,
@@ -39,6 +39,7 @@ export class LRCLIBLyricsService extends LyricsService {
 			url.searchParams.set("artist_name", displayableArtist.title);
 
 		try {
+			const fetch = window.capacitorFetch ?? window.fetch;
 			const response = await fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
 			if (!response.ok) return;
 
