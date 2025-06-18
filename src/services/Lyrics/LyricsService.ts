@@ -113,8 +113,8 @@ export abstract class LyricsService extends Service<LyricsServiceState> {
 		const state = await this.getSavedState();
 		if (!state) return;
 
-		this.order.value = state.order;
-		this.enabled.value = state.enabled;
+		this.#order.value = state.order;
+		this.#enabled.value = state.enabled;
 	}
 
 	handleGetLyricsFromSong?<Type extends SongType>(

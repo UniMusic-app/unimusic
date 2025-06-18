@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import {
-	IonAccordion,
-	IonAccordionGroup,
 	IonButton,
 	IonContent,
 	IonHeader,
@@ -10,12 +8,11 @@ import {
 	IonLabel,
 	IonList,
 	IonNote,
-	IonSpinner,
 	IonTitle,
 	IonToggle,
 	IonToolbar,
 } from "@ionic/vue";
-import { musicalNotes as musicServicesIcon, syncOutline as syncIcon } from "ionicons/icons";
+import { musicalNotes as musicServicesIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
 import { useMusicServices } from "@/stores/music-services";
@@ -23,9 +20,6 @@ import { songTypeToDisplayName } from "@/utils/songs";
 import { computed } from "vue";
 
 const services = useMusicServices();
-
-const props = defineProps<{ nav: HTMLIonNavElement }>();
-const nav = props.nav;
 
 const sortedServices = computed(() => {
 	const registeredServices = services.registeredServices;
@@ -48,39 +42,41 @@ const sortedServices = computed(() => {
 				<ion-icon :icon="musicServicesIcon" color="primary" />
 				<ion-header collapse="condense">
 					<ion-toolbar>
-						<ion-title class="ion-text-nowrap" size="large">Music Services</ion-title>
+						<ion-title class="ion-text-nowrap" size="large">Music</ion-title>
 					</ion-toolbar>
 				</ion-header>
 				<ion-note>Music Services enable you to discover and listen to music content.</ion-note>
 			</header>
 
-			<ion-list inset>
-				<ion-item v-for="service in sortedServices" :key="service.type" :disabled="!service.available">
-					<ion-label>
-						<span>{{ songTypeToDisplayName(service.type) }}</span>
-						<p>{{ service.description }}</p>
-					</ion-label>
+			<template v-for="service in sortedServices" :key="service.type">
+				<ion-list inset>
+					<ion-item :disabled="!service.available">
+						<ion-label>
+							<span>{{ songTypeToDisplayName(service.type) }}</span>
+						</ion-label>
 
-					<template v-if="service.enabled.value && service.authorization">
-						<ion-button
+						<template v-if="service.enabled.value && service.authorization">
+							<ion-button
+								slot="end"
+								v-if="service.authorization.authorized.value"
+								@click="service.authorization.unauthorize()"
+							>
+								Unauthorize
+							</ion-button>
+							<ion-button v-else slot="end" @click="service.authorization.authorize()">
+								Authorize
+							</ion-button>
+						</template>
+
+						<ion-toggle
 							slot="end"
-							v-if="service.authorization.authorized.value"
-							@click="service.authorization.unauthorize()"
-						>
-							Unauthorize
-						</ion-button>
-						<ion-button v-else slot="end" @click="service.authorization.authorize()">
-							Authorize
-						</ion-button>
-					</template>
-
-					<ion-toggle
-						slot="end"
-						:checked="service.enabled.value"
-						@ion-change="service.enabled.value = !service.enabled.value"
-					/>
-				</ion-item>
-			</ion-list>
+							:checked="service.enabled.value"
+							@ion-change="service.enabled.value = !service.enabled.value"
+						/>
+					</ion-item>
+				</ion-list>
+				<ion-note>{{ service.description }}</ion-note>
+			</template>
 		</ion-content>
 	</AppPage>
 </template>
@@ -100,26 +96,37 @@ const sortedServices = computed(() => {
 		& > ion-header {
 			margin-inline: auto;
 			width: max-content;
-		}
 
-		& ion-title {
-			transform-origin: top center;
-			margin: 0;
+			& ion-title {
+				transform-origin: top center;
+				margin: 0;
+				padding-inline: 0;
+			}
 		}
 
 		& > ion-note {
-			display: inline-block;
 			text-wrap: balance;
 		}
 	}
 
+	& ion-note {
+		display: inline-block;
+	}
+
 	& > ion-list {
+		margin-bottom: 0.25rem;
+
 		& > ion-item {
 			--background: var(--ion-background-color-step-150, #ebebeb);
+
+			& ion-button {
+				margin-right: 12px;
+			}
 		}
 
-		& ion-button {
-			margin-right: 12px;
+		& + ion-note {
+			font-size: 0.8rem;
+			padding-inline: var(--ion-padding, 16px);
 		}
 	}
 }

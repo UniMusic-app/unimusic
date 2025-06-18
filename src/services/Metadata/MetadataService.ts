@@ -74,10 +74,12 @@ export abstract class MetadataService extends Service<MetadataServiceState> {
 	async reorder(value: number): Promise<void> {
 		this.log("reorder", value);
 		this.#order.value = value;
+		console.log(await this.getSavedState());
 		await this.saveState({
 			enabled: this.#enabled.value,
 			order: value,
 		});
+		console.log(await this.getSavedState());
 	}
 
 	async enable(): Promise<void> {
@@ -105,7 +107,8 @@ export abstract class MetadataService extends Service<MetadataServiceState> {
 		const state = await this.getSavedState();
 		if (!state) return;
 
-		this.enabled.value = state.enabled;
+		this.#enabled.value = state.enabled;
+		this.#order.value = state.order;
 	}
 
 	abstract handleGetMetadata(lookup: MetadataLookup): Maybe<Metadata> | Promise<Maybe<Metadata>>;

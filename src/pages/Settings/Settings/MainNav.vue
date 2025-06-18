@@ -2,7 +2,8 @@
 import { IonContent, IonIcon, IonItem, IonList } from "@ionic/vue";
 
 import {
-	// @ts-ignore it actually exists
+	hammerOutline as developmentIcon,
+	// @ts-expect-error it actually exists
 	readerOutline as lyricsServicesIcon,
 	idCardOutline as metadataServicesIcon,
 	musicalNotesOutline as musicServicesIcon,
@@ -11,6 +12,7 @@ import {
 
 import AppPage from "@/components/AppPage.vue";
 
+import DevelopmentMainNav from "../Development/MainNav.vue";
 import LyricsServicesMainNav from "../LyricsServices/MainNav.vue";
 import MetadataServicesMainNav from "../MetadataServices/MainNav.vue";
 import MusicServicesMainNav from "../MusicServices/MainNav.vue";
@@ -23,7 +25,6 @@ const nav = props.nav;
 <template>
 	<AppPage title="Settings" :force-inline-view="false">
 		<ion-content id="settings-page-content" class="ion-padding">
-			<h1 class="ion-padding-horizontal">Sync</h1>
 			<ion-list lines="full" inset>
 				<ion-item button @click="nav.push(SyncMainNav, { nav })">
 					<ion-icon slot="start" :icon="syncIcon" color="primary" />
@@ -31,7 +32,6 @@ const nav = props.nav;
 				</ion-item>
 			</ion-list>
 
-			<h1 class="ion-padding-horizontal">Services</h1>
 			<ion-list lines="full" inset>
 				<ion-item button @click="nav.push(MusicServicesMainNav, { nav })">
 					<ion-icon slot="start" :icon="musicServicesIcon" color="primary" />
@@ -46,6 +46,13 @@ const nav = props.nav;
 				<ion-item button @click="nav.push(MetadataServicesMainNav, { nav })">
 					<ion-icon slot="start" :icon="metadataServicesIcon" color="primary" />
 					Metadata Services
+				</ion-item>
+			</ion-list>
+
+			<ion-list lines="full" inset>
+				<ion-item button @click="nav.push(DevelopmentMainNav, { nav })">
+					<ion-icon slot="start" :icon="developmentIcon" color="primary" />
+					Development
 				</ion-item>
 			</ion-list>
 		</ion-content>
@@ -67,11 +74,12 @@ const nav = props.nav;
 		& > ion-header {
 			margin-inline: auto;
 			width: max-content;
-		}
 
-		& ion-title {
-			transform-origin: top center;
-			margin: 0;
+			& ion-title {
+				transform-origin: top center;
+				margin: 0;
+				padding-inline: 0;
+			}
 		}
 
 		& > ion-note {

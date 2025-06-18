@@ -70,6 +70,10 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		const token = cached.sizes[size]?.unregisterToken;
 		if (!token) return false;
 
+		delete cached.sizes[size];
+		if (!Object.keys(cached.sizes).length) {
+			cachedImageData.delete(id);
+		}
 		return registry.unregister(token);
 	}
 
@@ -320,7 +324,18 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		console.timeEnd("Deduplicating images");
 	}
 
+	function clearImages(): void {
+		localImageInfo.data.value = {};
+		for (const id of cachedImageData.keys()) {
+			unregisterImage(id, "small");
+			unregisterImage(id, "large");
+		}
+		cachedImageData.clear();
+	}
+
 	return {
+		clearImages,
+
 		associateImage,
 		getUrl,
 		getBlobUrl,
