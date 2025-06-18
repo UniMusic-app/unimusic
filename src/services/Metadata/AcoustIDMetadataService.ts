@@ -12,6 +12,11 @@ import { sleep } from "@/utils/time";
 import { Maybe } from "@/utils/types";
 import { useIDBKeyvalAsync } from "@/utils/vue";
 
+let processAudioFile: typeof import("@unimusic/chromaprint").processAudioFile;
+if (getPlatform() !== "web") {
+	({ processAudioFile } = await import("@unimusic/chromaprint"));
+}
+
 const MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/";
 const ACOUSTID_ENDPOINT = "https://api.acoustid.org/v2/lookup";
 const APP_USER_AGENT = `${import.meta.env.VITE_APP_NAME}/${import.meta.env.VITE_APP_VERSION} (https://github.com/unimusic-app/unimusic)`;
@@ -33,8 +38,6 @@ const rateLimiter = new RateLimiter({
 	"musicbrainz.org": 1000,
 });
 
-let processAudioFile: typeof import("@unimusic/chromaprint").processAudioFile;
-
 export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 	name = "AcoustID";
 	description = "Uses AcoustID fingerprinting for metadata retrieval, it can be energy taxing.";
@@ -53,10 +56,6 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 			if (lookup.filePath) {
 				const fileStream = await getFileStream(lookup.filePath);
 				const fileBuffer = await new Response(fileStream).arrayBuffer();
-
-				if (!processAudioFile) {
-					({ processAudioFile } = await import("@unimusic/chromaprint"));
-				}
 
 				const fingerprint = await fingerprintQueue.push(async () => {
 					const [fingerprint] = await Array.fromAsync(processAudioFile(fileBuffer));

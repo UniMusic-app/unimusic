@@ -1,4 +1,5 @@
 import { LocalImage, useLocalImages } from "@/stores/local-images";
+import { getPlatform } from "@/utils/os";
 import { Maybe } from "@/utils/types";
 import { Metadata, MetadataLookup, MetadataService } from "../MetadataService";
 import { MusicBrainzResponse } from "./MusicBrainz";
@@ -18,12 +19,17 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 
 		// NOTE: for now Covert Art Archive does not have rate limits in place
 		//       see: https://musicbrainz.org/doc/Cover_Art_Archive/API#Rate_limiting_rules
-		const response = await fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
+		const response = await fetch(
+			url,
+			// FIXME: on iOS setting user-agent on fetch fails, and capacitorFetch fails to properly return a blob
+			getPlatform() === "ios" ? undefined : { headers: { "user-agent": APP_USER_AGENT } },
+		);
 		if (!response.ok) {
 			throw new Error(`Failed to get artwork for ${type}: ${id}`);
 		}
 
 		const image = await response.blob();
+		console.log(image);
 
 		const localImages = useLocalImages();
 		await localImages.associateImage(lookup.id, image);

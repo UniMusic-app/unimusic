@@ -16,6 +16,8 @@ export interface RateLimitData {
 	};
 }
 
+const fetch = window.capacitorFetch ?? window.fetch;
+
 export class RateLimiter {
 	rateLimits: RateLimits;
 	data: RateLimitData;
