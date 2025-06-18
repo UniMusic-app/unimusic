@@ -13,6 +13,11 @@ export default defineConfig({
 		cssTarget: "chrome109",
 		...sharedBuild,
 	},
+	optimizeDeps: {
+		esbuildOptions: {
+			supported: { "top-level-await": true },
+		},
+	},
 	define: {
 		__IS_ELECTRON__: false,
 		...sharedDefine,

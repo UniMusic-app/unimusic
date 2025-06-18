@@ -126,7 +126,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 		</template>
 
 		<div id="album-content" v-if="album">
-			<LocalImg :src="album.artwork" />
+			<LocalImg size="large" :src="album.artwork" />
 
 			<ion-header collapse="condense">
 				<ion-toolbar>

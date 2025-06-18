@@ -493,6 +493,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	logColor = "#cc80dd";
 	type = "musickit" as const;
 	available = true;
+	description = "Access your Apple Music collection";
 
 	audioElement?: HTMLAudioElement;
 	music?: MusicKit.MusicKitInstance;

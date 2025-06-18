@@ -1,6 +1,13 @@
 <script lang="ts" setup>
-import { IonRefresher, IonRefresherContent, RefresherCustomEvent } from "@ionic/vue";
-import { onUpdated, ref } from "vue";
+import {
+	InfiniteScrollCustomEvent,
+	IonInfiniteScroll,
+	IonInfiniteScrollContent,
+	IonRefresher,
+	IonRefresherContent,
+	RefresherCustomEvent,
+} from "@ionic/vue";
+import { onUpdated, ref, shallowRef } from "vue";
 
 import AppPage from "@/components/AppPage.vue";
 
@@ -8,16 +15,19 @@ import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
 import SkeletonCard from "@/components/SkeletonCard.vue";
 import { Album, AlbumPreview } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
+import { take } from "@/utils/iterators";
 import { useLocalStorage } from "@vueuse/core";
 
 const musicPlayer = useMusicPlayer();
 
+const iterator = shallowRef<AsyncGenerator<Album | AlbumPreview>>();
 const libraryAlbums = useLocalStorage<(Album | AlbumPreview)[]>("libraryAlbums", []);
 const isLoading = ref(libraryAlbums.value.length === 0);
 onUpdated(async () => {
 	isLoading.value = true;
+	iterator.value = musicPlayer.services.libraryAlbums();
 	const albums: (Album | AlbumPreview)[] = [];
-	for await (const album of musicPlayer.services.libraryAlbums()) {
+	for await (const album of take(iterator.value, 12)) {
 		albums.push(album);
 	}
 	libraryAlbums.value = albums;
@@ -28,10 +38,21 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 	isLoading.value = true;
 	await musicPlayer.services.refreshLibraryAlbums();
 	libraryAlbums.value.length = 0;
-	for await (const album of musicPlayer.services.libraryAlbums()) {
+	iterator.value = musicPlayer.services.libraryAlbums();
+	for await (const album of take(iterator.value, 12)) {
 		libraryAlbums.value.push(album);
 	}
 	isLoading.value = false;
+	await event.target.complete();
+}
+
+async function loadMoreAlbums(event: InfiniteScrollCustomEvent): Promise<void> {
+	isLoading.value = true;
+	for await (const album of take(iterator.value!, 12)) {
+		libraryAlbums.value.push(album);
+	}
+	isLoading.value = false;
+
 	await event.target.complete();
 }
 </script>
@@ -57,6 +78,10 @@ async function refreshAlbumLibrary(event: RefresherCustomEvent): Promise<void> {
 				:artists="album.artists"
 			/>
 		</div>
+
+		<ion-infinite-scroll @ion-infinite="loadMoreAlbums">
+			<ion-infinite-scroll-content loading-spinner="dots" />
+		</ion-infinite-scroll>
 	</AppPage>
 </template>
 

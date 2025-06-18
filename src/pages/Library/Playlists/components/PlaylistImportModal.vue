@@ -175,7 +175,7 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 			<div id="playlist-preview" v-if="playlist">
 				<h1 id="preview-headline">Preview</h1>
 
-				<LocalImg :src="playlist.artwork" />
+				<LocalImg size="large" :src="playlist.artwork" />
 				<h1>{{ playlist.title }}</h1>
 
 				<ion-note v-if="playlist.songs.length === 0">This playlist has no songs!</ion-note>

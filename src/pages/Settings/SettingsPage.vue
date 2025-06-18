@@ -1,8 +1,9 @@
+a
 <script setup lang="ts">
 import { IonNav, IonPage, onIonViewWillLeave } from "@ionic/vue";
 import { useTemplateRef } from "vue";
 
-import SyncMainNav from "./components/MainNav.vue";
+import SettingsMainNav from "./Settings/MainNav.vue";
 
 const nav = useTemplateRef<{ $el: HTMLIonNavElement }>("nav");
 
@@ -15,6 +16,6 @@ onIonViewWillLeave(async () => {
 
 <template>
 	<ion-page>
-		<ion-nav ref="nav" :root="SyncMainNav" :root-params="{ nav: nav?.$el }" />
+		<ion-nav ref="nav" :root="SettingsMainNav" :root-params="{ nav: nav?.$el }" />
 	</ion-page>
 </template>

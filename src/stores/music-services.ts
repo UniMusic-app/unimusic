@@ -4,6 +4,7 @@ import { computed, reactive } from "vue";
 import { MusicService, SearchFilter, SearchResultItem } from "@/services/Music/MusicService";
 
 import { Lyrics } from "@/services/Lyrics/LyricsService";
+import { Metadata, MetadataLookup } from "@/services/Metadata/MetadataService";
 import {
 	Album,
 	AlbumPreview,
@@ -21,8 +22,13 @@ import {
 import { abortableAsyncGenerator, racedIterators } from "@/utils/iterators";
 import { Maybe } from "@/utils/types";
 import { LocalImage } from "./local-images";
+import { useLyricsServices } from "./lyrics-services";
+import { useMetadataServices } from "./metadata-services";
 
 export const useMusicServices = defineStore("MusicServices", () => {
+	const lyricsServices = useLyricsServices();
+	const metadataServices = useMetadataServices();
+
 	const registeredServices = reactive<Record<string, MusicService>>({});
 	const enabledServices = computed<MusicService[]>(() =>
 		Object.values(registeredServices).filter((service) => service.enabled.value),
@@ -236,8 +242,18 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		yield* service.getArtistsSongs(artist);
 	}
 
+	function canGetLyrics(): boolean {
+		return lyricsServices.enabledServices.length > 0;
+	}
 	async function getLyrics(song: Song): Promise<Maybe<Lyrics>> {
-		return await getService(song.type)?.getLyrics(song);
+		return await lyricsServices.getLyricsFromSong(song);
+	}
+
+	function canGetMetadata(): boolean {
+		return metadataServices.enabledServices.length > 0;
+	}
+	async function getMetadata(lookup: MetadataLookup): Promise<Maybe<Metadata>> {
+		return await metadataServices.getMetadata(lookup);
 	}
 	// #endregion
 
@@ -271,7 +287,11 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		searchHints,
 		searchForItems,
 
+		canGetLyrics,
 		getLyrics,
+
+		canGetMetadata,
+		getMetadata,
 
 		getSong,
 		refreshSong,

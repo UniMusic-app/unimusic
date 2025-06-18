@@ -14,7 +14,7 @@ import {
 	home as homeIcon,
 	library as libraryIcon,
 	search as searchIcon,
-	syncCircleOutline as syncIcon,
+	cog as settingsIcon,
 } from "ionicons/icons";
 </script>
 
@@ -43,9 +43,9 @@ import {
 						<ion-label>Library</ion-label>
 					</ion-tab-button>
 
-					<ion-tab-button tab="sync" href="/sync">
-						<ion-icon aria-hidden="true" :icon="syncIcon" />
-						<ion-label>Sync</ion-label>
+					<ion-tab-button tab="sync" href="/settings">
+						<ion-icon aria-hidden="true" :icon="settingsIcon" />
+						<ion-label>Settings</ion-label>
 					</ion-tab-button>
 				</ion-tab-bar>
 			</div>

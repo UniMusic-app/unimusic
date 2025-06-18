@@ -84,7 +84,7 @@ function emitClick(event: PointerEvent): void {
 			class="album-card"
 			:class="$attrs.class"
 		>
-			<LocalImg :src="artwork" :alt="`Artwork for album '${title}'`" />
+			<LocalImg size="large" :src="artwork" :alt="`Artwork for album '${title}'`" />
 
 			<ion-card-header>
 				<ion-card-title class="ion-text-nowrap">

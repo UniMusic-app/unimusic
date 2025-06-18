@@ -175,7 +175,7 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 		/>
 
 		<div id="playlist-content" v-if="playlist">
-			<LocalImg :src="playlist.artwork" />
+			<LocalImg size="large" :src="playlist.artwork" />
 
 			<ion-header collapse="condense">
 				<ion-toolbar>

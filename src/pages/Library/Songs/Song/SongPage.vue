@@ -79,7 +79,8 @@ async function editSong(event: SongEditEvent): Promise<void> {
 		<SongEditModal v-if="song" :song trigger="edit-song" @change="editSong" />
 
 		<div id="song-content" v-if="song">
-			<LocalImg :src="song.artwork" />
+			<LocalImg size="large" :src="song.artwork" />
+
 			<h1 class="ion-text-nowrap">
 				<WrappingMarquee :text="song.title ?? 'Unknown title'" />
 			</h1>
