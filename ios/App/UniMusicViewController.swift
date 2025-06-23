@@ -25,5 +25,6 @@ class UniMusicViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(MusicKitAuthorizationPlugin())
         bridge?.registerPluginInstance(UniMusicSyncPlugin())
         bridge?.registerPluginInstance(DirectoryPicker())
+        bridge?.registerPluginInstance(Chromaprint())
     }
 }

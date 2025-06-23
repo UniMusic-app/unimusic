@@ -22,6 +22,8 @@
 		61B9DDEB2DE61357002EB755 /* UniMusicSyncPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B9DDEA2DE61357002EB755 /* UniMusicSyncPlugin.swift */; };
 		61B9DDEF2DE6621B002EB755 /* HTTPResponseServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B9DDEE2DE6621B002EB755 /* HTTPResponseServer.swift */; };
 		61D8F9122DE9F7D8004EC05B /* UniMusicSync in Frameworks */ = {isa = PBXBuildFile; productRef = 61D8F9112DE9F7D8004EC05B /* UniMusicSync */; };
+		61E043062E09669300EA7DAD /* ChromaprintPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E043052E09669300EA7DAD /* ChromaprintPlugin.swift */; };
+		61E043092E09675700EA7DAD /* ChromaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 61E043082E09675700EA7DAD /* ChromaSwift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 /* End PBXBuildFile section */
 
@@ -42,6 +44,7 @@
 		61B7F5F02DE8829C00452C02 /* App.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = App.xcodeproj; sourceTree = "<group>"; };
 		61B9DDEA2DE61357002EB755 /* UniMusicSyncPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniMusicSyncPlugin.swift; sourceTree = "<group>"; };
 		61B9DDEE2DE6621B002EB755 /* HTTPResponseServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPResponseServer.swift; sourceTree = "<group>"; };
+		61E043052E09669300EA7DAD /* ChromaprintPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaprintPlugin.swift; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
@@ -54,6 +57,7 @@
 			files = (
 				6191901B2DE735B800FD9276 /* UniMusicSync in Frameworks */,
 				61D8F9122DE9F7D8004EC05B /* UniMusicSync in Frameworks */,
+				61E043092E09675700EA7DAD /* ChromaSwift in Frameworks */,
 				A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -73,6 +77,7 @@
 			isa = PBXGroup;
 			children = (
 				61B7F5EE2DE8806C00452C02 /* DirectoryPickerPlugin.swift */,
+				61E043052E09669300EA7DAD /* ChromaprintPlugin.swift */,
 				61B9DDEE2DE6621B002EB755 /* HTTPResponseServer.swift */,
 				61625DC32D29D68200DB0F57 /* MusicKitAuthorizationPlugin.swift */,
 				61B9DDEA2DE61357002EB755 /* UniMusicSyncPlugin.swift */,
@@ -172,6 +177,7 @@
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
 				61D8F9102DE9F7D8004EC05B /* XCRemoteSwiftPackageReference "unimusic-sync" */,
+				61E043072E09675700EA7DAD /* XCRemoteSwiftPackageReference "ChromaSwift" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
@@ -247,6 +253,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				61E043062E09669300EA7DAD /* ChromaprintPlugin.swift in Sources */,
 				61B9DDEB2DE61357002EB755 /* UniMusicSyncPlugin.swift in Sources */,
 				61B9DDEF2DE6621B002EB755 /* HTTPResponseServer.swift in Sources */,
 				61B7F5EF2DE8806C00452C02 /* DirectoryPickerPlugin.swift in Sources */,
@@ -476,6 +483,14 @@
 				minimumVersion = 0.1.8;
 			};
 		};
+		61E043072E09675700EA7DAD /* XCRemoteSwiftPackageReference "ChromaSwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/wallisch/ChromaSwift";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -487,6 +502,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 61D8F9102DE9F7D8004EC05B /* XCRemoteSwiftPackageReference "unimusic-sync" */;
 			productName = UniMusicSync;
+		};
+		61E043082E09675700EA7DAD /* ChromaSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 61E043072E09675700EA7DAD /* XCRemoteSwiftPackageReference "ChromaSwift" */;
+			productName = ChromaSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

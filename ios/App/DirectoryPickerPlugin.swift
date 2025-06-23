@@ -17,6 +17,7 @@ public class DirectoryPicker: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDeleg
 
     @objc func pickDirectory(_ call: CAPPluginCall) {
         guard let viewController = bridge?.viewController else {
+            call.reject("Bridge does not have viewController")
             return
         }
 

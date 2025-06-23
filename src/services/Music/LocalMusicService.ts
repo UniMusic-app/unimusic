@@ -212,6 +212,7 @@ export class LocalMusicService extends MusicService<"local"> {
 
 				cache(song);
 				yield song;
+				localSongs.delete(filePath);
 			}
 
 			if (this.services.canGetMetadata()) {
