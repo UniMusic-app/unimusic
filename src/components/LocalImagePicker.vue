@@ -25,10 +25,7 @@ async function changeArtwork(): Promise<void> {
 	}
 
 	const artwork = files[0]!;
-	await localImages.associateImage(idOut.value, artwork, {
-		maxWidth: 512,
-		maxHeight: 512,
-	});
+	await localImages.associateImage(idOut.value, artwork);
 
 	image.value = { id: idOut.value };
 	emit("input", { value: image.value });

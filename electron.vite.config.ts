@@ -1,4 +1,5 @@
 import vue from "@vitejs/plugin-vue";
+
 import type { ElectronViteConfig } from "electron-vite";
 import { sharedAlias, sharedBuild, sharedDefine } from "./shared.vite.config";
 

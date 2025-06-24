@@ -1,3 +1,4 @@
+import { getPlatform } from "@/utils/os";
 import { Maybe } from "@/utils/types";
 import { filledDisplayableArtist, Song, SongPreview, SongType } from "../Music/objects";
 import { Lyrics, LyricsService, parseLyricsLines, parseSyncLyricsLines } from "./LyricsService";
@@ -21,7 +22,7 @@ export class LRCLIBLyricsService extends LyricsService {
 	logName = "LRCLIBLyricsService";
 	logColor = "#000042";
 	description = "Lyrics service provided by lrclib.net";
-	available = true; // getPlatform() !== "web";
+	available = getPlatform() !== "web";
 
 	async handleGetLyricsFromSong<Type extends SongType>(
 		song: Song<Type> | SongPreview<Type>,

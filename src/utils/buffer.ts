@@ -1,8 +1,10 @@
-export function base64StringToBuffer(base64Data: string): Uint8Array {
-	const binaryString = atob(base64Data);
-	const bytes = new Uint8Array(binaryString.length);
-	for (let i = 0; i < binaryString.length; i++) {
-		bytes[i] = binaryString.charCodeAt(i);
-	}
-	return bytes;
+export async function blobToBase64(blob: Blob): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+
+		reader.onerror = reject;
+		reader.onload = (): void => resolve(reader.result as string);
+
+		reader.readAsDataURL(blob);
+	});
 }

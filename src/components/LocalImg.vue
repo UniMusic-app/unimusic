@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import { IonIcon } from "@ionic/vue";
 
 import { LocalImage, LocalImageSize, useLocalImages } from "@/stores/local-images";
+import { watchAsync } from "@/utils/vue";
 
 const localImages = useLocalImages();
 const {
@@ -18,7 +19,15 @@ const {
 	fallbackIcon?: string;
 }>();
 
-const url = computed(() => src && localImages.getUrl(src, size));
+const url = ref<string>();
+watchAsync(
+	() => src,
+	async (src) => {
+		if (!src) return;
+		url.value = await localImages.getUrl(src, size);
+	},
+	{ immediate: true },
+);
 const style = computed(() => src?.style ?? localImages.getStyle(src?.id));
 const loaded = ref(false);
 </script>

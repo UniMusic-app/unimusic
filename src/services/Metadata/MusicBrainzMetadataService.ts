@@ -1,3 +1,4 @@
+import { getPlatform } from "@/utils/os";
 import { RateLimiter } from "@/utils/rate-limiter";
 import { Maybe } from "@/utils/types";
 import { useIDBKeyvalAsync } from "@/utils/vue";
@@ -24,7 +25,7 @@ export class MusicBrainzMetadataService extends MusicBrainzParsingMetadataServic
 	description = "Queries MusicBrainz with song information for potential metadata match";
 	logName = "MusicBrainzMetadataService";
 	logColor = "#EB753B";
-	available = true;
+	available = getPlatform() !== "web";
 
 	async handleGetMetadata(lookup: MetadataLookup): Promise<Maybe<Metadata>> {
 		const cached = cachedMetadata.value[lookup.id];

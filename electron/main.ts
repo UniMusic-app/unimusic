@@ -1,11 +1,11 @@
-import { app, BrowserWindow, components, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, components, dialog, ipcMain, net, protocol } from "electron";
 import electronServe from "electron-serve";
 
 import { URLPattern } from "urlpattern-polyfill";
 
 import fs from "node:fs/promises";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { addon as uniMusicSync } from "@unimusic/sync";
 import { authorizeMusicKit } from "./musickit/auth";
@@ -59,7 +59,7 @@ async function createWindow(): Promise<void> {
 	session.webRequest.onHeadersReceived((details, callback) => {
 		const CSP = `
 		default-src 'self' blob: data: 'unsafe-inline' 'unsafe-eval' ${ALLOWED_URLS.join(" ")};
-		img-src 'self' blob: data: *;
+		img-src 'self' blob: data: local-images: *;
 		`;
 
 		callback({
@@ -84,6 +84,17 @@ app.on("window-all-closed", () => {
 });
 
 void app.whenReady().then(async () => {
+	// This allows us to safely fetch local images from userData/LocalImages folder
+	// by calling local-images protocol, e.g. local-images://abcdefg-large
+	protocol.handle("local-images", (request) => {
+		const imageUrl = new URL(request.url);
+
+		const imagesPath = `${app.getPath("userData")}/LocalImages`;
+		const targetUrl = pathToFileURL(join(imagesPath, imageUrl.hostname));
+
+		return net.fetch(targetUrl.toString());
+	});
+
 	ipcMain.handle("musickit:authorize", () => authorizeMusicKit());
 
 	//#region Web
@@ -109,8 +120,13 @@ void app.whenReady().then(async () => {
 
 	//#region Filesystem
 	ipcMain.handle("fs:music_path", () => app.getPath("music"));
+	ipcMain.handle("fs:user_data_path", () => app.getPath("userData"));
 	ipcMain.handle("fs:read_file", async (_, path: string): Promise<Uint8Array> => {
 		return await fs.readFile(path);
+	});
+	ipcMain.handle("fs:write_file", async (_, path: string, file: Uint8Array): Promise<void> => {
+		await fs.mkdir(dirname(path), { recursive: true });
+		await fs.writeFile(path, file);
 	});
 
 	type FileStat = { type: "file" | "directory"; mtime: number; ctime: number; size: number };

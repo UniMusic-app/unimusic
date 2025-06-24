@@ -89,10 +89,7 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 		const localImages = useLocalImages();
 		const { data, type } = coverImage;
 		const artworkBlob = new Blob([data], { type });
-		await localImages.associateImage(id, artworkBlob, {
-			maxHeight: 512,
-			maxWidth: 512,
-		});
+		await localImages.associateImage(id, artworkBlob);
 		artwork = { id };
 	}
 
@@ -303,6 +300,7 @@ export class LocalMusicService extends MusicService<"local"> {
 						})
 						.then((metadata) => {
 							const songWithMetadata = Object.assign(song, metadata);
+							// TODO: Allow searching for partial missing metadata
 							songWithMetadata.data.hasMetadata = !!metadata;
 							return cache(songWithMetadata);
 						});

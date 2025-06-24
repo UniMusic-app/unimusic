@@ -70,12 +70,9 @@ export async function extractArtwork(
 	const fetch = getPlatform() === "android" ? window.capacitorFetch : window.fetch;
 
 	const artworkBlob = await (await fetch(thumbnailUrl)).blob();
-	await localImages.associateImage(id, artworkBlob, {
-		maxWidth: 512,
-		maxHeight: 512,
-	});
+	await localImages.associateImage(id, artworkBlob);
 
-	return { id };
+	return { id, url: thumbnailUrl };
 }
 
 export function youtubeDisplayableArtist(artist: {
@@ -618,11 +615,8 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 			if (thumbnail) {
 				const localImages = useLocalImages();
 				const artworkBlob = await (await fetch(thumbnail.url)).blob();
-				await localImages.associateImage(id, artworkBlob, {
-					maxWidth: 512,
-					maxHeight: 512,
-				});
-				artwork = { id };
+				await localImages.associateImage(id, artworkBlob);
+				artwork = { id, url: thumbnail.url };
 			}
 		}
 
@@ -704,11 +698,8 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		if (thumbnail) {
 			const localImages = useLocalImages();
 			const artworkBlob = await (await fetch(thumbnail.url)).blob();
-			await localImages.associateImage(id, artworkBlob, {
-				maxWidth: 512,
-				maxHeight: 512,
-			});
-			artwork = { id };
+			await localImages.associateImage(id, artworkBlob);
+			artwork = { id, url: thumbnail.url };
 		}
 
 		const songs: SongKey[] = [];
