@@ -66,6 +66,7 @@ export class MusicBrainzMetadataService extends MusicBrainzParsingMetadataServic
 
 			const json: MusicBrainzResponse = await response.json();
 			const metadata = await this.parseMusicBrainzMetadata(lookup, json);
+			if (metadata) cachedMetadata.value[lookup.id] = metadata;
 			return metadata;
 		} catch (error) {
 			this.log("Failed to retrieve metadata from lookup", lookup);
