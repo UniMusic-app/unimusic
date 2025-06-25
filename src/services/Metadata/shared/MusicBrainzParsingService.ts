@@ -1,3 +1,4 @@
+import { ArtistPreview, cache, DisplayableArtist, getKey } from "@/services/Music/objects";
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { getPlatform } from "@/utils/os";
 import { Maybe } from "@/utils/types";
@@ -64,11 +65,20 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 		if (releaseGroup["primary-type"] === "Album") {
 			metadata.album = releaseGroup.title;
 		}
-		metadata.artists =
-			release["artist-credit"]?.map((artist) => ({
-				id: artist.id,
-				title: artist.name,
-			})) ?? [];
+
+		if (release["artist-credit"]) {
+			const artists: DisplayableArtist[] = [];
+			for (const artist of release["artist-credit"]) {
+				const artistPreview = cache<ArtistPreview>({
+					type: "local",
+					kind: "artistPreview",
+					id: artist.id,
+					title: artist.name,
+				});
+				artists.push(getKey(artistPreview));
+			}
+			metadata.artists = artists;
+		}
 
 		try {
 			const artwork = await this.getArtwork(lookup, "release-group", release["release-group"].id);

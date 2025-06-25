@@ -61,13 +61,10 @@ async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
 	if (common.artists?.length) {
 		for (let i = 0; i < common.artists.length; ++i) {
 			const title = common.artists[i]!;
-			// TODO: Is there a better way to identify artists?
-			const id = title;
-
 			const artistPreview = cache<LocalArtistPreview>({
-				id,
 				type: "local",
 				kind: "artistPreview",
+				id: title,
 				title,
 			});
 			artists.push(getKey(artistPreview));
