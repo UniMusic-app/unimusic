@@ -81,7 +81,7 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 
 				const json: AcoustIDResponse = await response.json();
 
-				const [result] = json.results;
+				const [result] = json.results.filter((result) => result.recordings);
 				if (!result) return;
 
 				// Only AcoustID trackId present without metadata
@@ -90,7 +90,7 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 					return;
 				}
 
-				const [recording] = result.recordings;
+				const [recording] = result.recordings.filter((recording) => recording.releasegroups);
 				if (!recording) return;
 
 				// Only MusicBrainz id present, try to fetch it
@@ -111,10 +111,10 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 
 				this.log("Got metadata from fingerprint");
 
-				const metadata: Metadata = {};
-
-				metadata.title = recording.title;
-				metadata.album = recording.releasegroups.find((group) => group.type === "Album")?.title;
+				const metadata: Metadata = {
+					title: recording.title,
+					album: recording.releasegroups.find((group) => group.type === "Album")?.title,
+				};
 
 				if (recording.artists.length) {
 					metadata.artists = [];
@@ -125,7 +125,6 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 							id: artist.id,
 							title: artist.name,
 						});
-
 						metadata.artists.push(getKey(artistPreview));
 					}
 				}

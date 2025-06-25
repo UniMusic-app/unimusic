@@ -41,7 +41,7 @@ export interface MusicBrainzRelease {
 	title: string;
 	status: "Official" | "Bootleg" | (string & {});
 
-	"artist-credit": MusicBrainzArtist[];
+	"artist-credit": MusicBrainzArtistCredit[];
 	"release-group": MusicBrainzReleaseGroup;
 
 	"track-count": number;

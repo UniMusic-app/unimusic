@@ -68,7 +68,7 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 
 		if (release["artist-credit"]) {
 			const artists: DisplayableArtist[] = [];
-			for (const artist of release["artist-credit"]) {
+			for (const { artist } of release["artist-credit"]) {
 				const artistPreview = cache<ArtistPreview>({
 					type: "local",
 					kind: "artistPreview",
