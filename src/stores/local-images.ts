@@ -2,6 +2,7 @@ import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { defineStore } from "pinia";
 
 import { blobToBase64 } from "@/utils/buffer";
+import { generateBlobHash } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { generateImageStyle } from "@/utils/songs";
 import { Maybe } from "@/utils/types";
@@ -16,9 +17,9 @@ export interface LocalImageStyle {
 
 export type LocalImageSize = "small" | "large";
 
-// NOTE: We don't store Blob in IndexedDB because of Safari's shenanigans: https://stackoverflow.com/a/70253220/14053734
 interface ImageData {
-	buffers: { [size in LocalImageSize]?: string };
+	sizes: { [size in LocalImageSize]?: string };
+	hash?: number;
 	style?: LocalImageStyle;
 }
 
@@ -105,16 +106,63 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		URL.revokeObjectURL(tempBlobUrl);
 	}
 
-	async function saveImage(id: string, image: Blob, size: LocalImageSize): Promise<string> {
+	function getFileName(id: string, size: LocalImageSize): string {
 		const fileName = `${id}-${size}`;
+		return fileName;
+	}
+	function getFilePath(id: string, size: LocalImageSize): string {
+		const fileName = getFileName(id, size);
 		const filePath = `${LOCAL_IMAGES_DIRECTORY}/${fileName}`;
+		return filePath;
+	}
+
+	async function removeImage(id: string, size: LocalImageSize): Promise<void> {
+		const fileName = getFileName(id, size);
+		const filePath = getFilePath(id, size);
+
+		log(`removeImage ${id}`);
+		const image = localImageInfo.data.value[id];
+		if (!isDirect(image)) {
+			log(`removeImage ${id}, skipping - indirect image`);
+			return;
+		}
 
 		switch (getPlatform()) {
 			case "web":
 				throw new Error("Unimplemented");
 			case "electron": {
-				const buffer = new Uint8Array(await image.arrayBuffer());
-				await ElectronBridge!.fileSystem.writeFile(filePath, buffer);
+				await fetch(`local-images://${fileName}`, {
+					method: "DELETE",
+				});
+				break;
+			}
+			default: {
+				await Filesystem.deleteFile({
+					path: filePath,
+					directory: Directory.Library,
+				});
+				break;
+			}
+		}
+
+		delete image.sizes[size];
+	}
+
+	async function saveImage(id: string, image: Blob, size: LocalImageSize): Promise<string> {
+		const fileName = getFileName(id, size);
+		const filePath = getFilePath(id, size);
+
+		switch (getPlatform()) {
+			case "web":
+				throw new Error("Unimplemented");
+			case "electron": {
+				const formData = new FormData();
+				formData.append("image", image);
+
+				await fetch(`local-images://${fileName}`, {
+					method: "PUT",
+					body: formData,
+				});
 				break;
 			}
 			default: {
@@ -134,26 +182,32 @@ export const useLocalImages = defineStore("LocalImages", () => {
 	async function associateImage(id: string, image: Blob): Promise<void> {
 		if (getPlatform() === "web") {
 			const style = await generateImageStyle(image);
-			const imageData: ImageData = { buffers: {}, style };
+			const imageData: ImageData = { sizes: {}, style };
 			localImageInfo.data.value[id] = imageData;
 			return;
 		}
 
 		const largeImage = await resizeImage(image, { maxWidth: 1024, maxHeight: 1024 });
 		const smallImage = await resizeImage(image, { maxWidth: 128, maxHeight: 128 });
-		const style = await generateImageStyle(image);
 
-		const imageData: ImageData = { buffers: {}, style };
+		const style = await generateImageStyle(image);
+		const hash = await generateBlobHash(image);
+
+		const imageData: ImageData = {
+			sizes: {},
+			style,
+			hash,
+		};
 
 		if (largeImage) {
-			imageData.buffers.large = await saveImage(id, largeImage, "large");
+			imageData.sizes.large = await saveImage(id, largeImage, "large");
 		} else {
 			log(`Failed resizing ${id} to max 1024x1024`);
-			imageData.buffers.large = await saveImage(id, image, "large");
+			imageData.sizes.large = await saveImage(id, image, "large");
 		}
 
 		if (smallImage) {
-			imageData.buffers.small = await saveImage(id, smallImage, "small");
+			imageData.sizes.small = await saveImage(id, smallImage, "small");
 		} else {
 			log(`Failed resizing ${id} to max 128x128`);
 		}
@@ -169,7 +223,7 @@ export const useLocalImages = defineStore("LocalImages", () => {
 			if (!imageData) return localImage?.url;
 
 			const direct = resolveDirect(imageData);
-			const fileName = direct?.buffers[size];
+			const fileName = direct?.sizes[size];
 
 			if (!fileName) return localImage.url;
 
@@ -221,15 +275,51 @@ export const useLocalImages = defineStore("LocalImages", () => {
 
 	// Deduplicate images
 	// Only one original copy is kept, and duplicates are pointer to that image
-	function deduplicate(): void {
+	async function deduplicate(): Promise<void> {
 		log("Deduplicate");
 		console.time("Deduplicating images");
-		// TODO: Reimplement deduplication
+		let deduplicated = 0;
+
+		const images = Object.entries(localImageInfo.data.value).filter(
+			(entry): entry is [string, ImageData] => isDirect(entry[1]),
+		);
+
+		const grouped = Map.groupBy(images, (item) => item[1].hash ?? "unhashed");
+		grouped.delete("unhashed");
+
+		for (const [_, images] of grouped) {
+			if (images.length === 1) continue;
+
+			const indirectImageData: IndirectImageData = {
+				key: images[0]![0],
+			};
+
+			deduplicated += images.length - 1;
+			for (let i = 1; i < images.length; ++i) {
+				const [id, image] = images[i]!;
+				for (const size of Object.keys(image.sizes) as LocalImageSize[]) {
+					await removeImage(id, size);
+				}
+				localImageInfo.data.value[id] = indirectImageData;
+			}
+		}
+
+		console.log("Deduplicated", deduplicated, "images");
 		console.timeEnd("Deduplicating images");
 	}
 
-	function clearImages(): void {
-		// TODO: Reimplement clearing images
+	async function clearImages(): Promise<void> {
+		const images = localImageInfo.data.value;
+		for (const [id, image] of Object.entries(images)) {
+			if (isDirect(image)) {
+				for (const size of Object.keys(image.sizes) as LocalImageSize[]) {
+					await removeImage(id, size);
+				}
+				delete localImageInfo.data.value[id];
+			} else {
+				delete localImageInfo.data.value[id];
+			}
+		}
 	}
 
 	return {

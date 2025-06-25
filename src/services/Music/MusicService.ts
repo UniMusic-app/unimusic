@@ -394,7 +394,7 @@ export abstract class MusicService<
 		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
 
 		const localImages = useLocalImages();
-		localImages.deduplicate();
+		await localImages.deduplicate();
 	}
 
 	handleGetLibraryAlbums?(): AnyGenerator<AlbumPreview<Type> | Album<Type>>;
@@ -525,7 +525,7 @@ export abstract class MusicService<
 		await this.withErrorHandling(undefined, this.handleRefreshLibraryPlaylists);
 
 		const localImages = useLocalImages();
-		localImages.deduplicate();
+		await localImages.deduplicate();
 	}
 
 	handleGetLibraryPlaylists?(): AnyGenerator<Playlist<Type> | PlaylistPreview<Type>>;

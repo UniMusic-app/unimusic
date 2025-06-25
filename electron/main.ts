@@ -4,13 +4,14 @@ import electronServe from "electron-serve";
 import { URLPattern } from "urlpattern-polyfill";
 
 import fs from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { addon as uniMusicSync } from "@unimusic/sync";
 import { authorizeMusicKit } from "./musickit/auth";
 
 const ALLOWED_URLS = [
+	"local-images:",
 	// MusicKit
 	"https://*.apple.com",
 	// YouTube
@@ -83,16 +84,70 @@ app.on("window-all-closed", () => {
 	if (process.platform !== "darwin") app.quit();
 });
 
+protocol.registerSchemesAsPrivileged([
+	{ scheme: "local-images", privileges: { standard: true, supportFetchAPI: true } },
+	{ scheme: "unimusic", privileges: { standard: true, supportFetchAPI: true } },
+]);
+
 void app.whenReady().then(async () => {
-	// This allows us to safely fetch local images from userData/LocalImages folder
+	// This allows us to safely fetch, put and delete local images from userData/LocalImages folder
 	// by calling local-images protocol, e.g. local-images://abcdefg-large
-	protocol.handle("local-images", (request) => {
+	protocol.handle("local-images", async (request): Promise<Response> => {
 		const imageUrl = new URL(request.url);
 
-		const imagesPath = `${app.getPath("userData")}/LocalImages`;
-		const targetUrl = pathToFileURL(join(imagesPath, imageUrl.hostname));
+		const imagesPath = join(app.getPath("userData"), "LocalImages");
+		const targetPath = normalize(join(imagesPath, imageUrl.hostname));
 
-		return net.fetch(targetUrl.toString());
+		if (!targetPath.startsWith(imagesPath)) {
+			return Response.json(
+				{ error: "Tried to access file out of LocalImages directory" },
+				{ status: 403 },
+			);
+		}
+
+		switch (request.method) {
+			case "GET": {
+				const targetUrl = pathToFileURL(targetPath);
+				return net.fetch(targetUrl.toString());
+			}
+			case "PUT": {
+				try {
+					const formData = await request.formData();
+					const image = formData.get("image");
+
+					if (!image) {
+						return Response.json({ error: "FormData entry 'image' is missing" }, { status: 400 });
+					} else if (!(image instanceof Blob)) {
+						return Response.json({ error: "FormData entry 'image' must be a Blob" }, { status: 400 });
+					}
+
+					const imageBuffer = new Uint8Array(await image.arrayBuffer());
+
+					await fs.mkdir(dirname(targetPath), { recursive: true });
+					await fs.writeFile(targetPath, imageBuffer);
+
+					return Response.json({}, { status: 200 });
+				} catch (error) {
+					return Response.json(
+						{ error: error instanceof Error ? error.message : String(error) },
+						{ status: 500 },
+					);
+				}
+			}
+			case "DELETE": {
+				try {
+					await fs.unlink(targetPath);
+					return Response.json({}, { status: 200 });
+				} catch (error) {
+					return Response.json(
+						{ error: error instanceof Error ? error.message : String(error) },
+						{ status: 500 },
+					);
+				}
+			}
+			default:
+				return Response.json({ error: "Unsupported method" }, { status: 405 });
+		}
 	});
 
 	ipcMain.handle("musickit:authorize", () => authorizeMusicKit());

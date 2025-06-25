@@ -23,8 +23,8 @@ function clearObjectCache(): void {
 	clearCache();
 }
 
-function clearImageCache(): void {
-	localImages.clearImages();
+async function clearImageCache(): Promise<void> {
+	await localImages.clearImages();
 }
 
 function clearStorage(): void {
