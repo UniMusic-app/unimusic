@@ -233,7 +233,7 @@ export class LocalMusicService extends MusicService<"local"> {
 						/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
 
 						// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
-						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
+						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+?))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
 
 						// Michael Jackson - Billie Jean (Official Video)
 						// Michael Jackson — Billie Jean (lyrics) [HD]
@@ -345,6 +345,8 @@ export class LocalMusicService extends MusicService<"local"> {
 			this.log("Failed to parse songs");
 			console.error(error);
 		}
+
+		await this.refreshLibraryAlbums();
 	}
 
 	handleGetSongsAlbum(song: LocalSong): Maybe<LocalAlbum> {
