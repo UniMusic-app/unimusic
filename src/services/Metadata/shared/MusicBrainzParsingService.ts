@@ -78,7 +78,12 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 		}
 
 		if (release.media.length) {
-			const [media] = release.media;
+			const media = release.media[0]!;
+
+			metadata.discNumber = media.position;
+			if (media.track[0]?.number) {
+				metadata.trackNumber = Number(media.track[0].number);
+			}
 		}
 
 		try {

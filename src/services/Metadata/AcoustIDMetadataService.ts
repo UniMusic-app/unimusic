@@ -126,6 +126,13 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 					}
 				}
 
+				const [release] = releaseGroup.releases;
+				if (release?.mediums.length) {
+					const medium = release.mediums[0]!;
+					metadata.discNumber = medium.position;
+					metadata.trackNumber = medium.tracks[0]?.position;
+				}
+
 				try {
 					const artwork = await this.getArtwork(lookup, "release-group", releaseGroup.id);
 					metadata.artwork = artwork;
