@@ -47,78 +47,6 @@ type LocalSong = Song<"local">;
 type LocalSongPreview = SongPreview<"local">;
 type LocalDisplayableArtist = DisplayableArtist<"local">;
 
-async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
-	const stream = await getFileStream(path);
-	const metadata = await parseWebStream(
-		stream,
-		{ path, mimeType: audioMimeTypeFromPath(path) },
-		{ duration: true, skipPostHeaders: true },
-	);
-
-	const { common, format } = metadata;
-
-	const artists: LocalDisplayableArtist[] = [];
-	if (common.artists?.length) {
-		for (let i = 0; i < common.artists.length; ++i) {
-			const title = common.artists[i]!;
-			const artistPreview = cache<LocalArtistPreview>({
-				type: "local",
-				kind: "artistPreview",
-				id: title,
-				title,
-			});
-			artists.push(getKey(artistPreview));
-		}
-	}
-
-	const title = common.title;
-	const isrc = common.isrc;
-	const album = common.album;
-	const duration = format.duration;
-	const genres = common.genre ?? [];
-
-	const discNumber = common.disk.no ?? undefined;
-	const trackNumber = common.track.no ?? undefined;
-
-	const coverImage = selectCover(common.picture);
-	let artwork: Maybe<LocalImage>;
-	if (coverImage) {
-		const localImages = useLocalImages();
-		const { data, type } = coverImage;
-		const artworkBlob = new Blob([data], { type });
-		await localImages.associateImage(id, artworkBlob);
-		artwork = { id };
-	}
-
-	return {
-		type: "local",
-		kind: "song",
-
-		// TODO: Check if format is supported
-		available: true,
-		// TODO: Try to find a way to classify local files as explicit
-		explicit: false,
-
-		id,
-		artists,
-		album,
-		title,
-		duration,
-		genres,
-
-		artwork,
-
-		data: {
-			isrc,
-			path,
-			discNumber,
-			trackNumber,
-			hasMetadata: !!common.title,
-			includedMetadata: !!common.title,
-		},
-	};
-}
-
 export class LocalMusicService extends MusicService<"local"> {
 	logName = "LocalMusicService";
 	logColor = "#ddd480";
@@ -149,6 +77,85 @@ export class LocalMusicService extends MusicService<"local"> {
 	}
 
 	handleDeinitialization(): void {}
+
+	async #parseLocalSong(path: string, id: string): Promise<LocalSong> {
+		await this.initialize();
+
+		const mimeType = audioMimeTypeFromPath(path);
+		const stream = await getFileStream(path);
+		const metadata = await parseWebStream(
+			stream,
+			{ path, mimeType },
+			{ duration: true, skipPostHeaders: true },
+		);
+
+		const { common, format } = metadata;
+
+		const artists: LocalDisplayableArtist[] = [];
+		if (common.artists?.length) {
+			for (let i = 0; i < common.artists.length; ++i) {
+				const title = common.artists[i]!;
+				const artistPreview = cache<LocalArtistPreview>({
+					type: "local",
+					kind: "artistPreview",
+					id: title,
+					title,
+				});
+				artists.push(getKey(artistPreview));
+			}
+		}
+
+		const title = common.title;
+		const isrc = common.isrc;
+		const album = common.album;
+		const duration = format.duration;
+		const genres = common.genre ?? [];
+
+		const discNumber = common.disk.no ?? undefined;
+		const trackNumber = common.track.no ?? undefined;
+
+		const coverImage = selectCover(common.picture);
+		let artwork: Maybe<LocalImage>;
+		if (coverImage) {
+			const localImages = useLocalImages();
+			const { data, type } = coverImage;
+			const artworkBlob = new Blob([data], { type });
+			await localImages.associateImage(id, artworkBlob);
+			artwork = { id };
+		}
+
+		const available = mimeType ? !!this.audio!.canPlayType(mimeType) : true;
+		if (!mimeType) {
+			this.log(`Could not get mimeType from path ${path}, availability might be inaccurate`);
+		}
+
+		return {
+			type: "local",
+			kind: "song",
+
+			available,
+			// TODO: Try to find a way to classify local files as explicit
+			explicit: false,
+
+			id,
+			artists,
+			album,
+			title,
+			duration,
+			genres,
+
+			artwork,
+
+			data: {
+				isrc,
+				path,
+				discNumber,
+				trackNumber,
+				hasMetadata: !!common.title,
+				includedMetadata: !!common.title,
+			},
+		};
+	}
 
 	async *#parseLocalSongs(): AsyncGenerator<LocalSong> {
 		const localSongs = new Map(
@@ -196,7 +203,7 @@ export class LocalMusicService extends MusicService<"local"> {
 				const fileId = id ?? String(generateHash(filePath));
 
 				this.log("Parsing", filePath);
-				const song = await parseLocalSong(filePath, fileId);
+				const song = await this.#parseLocalSong(filePath, fileId);
 
 				if (!song.data.hasMetadata) {
 					// We still yield the songs so users can immediately interact with them
@@ -607,7 +614,7 @@ export class LocalMusicService extends MusicService<"local"> {
 
 	async handleRefreshSong(song: LocalSong): Promise<LocalSong> {
 		const filePath = song.data.path;
-		const refreshed = await parseLocalSong(filePath, song.id);
+		const refreshed = await this.#parseLocalSong(filePath, song.id);
 		return cache(refreshed);
 	}
 
