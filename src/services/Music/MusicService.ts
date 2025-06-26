@@ -14,8 +14,6 @@ import { useMusicServices } from "@/stores/music-services";
 
 import { Maybe } from "@/utils/types";
 
-import { LRCLIBLyricsService } from "@/services/Lyrics/LRCLIBLyricsService";
-import { Lyrics, LyricsService } from "@/services/Lyrics/LyricsService";
 import {
 	Album,
 	AlbumPreview,
@@ -79,13 +77,14 @@ export abstract class MusicService<
 	abstract logName: string;
 	abstract type: Type;
 	abstract available: boolean;
+	abstract description: string;
 
 	authorization?: AuthorizationService;
-	lyrics: LyricsService = new LRCLIBLyricsService();
 
 	state = useMusicPlayerState();
 	services = useMusicServices();
-	metadata = useSongMetadata();
+
+	#metadata = useSongMetadata();
 
 	initialized = false;
 	initialPlayed = false;
@@ -246,21 +245,6 @@ export abstract class MusicService<
 		}
 	}
 
-	async handleGetLyrics?(song: Song<Type> | SongPreview<Type>): Promise<Maybe<Lyrics>> {
-		const lyrics = await this.lyrics.getLyricsFromSong(song);
-		return lyrics;
-	}
-	async getLyrics(song: Song<Type> | SongPreview<Type>): Promise<Maybe<Lyrics>> {
-		this.log("getLyrics");
-
-		if (!this.handleGetLyrics) {
-			throw new Error("This service does not support getLyrics");
-		}
-
-		const lyrics = await this.handleGetLyrics(song);
-		return lyrics;
-	}
-
 	handleCreatePlaylist?(title: string, artwork?: LocalImage): PlaylistId | Promise<PlaylistId>;
 	async createPlaylist(title: string, artwork?: LocalImage): Promise<PlaylistId> {
 		this.log("createPlaylist");
@@ -395,7 +379,7 @@ export abstract class MusicService<
 		const songs = await this.withErrorHandling(undefined!, this.handleGetLibrarySongs);
 
 		for await (const song of songs) {
-			yield this.metadata.applyMetadata(song);
+			yield this.#metadata.applyMetadata(song);
 		}
 
 		return songs;
@@ -410,7 +394,7 @@ export abstract class MusicService<
 		await this.withErrorHandling(undefined, this.handleRefreshLibrarySongs);
 
 		const localImages = useLocalImages();
-		localImages.deduplicate();
+		await localImages.deduplicate();
 	}
 
 	handleGetLibraryAlbums?(): AnyGenerator<AlbumPreview<Type> | Album<Type>>;
@@ -541,7 +525,7 @@ export abstract class MusicService<
 		await this.withErrorHandling(undefined, this.handleRefreshLibraryPlaylists);
 
 		const localImages = useLocalImages();
-		localImages.deduplicate();
+		await localImages.deduplicate();
 	}
 
 	handleGetLibraryPlaylists?(): AnyGenerator<Playlist<Type> | PlaylistPreview<Type>>;
@@ -599,7 +583,7 @@ export abstract class MusicService<
 
 		const song = await this.withErrorHandling(undefined, this.handleGetSong, songId);
 		if (song) {
-			this.metadata.applyMetadata(song);
+			this.#metadata.applyMetadata(song);
 			return song;
 		}
 	}
@@ -614,10 +598,10 @@ export abstract class MusicService<
 			return;
 		}
 
-		this.metadata.applyMetadata(refreshed);
+		this.#metadata.applyMetadata(refreshed);
 		for (const { song } of this.state.queue) {
 			if (song.id === refreshed.id) {
-				this.metadata.applyMetadata(song);
+				this.#metadata.applyMetadata(song);
 				Object.assign(song, refreshed);
 			}
 		}

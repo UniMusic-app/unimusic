@@ -30,3 +30,26 @@ export function generateHash(data: string, seed = 0): number {
 
 	return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
+
+/**
+ * Generates a FNV-1a hash for given blob
+ * @see https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function#FNV-1a_hash
+ */
+export async function generateBlobHash(data: Blob): Promise<number> {
+	let hash = 0;
+
+	const reader = data.stream().getReader();
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+
+		for (const byte of value) {
+			hash ^= byte;
+
+			hash = (hash * 0x01000193) >>> 0;
+		}
+	}
+
+	reader.releaseLock();
+	return hash;
+}

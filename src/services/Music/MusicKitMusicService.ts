@@ -146,7 +146,7 @@ export async function extractArtwork(
 	try {
 		const artworkBlob = await (await fetch(artworkUrl)).blob();
 		await localImages.associateImage(id, artworkBlob);
-		return { id };
+		return { id, url: artworkUrl };
 	} catch {
 		// TODO: Remove this after Apple fixes artwork CORS issues
 		return {
@@ -219,7 +219,7 @@ export async function musicKitPreviewToSong(
 			const response = await fetch(songPreview.artwork.url!);
 			const artworkBlob = await response.blob();
 			await localImages.associateImage(id, artworkBlob);
-			artwork = { id };
+			artwork = { id, url: songPreview.artwork.url! };
 		} catch {
 			artwork = songPreview.artwork;
 		}
@@ -493,6 +493,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	logColor = "#cc80dd";
 	type = "musickit" as const;
 	available = true;
+	description = "Access your Apple Music collection. Requires active Apple Music subscription.";
 
 	audioElement?: HTMLAudioElement;
 	music?: MusicKit.MusicKitInstance;
@@ -775,7 +776,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
 			const artworkBlob = await (await fetch(artworkUrl)).blob();
 			await localImages.associateImage(id, artworkBlob);
-			artwork = { id };
+			artwork = { id, url: artworkUrl };
 		}
 
 		const tracks = playlist.relationships?.tracks.data ?? [];

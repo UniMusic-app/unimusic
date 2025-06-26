@@ -31,12 +31,14 @@ declare global {
 
 		fileSystem: {
 			readFile: (path: string) => Promise<Uint8Array>;
+			writeFile: (path: string, data: Uint8Array) => Promise<void>;
 			statFile: (
 				path: string,
 			) => Promise<{ type: "file" | "directory"; mtime: number; ctime: number; size: number }>;
 			pickDirectory: () => Promise<string>;
 			traverseDirectory: (path: string) => Promise<string[]>;
 			getMusicPath: () => Promise<string>;
+			getUserDataPath: () => Promise<string>;
 		};
 
 		uniMusicSync: {

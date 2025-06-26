@@ -47,136 +47,12 @@ type LocalSong = Song<"local">;
 type LocalSongPreview = SongPreview<"local">;
 type LocalDisplayableArtist = DisplayableArtist<"local">;
 
-async function parseLocalSong(path: string, id: string): Promise<LocalSong> {
-	const stream = await getFileStream(path);
-	const metadata = await parseWebStream(
-		stream,
-		{ path, mimeType: audioMimeTypeFromPath(path) },
-		{ duration: true, skipPostHeaders: true },
-	);
-
-	const { common, format } = metadata;
-
-	const artists: LocalDisplayableArtist[] = [];
-	if (common.artists?.length) {
-		for (let i = 0; i < common.artists.length; ++i) {
-			const title = common.artists[i]!;
-			// TODO: Is there a better way to identify artists?
-			const id = title;
-
-			const artistPreview = cache<LocalArtistPreview>({
-				id,
-				type: "local",
-				kind: "artistPreview",
-				title,
-			});
-			artists.push(getKey(artistPreview));
-		}
-	}
-
-	const isrc = common.isrc;
-	const album = common.album;
-	const title = common.title ?? path.split("\\").pop()!.split("/").pop();
-	const duration = format.duration;
-	const genres = common.genre ?? [];
-
-	const discNumber = common.disk.no ?? undefined;
-	const trackNumber = common.track.no ?? undefined;
-
-	const coverImage = selectCover(common.picture);
-	let artwork: Maybe<LocalImage>;
-	if (coverImage) {
-		const localImages = useLocalImages();
-		const { data, type } = coverImage;
-		const artworkBlob = new Blob([data], { type });
-		await localImages.associateImage(id, artworkBlob, {
-			maxHeight: 512,
-			maxWidth: 512,
-		});
-		artwork = { id };
-	}
-
-	return {
-		type: "local",
-		kind: "song",
-
-		// TODO: Check if format is supported
-		available: true,
-		// TODO: Try to find a way to classify local files as explicit
-		explicit: false,
-
-		id,
-		artists,
-		album,
-		title,
-		duration,
-		genres,
-
-		artwork,
-
-		data: {
-			isrc,
-			path,
-			discNumber,
-			trackNumber,
-		},
-	};
-}
-
-async function* getLocalSongs(clearCache = false): AsyncGenerator<LocalSong> {
-	const localSongs = Array.from(getAllCached<LocalSong>("local", "song"));
-
-	if (clearCache) {
-		for (const song of localSongs) {
-			removeFromCache(song);
-		}
-	} else if (localSongs.length) {
-		yield* localSongs;
-		return;
-	}
-
-	// Required for Documents folder to show up in Files
-	// NOTE: Hidden file doesn't work
-	if (getPlatform() === "ios") {
-		try {
-			await Filesystem.writeFile({
-				path: "/readme.txt",
-				data:
-					"Place your music files in this directory. They should be automatically recognized by the app.",
-				encoding: Encoding.UTF8,
-				directory: Directory.Documents,
-			});
-		} catch (error) {
-			console.log("Errored on writing readme.txt:", error instanceof Error ? error.message : error);
-		}
-	}
-
-	try {
-		for await (const { filePath, id } of getSongPaths()) {
-			// Skip non-audio file types
-			// We ignore this check for android, since it uses MediaStore API
-			// and content paths don't have an extension
-			if (getPlatform() !== "android" && !audioMimeTypeFromPath(filePath)) continue;
-
-			// Instead of generating UUID and then managing the proper song object
-			// We use hashed filePath as an alternative id.
-			// We have to hash it to prevent clashing with routes when used as a route parameter.
-			const fileId = id ?? String(generateHash(filePath));
-
-			const song = await parseLocalSong(filePath, fileId);
-			cache(song);
-			yield song;
-		}
-	} catch (error) {
-		console.log("Errored on getSongs:", error instanceof Error ? error.message : error);
-	}
-}
-
 export class LocalMusicService extends MusicService<"local"> {
 	logName = "LocalMusicService";
 	logColor = "#ddd480";
 	type = "local" as const;
 	available = getPlatform() !== "web";
+	description = "Listen to your local collection of music.";
 
 	audio?: HTMLAudioElement;
 
@@ -201,6 +77,284 @@ export class LocalMusicService extends MusicService<"local"> {
 	}
 
 	handleDeinitialization(): void {}
+
+	async #parseLocalSong(path: string, id: string): Promise<LocalSong> {
+		await this.initialize();
+
+		const mimeType = audioMimeTypeFromPath(path);
+		const stream = await getFileStream(path);
+		const metadata = await parseWebStream(
+			stream,
+			{ path, mimeType },
+			{ duration: true, skipPostHeaders: true },
+		);
+
+		const { common, format } = metadata;
+
+		const artists: LocalDisplayableArtist[] = [];
+		if (common.artists?.length) {
+			for (let i = 0; i < common.artists.length; ++i) {
+				const title = common.artists[i]!;
+				const artistPreview = cache<LocalArtistPreview>({
+					type: "local",
+					kind: "artistPreview",
+					id: title,
+					title,
+				});
+				artists.push(getKey(artistPreview));
+			}
+		}
+
+		const title = common.title;
+		const isrc = common.isrc;
+		const album = common.album;
+		const duration = format.duration;
+		const genres = common.genre ?? [];
+
+		const discNumber = common.disk.no ?? undefined;
+		const trackNumber = common.track.no ?? undefined;
+
+		const coverImage = selectCover(common.picture);
+		let artwork: Maybe<LocalImage>;
+		if (coverImage) {
+			const localImages = useLocalImages();
+			const { data, type } = coverImage;
+			const artworkBlob = new Blob([data], { type });
+			await localImages.associateImage(id, artworkBlob);
+			artwork = { id };
+		}
+
+		const available = mimeType ? !!this.audio!.canPlayType(mimeType) : true;
+		if (!mimeType) {
+			this.log(`Could not get mimeType from path ${path}, availability might be inaccurate`);
+		}
+
+		return {
+			type: "local",
+			kind: "song",
+
+			available,
+			// TODO: Try to find a way to classify local files as explicit
+			explicit: false,
+
+			id,
+			artists,
+			album,
+			title,
+			duration,
+			genres,
+
+			artwork,
+
+			data: {
+				isrc,
+				path,
+				discNumber,
+				trackNumber,
+				hasMetadata: !!common.title,
+				includedMetadata: !!common.title,
+			},
+		};
+	}
+
+	async *#parseLocalSongs(): AsyncGenerator<LocalSong> {
+		const localSongs = new Map(
+			getAllCached<LocalSong>("local", "song").map((song) => [song.data.path, song]),
+		);
+
+		console.log(localSongs);
+
+		// Required for Documents folder to show up in Files
+		// NOTE: Hidden file doesn't work
+		if (getPlatform() === "ios") {
+			try {
+				await Filesystem.writeFile({
+					path: "/readme.txt",
+					data:
+						"Place your music files in this directory. They should be automatically recognized by the app.",
+					encoding: Encoding.UTF8,
+					directory: Directory.Documents,
+				});
+			} catch (error) {
+				console.log("Errored on writing readme.txt:", error instanceof Error ? error.message : error);
+			}
+		}
+
+		try {
+			const missingMetadata: LocalSong[] = [];
+			for await (const { filePath, id } of getSongPaths()) {
+				// Don't reparse songs that have been already parsed and have metadata
+				const localSong = localSongs.get(filePath);
+				if (localSong?.data?.hasMetadata) {
+					this.log("Already parsed", filePath);
+					yield localSong;
+					localSongs.delete(filePath);
+					continue;
+				}
+
+				// Skip non-audio file types
+				// We ignore this check for android, since it uses MediaStore API
+				// and content paths don't have an extension
+				if (getPlatform() !== "android" && !audioMimeTypeFromPath(filePath)) continue;
+
+				// Instead of generating UUID and then managing the proper song object
+				// We use hashed filePath as an alternative id.
+				// We have to hash it to prevent clashing with routes when used as a route parameter.
+				const fileId = id ?? String(generateHash(filePath));
+
+				this.log("Parsing", filePath);
+				const song = await this.#parseLocalSong(filePath, fileId);
+
+				if (!song.data.hasMetadata) {
+					// We still yield the songs so users can immediately interact with them
+					// Metadata will progressively be updated in the background
+					missingMetadata.push(song);
+				}
+
+				cache(song);
+				yield song;
+				localSongs.delete(filePath);
+			}
+
+			if (this.services.canGetMetadata()) {
+				const promises: Promise<LocalSong>[] = [];
+				for (const song of missingMetadata) {
+					const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
+
+					let songTitle: string | undefined;
+					let songArtists: string[] | undefined;
+
+					// Try to guess title and artists of a song from its fileName
+					// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
+					//
+					//  Possible groups:
+					//  - title - Song Title
+					//  - artists - Song Artists (unparsed)
+					//  - feat - Additional artists that have been noted separately (unparsed)
+					//  - extension - File extension
+					const fileNamePatterns = [
+						// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
+						/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
+
+						// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
+						/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
+
+						// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
+						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+?))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
+
+						// Michael Jackson - Billie Jean (Official Video)
+						// Michael Jackson — Billie Jean (lyrics) [HD]
+						// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
+						// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
+						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
+
+						// Michael Jackson - Billie Jean
+						// Michael Jackson - Billie Jean.wav
+						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
+
+						// いめ44「遊び」feat. 歌愛ユキ
+						// いめ44「遊び」feat. 歌愛ユキ.mp3
+						/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
+
+						// Billie Jean
+						// Billie Jean (Official Video)
+						/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
+					];
+
+					// artist_a, artist_b & artist_c
+					// artist_a & artist_b & artist_c
+					// artist_a x artist_b x artist_c
+					const artistsPattern = /(?:\s+(?:&|x)\s+)|(?:\s*,\s+)/;
+
+					for (const pattern of fileNamePatterns) {
+						const match = fileName.match(pattern);
+						if (!match) continue;
+
+						const { title, artists, feat } = match.groups!;
+
+						const parsedArtists = [];
+						if (artists) parsedArtists.push(...artists.split(artistsPattern));
+						if (feat) parsedArtists.push(...feat.split(artistsPattern));
+
+						songTitle = title;
+						songArtists = parsedArtists;
+						break;
+					}
+
+					this.log("Missing metadata, trying to get one for", song.data.path);
+
+					if (!songTitle) {
+						this.log("Failed to guess song title from", fileName);
+						continue;
+					}
+
+					this.log(`Guessed title and artists for ${song.data.path}:`, songTitle, songArtists);
+
+					song.title = songTitle;
+					song.artists = songArtists?.map((artist) => ({ title: artist })) ?? [];
+					cache(song);
+
+					const promise = this.services
+						.getMetadata({
+							id: song.id,
+							duration: song.duration,
+							title: songTitle,
+							artists: songArtists,
+							filePath: song.data.path,
+						})
+						.then((metadata) => {
+							// TODO: Allow searching for partial missing metadata
+
+							if (!metadata) {
+								song.data.hasMetadata = false;
+								return cache(song);
+							}
+
+							if (metadata.title) song.title = metadata.title;
+							if (metadata.album) song.album = metadata.album;
+							if (metadata.artists) {
+								song.artists = metadata.artists.map((artist) => {
+									const artistPreview = cache<LocalArtistPreview>({
+										type: "local",
+										kind: "artistPreview",
+										id: artist.id ?? artist.title,
+										title: artist.title,
+									});
+
+									return getKey(artistPreview);
+								});
+							}
+							if (metadata.genres) song.genres = metadata.genres;
+							if (metadata.isrc) song.data.isrc = metadata.isrc;
+							if (metadata.discNumber) song.data.discNumber = metadata.discNumber;
+							if (metadata.trackNumber) song.data.trackNumber = metadata.trackNumber;
+							if (metadata.artwork) song.artwork = metadata.artwork;
+
+							song.data.hasMetadata = true;
+
+							return cache(song);
+						});
+
+					promises.push(promise);
+				}
+
+				yield* promises;
+			}
+
+			// Remove songs that have been deleted
+			for (const [path, song] of localSongs) {
+				this.log("File no longer exists, removing metadata:", path);
+				removeFromCache(song);
+			}
+
+			this.log("Finished parsing songs");
+		} catch (error) {
+			this.log("Failed to parse songs");
+			console.error(error);
+		}
+
+		await this.refreshLibraryAlbums();
+	}
 
 	handleGetSongsAlbum(song: LocalSong): Maybe<LocalAlbum> {
 		const songKey = getKey(song);
@@ -436,12 +590,18 @@ export class LocalMusicService extends MusicService<"local"> {
 	}
 
 	async *handleGetLibrarySongs(): AsyncGenerator<LocalSong> {
-		yield* getLocalSongs();
+		let empty = true;
+		for (const song of getAllCached<LocalSong>("local", "song")) {
+			yield song;
+			empty = false;
+		}
+
+		if (empty) yield* this.#parseLocalSongs();
 	}
 
 	async handleRefreshLibrarySongs(): Promise<void> {
 		this.#fuses.clear();
-		await Array.fromAsync(getLocalSongs(true));
+		await Array.fromAsync(this.#parseLocalSongs());
 	}
 
 	handleGetSong(songId: string): Maybe<LocalSong> {
@@ -454,7 +614,7 @@ export class LocalMusicService extends MusicService<"local"> {
 
 	async handleRefreshSong(song: LocalSong): Promise<LocalSong> {
 		const filePath = song.data.path;
-		const refreshed = await parseLocalSong(filePath, song.id);
+		const refreshed = await this.#parseLocalSong(filePath, song.id);
 		return cache(refreshed);
 	}
 

@@ -280,6 +280,7 @@ ion-app {
 
 .context-menu-item {
 	display: block;
+	content-visibility: auto;
 
 	&:has(+ .context-menu:not(.closed)) {
 		visibility: hidden;

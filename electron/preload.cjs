@@ -9,8 +9,10 @@ contextBridge.exposeInMainWorld("$ElectronBridge", {
 
 	fileSystem: {
 		readFile: (path) => ipcRenderer.invoke("fs:read_file", path),
+		writeFile: (path, buffer) => ipcRenderer.invoke("fs:write_file", path, buffer),
 		statFile: (path) => ipcRenderer.invoke("fs:stat_file", path),
 		getMusicPath: () => ipcRenderer.invoke("fs:music_path"),
+		getUserDataPath: () => ipcRenderer.invoke("fs:user_data_path"),
 		pickDirectory: () => ipcRenderer.invoke("fs:pick_directory"),
 		traverseDirectory: (path) => ipcRenderer.invoke("fs:traverse_dir", path),
 	},

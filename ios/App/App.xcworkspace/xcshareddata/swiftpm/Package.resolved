@@ -1,6 +1,15 @@
 {
-  "originHash" : "90a90dc79910bbfff15e47ad069bc66ab72fbc242159c90abee6ab6075b3a799",
+  "originHash" : "03174759c208cc0f0579fd5b8eb84f54c0132510d24a6f185a0a85003e38e6bf",
   "pins" : [
+    {
+      "identity" : "chromaswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/wallisch/ChromaSwift",
+      "state" : {
+        "revision" : "4570630752e5c9a07244df7621888363d287c1c4",
+        "version" : "1.2.0"
+      }
+    },
     {
       "identity" : "unimusic-sync",
       "kind" : "remoteSourceControl",

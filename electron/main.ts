@@ -1,17 +1,20 @@
-import { app, BrowserWindow, components, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, components, dialog, ipcMain, net, protocol } from "electron";
 import electronServe from "electron-serve";
 
 import { URLPattern } from "urlpattern-polyfill";
 
 import fs from "node:fs/promises";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join, normalize } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { addon as uniMusicSync } from "@unimusic/sync";
 import { authorizeMusicKit } from "./musickit/auth";
 
 const ALLOWED_URLS = [
+	"local-images:",
+	// MusicKit
 	"https://*.apple.com",
+	// YouTube
 	"https://youtube.com",
 	"https://*.youtube.com",
 	"https://*.googlevideo.com",
@@ -19,7 +22,16 @@ const ALLOWED_URLS = [
 	"https://*.googleusercontent.com",
 	"https://*.mzstatic.com",
 	"https://*.ytimg.com",
+	// Song Lyrics
 	"https://lrclib.net",
+	// Music Metadata
+	"https://musicbrainz.org",
+	"https://api.acoustid.org",
+	"http://coverartarchive.org",
+	"https://coverartarchive.org",
+	"http://archive.org",
+	"https://archive.org",
+	"https://*.archive.org",
 ];
 const ALLOWED_URL_PATTERNS = ALLOWED_URLS.map((url) => new URLPattern(url));
 
@@ -48,7 +60,7 @@ async function createWindow(): Promise<void> {
 	session.webRequest.onHeadersReceived((details, callback) => {
 		const CSP = `
 		default-src 'self' blob: data: 'unsafe-inline' 'unsafe-eval' ${ALLOWED_URLS.join(" ")};
-		img-src 'self' blob: data: *;
+		img-src 'self' blob: data: local-images: *;
 		`;
 
 		callback({
@@ -72,7 +84,72 @@ app.on("window-all-closed", () => {
 	if (process.platform !== "darwin") app.quit();
 });
 
+protocol.registerSchemesAsPrivileged([
+	{ scheme: "local-images", privileges: { standard: true, supportFetchAPI: true } },
+	{ scheme: "unimusic", privileges: { standard: true, supportFetchAPI: true } },
+]);
+
 void app.whenReady().then(async () => {
+	// This allows us to safely fetch, put and delete local images from userData/LocalImages folder
+	// by calling local-images protocol, e.g. local-images://abcdefg-large
+	protocol.handle("local-images", async (request): Promise<Response> => {
+		const imageUrl = new URL(request.url);
+
+		const imagesPath = join(app.getPath("userData"), "LocalImages");
+		const targetPath = normalize(join(imagesPath, imageUrl.hostname));
+
+		if (!targetPath.startsWith(imagesPath)) {
+			return Response.json(
+				{ error: "Tried to access file out of LocalImages directory" },
+				{ status: 403 },
+			);
+		}
+
+		switch (request.method) {
+			case "GET": {
+				const targetUrl = pathToFileURL(targetPath);
+				return net.fetch(targetUrl.toString());
+			}
+			case "PUT": {
+				try {
+					const formData = await request.formData();
+					const image = formData.get("image");
+
+					if (!image) {
+						return Response.json({ error: "FormData entry 'image' is missing" }, { status: 400 });
+					} else if (!(image instanceof Blob)) {
+						return Response.json({ error: "FormData entry 'image' must be a Blob" }, { status: 400 });
+					}
+
+					const imageBuffer = new Uint8Array(await image.arrayBuffer());
+
+					await fs.mkdir(dirname(targetPath), { recursive: true });
+					await fs.writeFile(targetPath, imageBuffer);
+
+					return Response.json({}, { status: 200 });
+				} catch (error) {
+					return Response.json(
+						{ error: error instanceof Error ? error.message : String(error) },
+						{ status: 500 },
+					);
+				}
+			}
+			case "DELETE": {
+				try {
+					await fs.unlink(targetPath);
+					return Response.json({}, { status: 200 });
+				} catch (error) {
+					return Response.json(
+						{ error: error instanceof Error ? error.message : String(error) },
+						{ status: 500 },
+					);
+				}
+			}
+			default:
+				return Response.json({ error: "Unsupported method" }, { status: 405 });
+		}
+	});
+
 	ipcMain.handle("musickit:authorize", () => authorizeMusicKit());
 
 	//#region Web
@@ -98,8 +175,13 @@ void app.whenReady().then(async () => {
 
 	//#region Filesystem
 	ipcMain.handle("fs:music_path", () => app.getPath("music"));
+	ipcMain.handle("fs:user_data_path", () => app.getPath("userData"));
 	ipcMain.handle("fs:read_file", async (_, path: string): Promise<Uint8Array> => {
 		return await fs.readFile(path);
+	});
+	ipcMain.handle("fs:write_file", async (_, path: string, file: Uint8Array): Promise<void> => {
+		await fs.mkdir(dirname(path), { recursive: true });
+		await fs.writeFile(path, file);
 	});
 
 	type FileStat = { type: "file" | "directory"; mtime: number; ctime: number; size: number };
@@ -150,13 +232,6 @@ void app.whenReady().then(async () => {
 			}
 		}
 
-		try {
-			for (const relativePath of await fs.readdir(path, { recursive: true })) {
-				filePaths.push(join(path, relativePath));
-			}
-		} catch (error) {
-			console.error(`Failed to traverse ${path}:`, error);
-		}
 		return filePaths;
 	});
 	//#endregion

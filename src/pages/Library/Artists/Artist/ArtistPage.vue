@@ -49,7 +49,7 @@ const { width: windowWidth } = useWindowSize();
 <template>
 	<AppPage :back-button="previousRouteName">
 		<div id="artist-content" v-if="artist">
-			<LocalImg v-if="artist.artwork" :src="artist.artwork" />
+			<LocalImg size="large" v-if="artist.artwork" :src="artist.artwork" />
 
 			<h1 class="ion-text-nowrap" :class="{ 'no-artwork': !artist.artwork }">
 				<WrappingMarquee :text="artist.title ?? 'Unknown title'" />

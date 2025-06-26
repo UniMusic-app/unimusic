@@ -169,7 +169,8 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 						album: currentSong?.album ?? "",
 
 						// FIXME: Local artworks
-						cover: localImages.getUrl(currentSong?.artwork) ?? "",
+						cover:
+							(currentSong?.artwork && (await localImages.getUrl(currentSong.artwork, "large"))) ?? "",
 
 						hasClose: false,
 						dismissable: false,
@@ -220,7 +221,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	if (getPlatform() !== "android" && "mediaSession" in navigator) {
 		addMusicSessionActionHandlers();
 
-		watch(currentSong, (song) => {
+		watch(currentSong, async (song) => {
 			if (!song) {
 				navigator.mediaSession.metadata = null;
 				navigator.mediaSession.playbackState = "none";
@@ -235,7 +236,7 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 				(navigator.audioSession as { type: string }).type = "playback";
 			}
 
-			const artworkUrl = localImages.getUrl(song.artwork);
+			const artworkUrl = song.artwork && (await localImages.getUrl(song.artwork, "large"));
 
 			navigator.mediaSession.metadata = new window.MediaMetadata({
 				title: song.title,

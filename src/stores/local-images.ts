@@ -1,8 +1,13 @@
 import { useIDBKeyval } from "@vueuse/integrations/useIDBKeyval.mjs";
 import { defineStore } from "pinia";
 
+import { blobToBase64 } from "@/utils/buffer";
+import { generateBlobHash } from "@/utils/crypto";
+import { getPlatform, isElectron } from "@/utils/os";
 import { generateImageStyle } from "@/utils/songs";
-import { EitherType, Maybe } from "@/utils/types";
+import { Maybe } from "@/utils/types";
+import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 
 export interface LocalImageStyle {
 	fgColor: string;
@@ -10,10 +15,11 @@ export interface LocalImageStyle {
 	bgGradient: string;
 }
 
-// NOTE: We don't store Blob in IndexedDB because of Safari's shenanigans: https://stackoverflow.com/a/70253220/14053734
+export type LocalImageSize = "small" | "large";
+
 interface ImageData {
-	buffer: ArrayBuffer;
-	type: string;
+	sizes: { [size in LocalImageSize]?: string };
+	hash?: number;
 	style?: LocalImageStyle;
 }
 
@@ -23,12 +29,10 @@ interface IndirectImageData {
 
 type LocalImageInfo = { [id in string]?: IndirectImageData | ImageData };
 
-export type LocalImage = EitherType<
-	[{ id: string }, { url: string; style?: Partial<LocalImageStyle> }]
->;
-
-function isIndirect(imageData?: ImageData | IndirectImageData): imageData is IndirectImageData {
-	return imageData ? "key" in imageData : false;
+export interface LocalImage {
+	id?: string;
+	url?: string;
+	style?: Partial<LocalImageStyle>;
 }
 
 function isDirect(imageData?: ImageData | IndirectImageData): imageData is ImageData {
@@ -36,236 +40,293 @@ function isDirect(imageData?: ImageData | IndirectImageData): imageData is Image
 }
 
 export const useLocalImages = defineStore("LocalImages", () => {
-	const localImageInfo = useIDBKeyval<LocalImageInfo>("localImageInfo", {});
-	const cachedImageData = new Map<
-		string,
-		[url: string, unregisterToken: WeakRef<Blob>, style?: LocalImageStyle]
-	>();
-
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function log(...args: unknown[]): void {
-		// console.debug("%cLocalImageStore:", "color: #40080; font-weight: bold;", ...args);
-	}
-
-	const registry = new FinalizationRegistry((id: string) => {
-		log(`Cleaned up ${id}`);
-		cachedImageData.delete(id);
+	let LOCAL_IMAGES_DIRECTORY: string;
+	queueMicrotask(async () => {
+		LOCAL_IMAGES_DIRECTORY = isElectron()
+			? `${await ElectronBridge!.fileSystem.getUserDataPath()}/LocalImages`
+			: "LocalImages";
 	});
 
-	function unregisterImage(id: string): boolean {
-		const cached = cachedImageData.get(id);
-		if (!cached) return false;
+	const localImageInfo = useIDBKeyval<LocalImageInfo>("localImageInfo", {});
 
-		log(`Unregister ${id}`);
-		return registry.unregister(cached[1]);
+	function log(...args: unknown[]): void {
+		console.debug("%cLocalImageStore:", "color: #40080; font-weight: bold;", ...args);
 	}
 
-	function removeImage(id: string): void {
-		log(`Removing ${id}`);
-		delete localImageInfo.data.value[id];
-		unregisterImage(id);
-	}
-
-	function registerImage(id: string, imageData: ImageData, unregister = true): string {
-		log(`Register ${id}`);
-
-		if (unregister) {
-			// If image is already registered, we unregister it
-			// To prevent removing cache entry after the previous Blob got freed
-			unregisterImage(id);
-		}
-
-		const blob = new Blob([imageData.buffer], { type: imageData.type });
-		const blobUrl = URL.createObjectURL(blob);
-		const blobRef = new WeakRef(blob);
-		cachedImageData.set(id, [blobUrl, blobRef, imageData.style]);
-		registry.register(blob, id, blobRef);
-		return blobUrl;
-	}
-
-	async function associateImage(
-		id: string,
+	async function resizeImage(
 		image: Blob,
-		resize?: { maxWidth: number; maxHeight: number },
-	): Promise<void> {
-		resize: if (resize) {
-			log(`Resizing ${id} to ${resize.maxWidth}x${resize.maxHeight}`);
-
-			const img = new Image();
-			const tempBlobUrl = URL.createObjectURL(image);
-			img.src = tempBlobUrl;
-			try {
-				await new Promise((resolve, reject) => {
-					img.onload = resolve;
-					img.onerror = reject;
-				});
-			} catch (error) {
-				log("Failed resizing image", error);
-				break resize;
-			}
-
-			const scale = Math.min(resize.maxWidth / img.width, resize.maxHeight / img.height);
-
-			if (scale >= 1) {
-				log("Aborting resizing, image is already smaller than max{Width,Height}");
-				break resize;
-			}
-
-			const scaledWidth = img.width * scale;
-			const scaledHeight = img.height * scale;
-
-			const canvas = document.createElement("canvas");
-			canvas.width = scaledWidth;
-			canvas.height = scaledHeight;
-
-			const context = canvas.getContext("2d");
-			if (!context) {
-				log("Aborting resizing, failed to create canvas context");
-				break resize;
-			}
-
-			context.drawImage(img, 0, 0, scaledWidth, scaledHeight);
-
-			const resizedImage = await new Promise<Blob | null>((resolve) => {
-				canvas.toBlob(resolve, image.type);
+		resize: { maxWidth: number; maxHeight: number },
+	): Promise<Maybe<Blob>> {
+		const img = new Image();
+		const tempBlobUrl = URL.createObjectURL(image);
+		img.src = tempBlobUrl;
+		try {
+			await new Promise((resolve, reject) => {
+				img.onload = resolve;
+				img.onerror = reject;
 			});
-
-			if (resizedImage) {
-				log("Resized image");
-				image = resizedImage;
-			} else {
-				log("Failed to retrieve resized image");
-			}
-
-			URL.revokeObjectURL(tempBlobUrl);
+		} catch (error) {
+			log("Failed resizing image", error);
+			return;
 		}
 
-		const [buffer, style] = await Promise.all([image.arrayBuffer(), generateImageStyle(image)]);
+		const scale = Math.min(resize.maxWidth / img.width, resize.maxHeight / img.height);
+
+		if (scale >= 1) {
+			log("Aborting resizing, image is already smaller than max{Width,Height}");
+			return;
+		}
+
+		const scaledWidth = img.width * scale;
+		const scaledHeight = img.height * scale;
+
+		const canvas = document.createElement("canvas");
+		canvas.width = scaledWidth;
+		canvas.height = scaledHeight;
+
+		const context = canvas.getContext("2d");
+		if (!context) {
+			log("Aborting resizing, failed to create canvas context");
+			return;
+		}
+
+		context.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+
+		const resizedImage = await new Promise<Blob | null>((resolve) => {
+			canvas.toBlob(resolve, image.type);
+		});
+
+		if (resizedImage) {
+			log("Resized image");
+			return resizedImage;
+		} else {
+			log("Failed to retrieve resized image");
+		}
+
+		URL.revokeObjectURL(tempBlobUrl);
+	}
+
+	function getFileName(id: string, size: LocalImageSize): string {
+		const fileName = `${id}-${size}`;
+		return fileName;
+	}
+	function getFilePath(id: string, size: LocalImageSize): string {
+		const fileName = getFileName(id, size);
+		const filePath = `${LOCAL_IMAGES_DIRECTORY}/${fileName}`;
+		return filePath;
+	}
+
+	async function removeImage(id: string, size: LocalImageSize): Promise<void> {
+		const fileName = getFileName(id, size);
+		const filePath = getFilePath(id, size);
+
+		log(`removeImage ${id}`);
+		const image = localImageInfo.data.value[id];
+		if (!isDirect(image)) {
+			log(`removeImage ${id}, skipping - indirect image`);
+			return;
+		}
+
+		switch (getPlatform()) {
+			case "web":
+				throw new Error("Unimplemented");
+			case "electron": {
+				await fetch(`local-images://${fileName}`, {
+					method: "DELETE",
+				});
+				break;
+			}
+			default: {
+				await Filesystem.deleteFile({
+					path: filePath,
+					directory: Directory.Library,
+				});
+				break;
+			}
+		}
+
+		delete image.sizes[size];
+	}
+
+	async function saveImage(id: string, image: Blob, size: LocalImageSize): Promise<string> {
+		const fileName = getFileName(id, size);
+		const filePath = getFilePath(id, size);
+
+		switch (getPlatform()) {
+			case "web":
+				throw new Error("Unimplemented");
+			case "electron": {
+				const formData = new FormData();
+				formData.append("image", image);
+
+				await fetch(`local-images://${fileName}`, {
+					method: "PUT",
+					body: formData,
+				});
+				break;
+			}
+			default: {
+				await Filesystem.writeFile({
+					data: await blobToBase64(image),
+					path: filePath,
+					directory: Directory.Library,
+					recursive: true,
+				});
+				break;
+			}
+		}
+
+		return fileName;
+	}
+
+	async function associateImage(id: string, image: Blob): Promise<void> {
+		if (getPlatform() === "web") {
+			const style = await generateImageStyle(image);
+			const imageData: ImageData = { sizes: {}, style };
+			localImageInfo.data.value[id] = imageData;
+			return;
+		}
+
+		const largeImage = await resizeImage(image, { maxWidth: 1024, maxHeight: 1024 });
+		const smallImage = await resizeImage(image, { maxWidth: 128, maxHeight: 128 });
+
+		const style = await generateImageStyle(image);
+		const hash = await generateBlobHash(image);
 
 		const imageData: ImageData = {
-			buffer,
-			type: image.type,
+			sizes: {},
 			style,
+			hash,
 		};
 
-		localImageInfo.data.value[id] = imageData;
-
-		// If image was already registered, re-register it
-		// Otherwise it will be lazily registered when needed
-		if (unregisterImage(id)) {
-			registerImage(id, imageData, false);
+		if (largeImage) {
+			imageData.sizes.large = await saveImage(id, largeImage, "large");
+		} else {
+			log(`Failed resizing ${id} to max 1024x1024`);
+			imageData.sizes.large = await saveImage(id, image, "large");
 		}
+
+		if (smallImage) {
+			imageData.sizes.small = await saveImage(id, smallImage, "small");
+		} else {
+			log(`Failed resizing ${id} to max 128x128`);
+		}
+
+		localImageInfo.data.value[id] = imageData;
 	}
 
-	function getUrl(localImage?: LocalImage): Maybe<string> {
-		log("getUrl", localImage?.url ?? localImage?.id);
+	async function getUrl(localImage: LocalImage, size: LocalImageSize): Promise<Maybe<string>> {
+		log("getUrl", localImage?.url ?? localImage?.id, size);
+
+		if (localImage?.id) {
+			const imageData = localImageInfo.data.value[localImage.id];
+			if (!imageData) return localImage?.url;
+
+			const direct = resolveDirect(imageData);
+			const fileName = direct?.sizes[size];
+
+			if (!fileName) return localImage.url;
+
+			switch (getPlatform()) {
+				case "web":
+					break;
+				case "electron": {
+					return `local-images://${fileName}`;
+				}
+				default: {
+					const { uri } = await Filesystem.getUri({
+						path: `${LOCAL_IMAGES_DIRECTORY}/${fileName}`,
+						directory: Directory.Library,
+					});
+
+					return Capacitor.convertFileSrc(uri);
+				}
+			}
+		}
 
 		if (localImage?.url) {
 			return localImage.url;
-		} else if (localImage?.id) {
-			return getBlobUrl(localImage.id!);
+		}
+	}
+
+	function resolveDirect(imageData: ImageData | IndirectImageData): Maybe<ImageData> {
+		if (isDirect(imageData)) {
+			return imageData;
+		} else {
+			const direct = localImageInfo.data.value[imageData.key];
+			if (!direct) return;
+			return resolveDirect(direct);
 		}
 	}
 
 	function getStyle(id?: string): Maybe<LocalImageStyle> {
 		log("getStyle", id);
-		if (!id) {
-			return;
+		if (!id) return;
+
+		const imageData = localImageInfo.data.value[id];
+		if (!imageData) return;
+
+		if (isDirect(imageData)) {
+			return imageData.style;
+		} else {
+			return getStyle(imageData.key);
 		}
-
-		const cached = cachedImageData.get(id);
-		if (cached) {
-			return cached[2];
-		}
-	}
-
-	function getBlobUrl(id: string): Maybe<string> {
-		log("getBlobUrl", id);
-
-		const cached = cachedImageData.get(id);
-		if (cached) return cached[0];
-
-		const imageData = localImageInfo.data.value?.[id];
-		if (imageData) {
-			if (isIndirect(imageData)) {
-				log(`getBlobUrl -> indirect (${imageData.key})`);
-				return getBlobUrl(imageData.key);
-			}
-			return registerImage(id, imageData);
-		}
-
-		log("getBlobUrl -> image missing");
-	}
-
-	function getDataOrExternalUrl(localImage: LocalImage): Maybe<string> {
-		log("getDataOrExternalUrl", localImage?.url ?? localImage?.id);
-
-		if (localImage.url) return localImage.url;
-
-		let imageData = localImageInfo.data.value?.[localImage.id!];
-		while (isIndirect(imageData)) {
-			log(`getDataOrExternalUrl -> indirect (${imageData.key})`);
-			imageData = localImageInfo.data.value?.[imageData.key!];
-		}
-
-		if (!imageData) {
-			log("getDataOrExternalUrl -> image missing");
-			return;
-		}
-
-		const fileReader = new FileReader();
-		fileReader.readAsDataURL(new Blob([imageData.buffer]));
-		const dataUrl = fileReader.result as string;
-
-		return dataUrl;
 	}
 
 	// Deduplicate images
 	// Only one original copy is kept, and duplicates are pointer to that image
-	function deduplicate(): void {
+	async function deduplicate(): Promise<void> {
 		log("Deduplicate");
 		console.time("Deduplicating images");
+		let deduplicated = 0;
 
 		const images = Object.entries(localImageInfo.data.value).filter(
 			(entry): entry is [string, ImageData] => isDirect(entry[1]),
 		);
 
-		const byteLengthGropped = Map.groupBy(images, ([_key, value]) => value.buffer.byteLength);
+		const grouped = Map.groupBy(images, (item) => item[1].hash ?? "unhashed");
+		grouped.delete("unhashed");
 
-		for (const group of byteLengthGropped.values()) {
-			if (group.length === 1) continue;
+		for (const [_, images] of grouped) {
+			if (images.length === 1) continue;
 
-			// While its probably already safe enough to assume
-			// that no one image will have the exact same size
-			// we group it by a random one pixel to be extra sure
-			const pixelGrouped = Map.groupBy(group, ([_key, value]) => {
-				const byte = Math.floor(value.buffer.byteLength / 3);
-				const view = new Uint8Array(value.buffer.slice(byte, 1));
-				return view[0];
-			});
+			const indirectImageData: IndirectImageData = {
+				key: images[0]![0],
+			};
 
-			for (const pixelGroup of pixelGrouped.values()) {
-				if (pixelGroup.length === 1) continue;
-
-				const indirectImageData: IndirectImageData = { key: pixelGroup[0]![0]! };
-				for (let i = 1; i < pixelGroup.length; i++) {
-					const [key] = pixelGroup[i]!;
-					// Remove duplicated data
-					removeImage(key);
-					// Link the images
-					localImageInfo.data.value[key] = indirectImageData;
+			deduplicated += images.length - 1;
+			for (let i = 1; i < images.length; ++i) {
+				const [id, image] = images[i]!;
+				for (const size of Object.keys(image.sizes) as LocalImageSize[]) {
+					await removeImage(id, size);
 				}
+				localImageInfo.data.value[id] = indirectImageData;
 			}
 		}
 
+		console.log("Deduplicated", deduplicated, "images");
 		console.timeEnd("Deduplicating images");
 	}
 
+	async function clearImages(): Promise<void> {
+		const images = localImageInfo.data.value;
+		for (const [id, image] of Object.entries(images)) {
+			if (isDirect(image)) {
+				for (const size of Object.keys(image.sizes) as LocalImageSize[]) {
+					await removeImage(id, size);
+				}
+				delete localImageInfo.data.value[id];
+			} else {
+				delete localImageInfo.data.value[id];
+			}
+		}
+	}
+
 	return {
+		clearImages,
+
 		associateImage,
 		getUrl,
-		getBlobUrl,
-		getDataOrExternalUrl,
 		getStyle,
 		deduplicate,
 	};

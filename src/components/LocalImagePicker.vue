@@ -25,10 +25,7 @@ async function changeArtwork(): Promise<void> {
 	}
 
 	const artwork = files[0]!;
-	await localImages.associateImage(idOut.value, artwork, {
-		maxWidth: 512,
-		maxHeight: 512,
-	});
+	await localImages.associateImage(idOut.value, artwork);
 
 	image.value = { id: idOut.value };
 	emit("input", { value: image.value });
@@ -37,7 +34,7 @@ async function changeArtwork(): Promise<void> {
 
 <template>
 	<div class="local-image-picker">
-		<LocalImg :src="image" :alt="`Image picker preview`" @click="imagePicker?.click()" />
+		<LocalImg size="large" :src="image" :alt="`Image picker preview`" @click="imagePicker?.click()" />
 		<input ref="imagePicker" type="file" accept="image/*" @change="changeArtwork" />
 	</div>
 </template>

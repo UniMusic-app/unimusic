@@ -1,19 +1,13 @@
 <script lang="ts" setup>
 import {
 	IonBackButton,
-	IonButton,
 	IonButtons,
 	IonContent,
 	IonHeader,
-	IonIcon,
 	IonPage,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
-import { personCircle as personIcon } from "ionicons/icons";
-
-import { createSettingsModal } from "@/components/AppSettingsModal.vue";
-import { computed } from "vue";
 
 const {
 	title,
@@ -29,7 +23,7 @@ const {
 	class?: string;
 }>();
 
-const slots = defineSlots<{
+defineSlots<{
 	default(): any;
 
 	"toolbar"(): any;
@@ -41,20 +35,6 @@ const slots = defineSlots<{
 	"header-leading"(): any;
 	"header-trailing"(): any;
 }>();
-
-const inlineView = computed(() => {
-	if (document.documentElement.classList.contains("md")) {
-		return false;
-	}
-
-	return !(slots["toolbar-start"] || backButton !== undefined);
-});
-
-async function openSettings(): Promise<void> {
-	const modal = await createSettingsModal();
-	await modal.present();
-	await modal.onDidDismiss();
-}
 </script>
 
 <template>
@@ -73,16 +53,8 @@ async function openSettings(): Promise<void> {
 							</slot>
 						</div>
 
-						<ion-title v-if="title">{{ title }}</ion-title>
-
-						<div v-if="!inlineView" slot="end">
-							<slot name="toolbar-end">
-								<ion-buttons slot="end">
-									<ion-button @click="openSettings">
-										<ion-icon size="large" slot="icon-only" :icon="personIcon" />
-									</ion-button>
-								</ion-buttons>
-							</slot>
+						<div slot="end">
+							<slot name="toolbar-end" />
 						</div>
 					</ion-toolbar>
 
@@ -102,14 +74,8 @@ async function openSettings(): Promise<void> {
 
 							<ion-title size="large">{{ title }}</ion-title>
 
-							<div v-if="inlineView" slot="end">
-								<slot name="toolbar-end">
-									<ion-buttons slot="end">
-										<ion-button @click="openSettings">
-											<ion-icon size="large" slot="icon-only" :icon="personIcon" />
-										</ion-button>
-									</ion-buttons>
-								</slot>
+							<div slot="end">
+								<slot name="toolbar-end" />
 							</div>
 
 							<slot name="toolbar-trailing" />
