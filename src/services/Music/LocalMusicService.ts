@@ -296,10 +296,36 @@ export class LocalMusicService extends MusicService<"local"> {
 							filePath: song.data.path,
 						})
 						.then((metadata) => {
-							const songWithMetadata = Object.assign(song, metadata);
 							// TODO: Allow searching for partial missing metadata
-							songWithMetadata.data.hasMetadata = !!metadata;
-							return cache(songWithMetadata);
+
+							if (!metadata) {
+								song.data.hasMetadata = false;
+								return cache(song);
+							}
+
+							if (metadata.title) song.title = metadata.title;
+							if (metadata.album) song.album = metadata.album;
+							if (metadata.artists) {
+								song.artists = metadata.artists.map((artist) => {
+									const artistPreview = cache<LocalArtistPreview>({
+										type: "local",
+										kind: "artistPreview",
+										id: artist.id ?? artist.title,
+										title: artist.title,
+									});
+
+									return getKey(artistPreview);
+								});
+							}
+							if (metadata.genres) song.genres = metadata.genres;
+							if (metadata.isrc) song.data.isrc = metadata.isrc;
+							if (metadata.discNumber) song.data.discNumber = metadata.discNumber;
+							if (metadata.trackNumber) song.data.trackNumber = metadata.trackNumber;
+							if (metadata.artwork) song.artwork = metadata.artwork;
+
+							song.data.hasMetadata = true;
+
+							return cache(song);
 						});
 
 					promises.push(promise);

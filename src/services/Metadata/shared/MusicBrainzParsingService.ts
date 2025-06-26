@@ -1,4 +1,3 @@
-import { ArtistPreview, cache, DisplayableArtist, getKey } from "@/services/Music/objects";
 import { LocalImage, useLocalImages } from "@/stores/local-images";
 import { getPlatform } from "@/utils/os";
 import { Maybe } from "@/utils/types";
@@ -44,8 +43,6 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 		lookup: MetadataLookup,
 		response: MusicBrainzResponse,
 	): Promise<Maybe<Metadata>> {
-		const metadata: Metadata = {};
-
 		if (!response.recordings) {
 			this.log("MusicBrainz does not have recordings information");
 			return;
@@ -61,23 +58,27 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 
 		const releaseGroup = release["release-group"];
 
-		metadata.title = recording.title;
+		const metadata: Metadata = {
+			title: recording.title,
+		};
+
 		if (releaseGroup["primary-type"] === "Album") {
 			metadata.album = releaseGroup.title;
 		}
 
-		if (release["artist-credit"]) {
-			const artists: DisplayableArtist[] = [];
+		if (release["artist-credit"]?.length) {
+			metadata.artists = [];
 			for (const { artist } of release["artist-credit"]) {
-				const artistPreview = cache<ArtistPreview>({
-					type: "local",
-					kind: "artistPreview",
+				const artistPreview = {
 					id: artist.id,
 					title: artist.name,
-				});
-				artists.push(getKey(artistPreview));
+				};
+				metadata.artists.push(artistPreview);
 			}
-			metadata.artists = artists;
+		}
+
+		if (release.media.length) {
+			const [media] = release.media;
 		}
 
 		try {

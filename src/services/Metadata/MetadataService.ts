@@ -1,4 +1,3 @@
-import { DisplayableArtist } from "@/services/Music/objects";
 import { Service } from "@/services/Service";
 import { LocalImage } from "@/stores/local-images";
 import { Maybe } from "@/utils/types";
@@ -9,7 +8,7 @@ export interface Metadata {
 
 	title?: string;
 	album?: string;
-	artists?: DisplayableArtist[];
+	artists?: { id?: string; title: string }[];
 	genres?: string[];
 
 	duration?: number;

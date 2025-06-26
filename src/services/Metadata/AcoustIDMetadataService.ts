@@ -10,7 +10,6 @@ import { RateLimiter } from "@/utils/rate-limiter";
 import { Maybe } from "@/utils/types";
 import { useIDBKeyvalAsync } from "@/utils/vue";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { ArtistPreview, cache, getKey } from "../Music/objects";
 
 const MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/";
 const ACOUSTID_ENDPOINT = "https://api.acoustid.org/v2/lookup";
@@ -119,13 +118,11 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 				if (recording.artists.length) {
 					metadata.artists = [];
 					for (const artist of recording.artists) {
-						const artistPreview = cache<ArtistPreview>({
-							type: "local",
-							kind: "artistPreview",
+						const artistPreview = {
 							id: artist.id,
 							title: artist.name,
-						});
-						metadata.artists.push(getKey(artistPreview));
+						};
+						metadata.artists.push(artistPreview);
 					}
 				}
 
