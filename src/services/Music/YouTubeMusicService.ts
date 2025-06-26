@@ -432,7 +432,7 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 	logColor = "#ff0000";
 	type = "youtube" as const;
 	available = getPlatform() !== "web";
-	description = "Access millions of songs from YouTube";
+	description = "Access millions of songs from YouTube.";
 
 	innertube?: Innertube;
 	audio?: HTMLAudioElement;

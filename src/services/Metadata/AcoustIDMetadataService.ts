@@ -32,7 +32,8 @@ const rateLimiter = new RateLimiter({
 
 export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 	name = "AcoustID";
-	description = "Uses AcoustID fingerprinting for metadata retrieval, it can be energy taxing.";
+	description =
+		"Uses AcoustID fingerprinting for metadata retrieval. High accuracy, potentially resource and battery intensive.";
 	logName = "AcoustIDMetadataService";
 	logColor = "#9C1F14";
 	available = getPlatform() !== "web";

@@ -22,7 +22,8 @@ const rateLimiter = new RateLimiter({
 
 export class MusicBrainzMetadataService extends MusicBrainzParsingMetadataService {
 	name = "MusicBrainz";
-	description = "Queries MusicBrainz with song information for potential metadata match";
+	description =
+		"Queries MusicBrainz with song information extracted from its file name for potential metadata match. Accuracy highly depends on the file name.";
 	logName = "MusicBrainzMetadataService";
 	logColor = "#EB753B";
 	available = getPlatform() !== "web";

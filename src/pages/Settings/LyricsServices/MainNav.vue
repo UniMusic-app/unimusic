@@ -150,6 +150,10 @@ async function reorderServices(event: ItemReorderCustomEvent): Promise<void> {
 
 	& ion-note {
 		display: inline-block;
+
+		&:last-child {
+			display: block;
+		}
 	}
 
 	& > ion-list {

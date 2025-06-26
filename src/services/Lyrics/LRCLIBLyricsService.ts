@@ -21,7 +21,7 @@ export class LRCLIBLyricsService extends LyricsService {
 	name = "LRCLIB";
 	logName = "LRCLIBLyricsService";
 	logColor = "#000042";
-	description = "Lyrics service provided by lrclib.net";
+	description = "Lyrics service provided by lrclib.net. Supports Live Lyrics.";
 	available = getPlatform() !== "web";
 
 	async handleGetLyricsFromSong<Type extends SongType>(
