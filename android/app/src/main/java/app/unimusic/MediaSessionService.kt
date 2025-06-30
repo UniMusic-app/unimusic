@@ -135,7 +135,7 @@ class MediaSessionService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onTaskRemoved(rootIntent)
     }
-    
+
     private fun setMetadata(
         title: String?,
         artist: String?,
@@ -176,8 +176,7 @@ class MediaSessionService : Service() {
 
     private fun updateNotification() {
         val notification = buildNotification()
-        val notifManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notifManager.notify(NOTIFICATION_ID, notification)
+        startForeground(NOTIFICATION_ID, notification)
     }
 
     private fun buildNotification(): Notification {
