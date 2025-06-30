@@ -238,7 +238,6 @@ export const useLocalImages = defineStore("LocalImages", () => {
 						path: `${LOCAL_IMAGES_DIRECTORY}/${fileName}`,
 						directory: Directory.Library,
 					});
-
 					return Capacitor.convertFileSrc(uri);
 				}
 			}
@@ -247,6 +246,18 @@ export const useLocalImages = defineStore("LocalImages", () => {
 		if (localImage?.url) {
 			return localImage.url;
 		}
+	}
+
+	async function getUri(localImage: LocalImage, size: LocalImageSize): Promise<string | undefined> {
+		log("getUri", localImage?.id, size);
+		if (!localImage.id) return;
+
+		const fileName = getFileName(localImage.id, size);
+		const { uri } = await Filesystem.getUri({
+			path: `${LOCAL_IMAGES_DIRECTORY}/${fileName}`,
+			directory: Directory.Library,
+		});
+		return uri;
 	}
 
 	function resolveDirect(imageData: ImageData | IndirectImageData): Maybe<ImageData> {
@@ -327,6 +338,7 @@ export const useLocalImages = defineStore("LocalImages", () => {
 
 		associateImage,
 		getUrl,
+		getUri,
 		getStyle,
 		deduplicate,
 	};

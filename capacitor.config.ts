@@ -34,7 +34,6 @@ const config: CapacitorConfig = {
 			"@capacitor/status-bar",
 			"@capacitor/barcode-scanner",
 			"@capacitor/share",
-			"capacitor-music-controls-plugin",
 		],
 	},
 };
