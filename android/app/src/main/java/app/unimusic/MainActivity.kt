@@ -1,14 +1,7 @@
 package app.unimusic
 
-import android.os.Build
 import android.os.Bundle
-import android.view.View
-import android.view.ViewGroup.MarginLayoutParams
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.getcapacitor.BridgeActivity
-import java.lang.String
-import kotlin.math.roundToInt
 
 
 class MainActivity : BridgeActivity() {
@@ -26,7 +19,7 @@ class MainActivity : BridgeActivity() {
     override fun onStart() {
         val bridge = super.getBridge()
         val webView = bridge.webView
-        webView.webViewClient = CleanWebViewClient(bridge)
+        webView.webViewClient = UniMusicWebViewClient(bridge)
         super.onStart()
     }
 }

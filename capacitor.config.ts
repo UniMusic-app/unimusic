@@ -24,7 +24,7 @@ const config: CapacitorConfig = {
 		"@capacitor/share",
 	],
 	android: {
-		adjustMarginsForEdgeToEdge: "auto",
+		adjustMarginsForEdgeToEdge: "disable",
 		includePlugins: [
 			"@capacitor/app",
 			"@capacitor/filesystem",
