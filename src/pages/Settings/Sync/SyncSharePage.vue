@@ -1,54 +1,79 @@
 <script lang="ts" setup>
+import { ref } from "vue";
+
 import {
 	IonBreadcrumb,
 	IonBreadcrumbs,
+	IonButton,
+	IonButtons,
 	IonContent,
 	IonHeader,
 	IonIcon,
 	IonItem,
 	IonList,
+	IonNavLink,
 	IonNote,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
-import {
-	downloadOutline as importIcon,
-	textOutline as manualImportIcon,
-	qrCodeOutline as qrImportIcon,
-} from "ionicons/icons";
-import { ref } from "vue";
+import { shareOutline as shareIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
 import DirectoryPicker from "@/components/DirectoryPicker.vue";
-import { pathBreadcrumbs } from "@/utils/path";
-import ImportTicketNav from "./ImportTicketNav.vue";
 
-const props = defineProps<{ nav: HTMLIonNavElement }>();
-const nav = props.nav;
+import { useSync } from "@/stores/sync";
+import { pathBreadcrumbs } from "@/utils/path";
+
+const sync = useSync();
 
 const directory = ref<string>();
 const expanded = ref(false);
+const ticket = ref("test");
 
-function changeDirectory(event: string): void {
+async function generateTicket(): Promise<void> {
+	if (!directory.value) {
+		return;
+	}
+
+	const namespace = await sync.getOrCreateNamespace(directory.value);
+	const sharedTicket = await sync.shareNamespace(namespace);
+
+	ticket.value = sharedTicket;
+
+	await sync.syncFiles();
+}
+
+async function changeDirectory(event: string): Promise<void> {
 	directory.value = event;
 	expanded.value = false;
+
+	await generateTicket();
 }
 </script>
 
 <template>
-	<AppPage title="Import Songs" back-button="Back" :show-content-header="false">
-		<ion-content id="import-songs-content" class="ion-padding">
+	<AppPage title="Share Songs" back-button="Back" :show-content-header="false">
+		<template #toolbar-end>
+			<ion-buttons>
+				<ion-button v-if="ticket" :router-link="`/settings/sync/share/ticket?ticket=${ticket}`">
+					Get ticket
+				</ion-button>
+				<ion-button v-else disabled>Get ticket</ion-button>
+			</ion-buttons>
+		</template>
+
+		<ion-content id="share-songs-content" class="ion-padding">
 			<header>
-				<ion-icon :icon="importIcon" color="primary" />
+				<ion-icon :icon="shareIcon" color="primary" />
 				<ion-header collapse="condense">
 					<ion-toolbar>
-						<ion-title class="ion-text-nowrap" size="large">Import Songs</ion-title>
+						<ion-title class="ion-text-nowrap" size="large">Share Songs</ion-title>
 					</ion-toolbar>
 				</ion-header>
 				<ion-note>
 					Choose a folder which you want to share.
 					<wbr />
-					Files will be synced into and to that folder.
+					Files will be synced from and to that folder.
 				</ion-note>
 			</header>
 
@@ -58,7 +83,7 @@ function changeDirectory(event: string): void {
 					<ion-item @click="expanded = !expanded" lines="none">
 						<ion-breadcrumbs
 							class="path-breadcrumbs"
-							:class="{ expanded: expanded }"
+							:class="{ expanded }"
 							:max-items="expanded ? undefined : 2"
 							:items-before-collapse="1"
 							:items-after-collapse="1"
@@ -72,32 +97,12 @@ function changeDirectory(event: string): void {
 			</template>
 
 			<DirectoryPicker @change="changeDirectory($event)" expand="block" />
-
-			<ion-list class="import-options" inset>
-				<ion-item
-					:disabled="!directory"
-					button
-					@click="nav.push(ImportTicketNav, { directory, method: 'qr' })"
-				>
-					<ion-icon slot="start" color="primary" :icon="qrImportIcon" />
-					Use QR Code
-				</ion-item>
-
-				<ion-item
-					:disabled="!directory"
-					button
-					@click="nav.push(ImportTicketNav, { directory, method: 'manual' })"
-				>
-					<ion-icon slot="start" color="primary" :icon="manualImportIcon" />
-					Enter ticket manually
-				</ion-item>
-			</ion-list>
 		</ion-content>
 	</AppPage>
 </template>
 
 <style>
-#import-songs-content {
+#share-songs-content {
 	& > header {
 		text-align: center;
 		margin-inline: auto;
@@ -119,7 +124,6 @@ function changeDirectory(event: string): void {
 		}
 
 		& > ion-note {
-			width: 100%;
 			display: inline-block;
 			text-wrap: balance;
 		}
@@ -138,11 +142,8 @@ function changeDirectory(event: string): void {
 		margin-bottom: 16px;
 	}
 
-	& > .import-options {
-		margin-inline: 0;
-		& > ion-item {
-			--background: var(--ion-background-color-step-150, #ebebeb);
-		}
+	& > .share-button {
+		margin-top: auto;
 	}
 
 	.path-breadcrumbs {

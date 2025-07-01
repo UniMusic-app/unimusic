@@ -1,80 +1,50 @@
 <script lang="ts" setup>
-import { ref } from "vue";
-
 import {
 	IonBreadcrumb,
 	IonBreadcrumbs,
-	IonButton,
-	IonButtons,
 	IonContent,
 	IonHeader,
 	IonIcon,
 	IonItem,
 	IonList,
-	IonNavLink,
 	IonNote,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
-import { shareOutline as shareIcon } from "ionicons/icons";
+import {
+	downloadOutline as importIcon,
+	textOutline as manualImportIcon,
+	qrCodeOutline as qrImportIcon,
+} from "ionicons/icons";
+import { ref } from "vue";
 
 import AppPage from "@/components/AppPage.vue";
 import DirectoryPicker from "@/components/DirectoryPicker.vue";
-
-import { useSync } from "@/stores/sync";
 import { pathBreadcrumbs } from "@/utils/path";
-import ShareTicketNav from "./ShareTicketNav.vue";
-
-const sync = useSync();
 
 const directory = ref<string>();
 const expanded = ref(false);
-const ticket = ref();
 
-async function generateTicket(): Promise<void> {
-	if (!directory.value) {
-		return;
-	}
-
-	const namespace = await sync.getOrCreateNamespace(directory.value);
-	const sharedTicket = await sync.shareNamespace(namespace);
-
-	ticket.value = sharedTicket;
-
-	await sync.syncFiles();
-}
-
-async function changeDirectory(event: string): Promise<void> {
+function changeDirectory(event: string): void {
 	directory.value = event;
 	expanded.value = false;
-
-	await generateTicket();
 }
 </script>
 
 <template>
-	<AppPage title="Share Songs" back-button="Back" :show-content-header="false">
-		<template #toolbar-end>
-			<ion-buttons>
-				<ion-nav-link v-if="ticket" :component="ShareTicketNav" :component-props="{ ticket }">
-					<ion-button>Get ticket</ion-button>
-				</ion-nav-link>
-				<ion-button v-else disabled>Get ticket</ion-button>
-			</ion-buttons>
-		</template>
-
-		<ion-content id="share-songs-content" class="ion-padding">
+	<AppPage title="Import Songs" back-button="Back" :show-content-header="false">
+		<ion-content id="import-songs-content" class="ion-padding">
 			<header>
-				<ion-icon :icon="shareIcon" color="primary" />
+				<ion-icon :icon="importIcon" color="primary" />
 				<ion-header collapse="condense">
 					<ion-toolbar>
-						<ion-title class="ion-text-nowrap" size="large">Share Songs</ion-title>
+						<ion-title class="ion-text-nowrap" size="large">Import Songs</ion-title>
 					</ion-toolbar>
 				</ion-header>
 				<ion-note>
 					Choose a folder which you want to share.
 					<wbr />
-					Files will be synced from and to that folder.
+					Files will be synced into and to that folder.
 				</ion-note>
 			</header>
 
@@ -84,7 +54,7 @@ async function changeDirectory(event: string): Promise<void> {
 					<ion-item @click="expanded = !expanded" lines="none">
 						<ion-breadcrumbs
 							class="path-breadcrumbs"
-							:class="{ expanded }"
+							:class="{ expanded: expanded }"
 							:max-items="expanded ? undefined : 2"
 							:items-before-collapse="1"
 							:items-after-collapse="1"
@@ -98,12 +68,32 @@ async function changeDirectory(event: string): Promise<void> {
 			</template>
 
 			<DirectoryPicker @change="changeDirectory($event)" expand="block" />
+
+			<ion-list class="import-options" inset>
+				<ion-item
+					:disabled="!directory"
+					button
+					:router-link="`/settings/sync/import/ticket?method=qr&directory=${directory}`"
+				>
+					<ion-icon slot="start" color="primary" :icon="qrImportIcon" />
+					Use QR Code
+				</ion-item>
+
+				<ion-item
+					:disabled="!directory"
+					button
+					:router-link="`/settings/sync/import/ticket?method=manual&directory=${directory}`"
+				>
+					<ion-icon slot="start" color="primary" :icon="manualImportIcon" />
+					Enter ticket manually
+				</ion-item>
+			</ion-list>
 		</ion-content>
 	</AppPage>
 </template>
 
 <style>
-#share-songs-content {
+#import-songs-content {
 	& > header {
 		text-align: center;
 		margin-inline: auto;
@@ -125,6 +115,7 @@ async function changeDirectory(event: string): Promise<void> {
 		}
 
 		& > ion-note {
+			width: 100%;
 			display: inline-block;
 			text-wrap: balance;
 		}
@@ -143,8 +134,11 @@ async function changeDirectory(event: string): Promise<void> {
 		margin-bottom: 16px;
 	}
 
-	& > .share-button {
-		margin-top: auto;
+	& > .import-options {
+		margin-inline: 0;
+		& > ion-item {
+			--background: var(--ion-background-color-step-150, #ebebeb);
+		}
 	}
 
 	.path-breadcrumbs {

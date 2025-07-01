@@ -19,14 +19,7 @@ import {
 
 import AppPage from "@/components/AppPage.vue";
 
-import ImportNav from "./ImportNav.vue";
-import NamespacesNav from "./NamespacesNav.vue";
-import ShareNav from "./ShareNav.vue";
-
 import { useSync } from "@/stores/sync";
-
-const props = defineProps<{ nav: HTMLIonNavElement }>();
-const nav = props.nav;
 
 const sync = useSync();
 </script>
@@ -54,12 +47,12 @@ const sync = useSync();
 			</header>
 
 			<ion-list inset>
-				<ion-item lines="full" button @click="nav.push(ImportNav, { nav })">
+				<ion-item lines="full" button router-link="/settings/sync/import">
 					<ion-icon slot="start" :icon="importIcon" color="primary" />
 					Import Songs
 				</ion-item>
 
-				<ion-item lines="full" button @click="nav.push(ShareNav)">
+				<ion-item lines="full" button router-link="/settings/sync/share">
 					<ion-icon slot="start" :icon="shareIcon" color="primary" />
 					Share Songs
 				</ion-item>
@@ -75,7 +68,7 @@ const sync = useSync();
 					Sync Now
 				</ion-item>
 
-				<ion-item lines="full" button @click="nav.push(NamespacesNav)" :detail="false">
+				<ion-item lines="full" button router-link="/settings/sync/namespaces" :detail="false">
 					<ion-icon slot="start" :icon="namespacesIcon" color="primary" />
 					Manage namespaces
 				</ion-item>
