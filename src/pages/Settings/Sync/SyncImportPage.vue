@@ -73,7 +73,7 @@ function changeDirectory(event: string): void {
 				<ion-item
 					:disabled="!directory"
 					button
-					:router-link="`/settings/sync/import/ticket?method=qr&directory=${directory}`"
+					:router-link="`/settings/sync/import/ticket?method=qr&directory=${encodeURIComponent(directory!)}`"
 				>
 					<ion-icon slot="start" color="primary" :icon="qrImportIcon" />
 					Use QR Code
@@ -82,7 +82,7 @@ function changeDirectory(event: string): void {
 				<ion-item
 					:disabled="!directory"
 					button
-					:router-link="`/settings/sync/import/ticket?method=manual&directory=${directory}`"
+					:router-link="`/settings/sync/import/ticket?method=manual&directory=${encodeURIComponent(directory!)}`"
 				>
 					<ion-icon slot="start" color="primary" :icon="manualImportIcon" />
 					Enter ticket manually
