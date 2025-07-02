@@ -3,6 +3,7 @@ package app.unimusic
 import android.os.Bundle
 import com.getcapacitor.BridgeActivity
 
+
 class MainActivity : BridgeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(MusicKitAuthorizationPlugin::class.java)
@@ -10,6 +11,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(DirectoryPickerPlugin::class.java)
         registerPlugin(UniMusicSyncPlugin::class.java)
         registerPlugin(StorageAccessFrameworkPlugin::class.java)
+        registerPlugin(MediaSessionPlugin::class.java)
 
         super.onCreate(savedInstanceState)
     }
@@ -17,7 +19,7 @@ class MainActivity : BridgeActivity() {
     override fun onStart() {
         val bridge = super.getBridge()
         val webView = bridge.webView
-        webView.webViewClient = CleanWebViewClient(bridge)
+        webView.webViewClient = UniMusicWebViewClient(bridge)
         super.onStart()
     }
 }

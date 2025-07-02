@@ -8,22 +8,29 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/vue";
+import { computed } from "vue";
+import { useRouter } from "vue-router";
 
 const {
 	title,
-	backButton,
 	showPageHeader = true,
 	showContentHeader = true,
 	class: _class,
 } = defineProps<{
 	title?: string;
-	backButton?: string;
 	showPageHeader?: boolean;
 	showContentHeader?: boolean;
 	class?: string;
 }>();
 
-defineSlots<{
+const router = useRouter();
+const previousRouteName = computed(() => {
+	const { state } = router.options.history;
+	if (!("back" in state)) return "Songs";
+	return String(router.resolve(state.back as any)?.name);
+});
+
+const slots = defineSlots<{
 	default(): any;
 
 	"toolbar"(): any;
@@ -47,8 +54,8 @@ defineSlots<{
 					<ion-toolbar>
 						<div slot="start">
 							<slot name="toolbar-start">
-								<ion-buttons v-if="backButton !== undefined">
-									<ion-back-button :text="backButton" />
+								<ion-buttons v-if="previousRouteName !== undefined">
+									<ion-back-button :text="previousRouteName" />
 								</ion-buttons>
 							</slot>
 						</div>
@@ -74,7 +81,7 @@ defineSlots<{
 
 							<ion-title size="large">{{ title }}</ion-title>
 
-							<div slot="end">
+							<div slot="end" v-if="!showPageHeader">
 								<slot name="toolbar-end" />
 							</div>
 

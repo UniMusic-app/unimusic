@@ -25,6 +25,3 @@ project(':capacitor-barcode-scanner').projectDir = new File('../node_modules/.pn
 
 include ':capacitor-share'
 project(':capacitor-share').projectDir = new File('../node_modules/.pnpm/@capacitor+share@7.0.1_@capacitor+core@7.2.0/node_modules/@capacitor/share/android')
-
-include ':capacitor-music-controls-plugin'
-project(':capacitor-music-controls-plugin').projectDir = new File('../node_modules/.pnpm/capacitor-music-controls-plugin@6.1.0/node_modules/capacitor-music-controls-plugin/android')

@@ -27,6 +27,10 @@ import { filledDisplayableArtist } from "@/services/Music/objects";
 import { formatArtists } from "@/utils/songs";
 import { useWillKeyboard } from "@/utils/vue";
 
+const { floating } = defineProps<{
+	floating: boolean;
+}>();
+
 const { willBeOpen: keyboardOpen } = useWillKeyboard();
 
 const router = useIonRouter();
@@ -60,7 +64,7 @@ function goToSong(): void {
 			:detail="contextMenuOpen"
 			v-if="currentSong"
 			id="mini-music-player"
-			:class="{ hidden: keyboardOpen }"
+			:class="{ hidden: keyboardOpen, floating }"
 			:aria-hidden="keyboardOpen"
 			@click="contextMenuOpen ? goToSong() : openModal()"
 		>
@@ -208,7 +212,7 @@ ion-tab-bar {
 #mini-music-player {
 	--border-color: transparent;
 
-	box-shadow: 0 0 12px #0003;
+	box-shadow: 0 0 16px #0003;
 
 	--padding-top: 4px;
 	--padding-bottom: 4px;
@@ -216,10 +220,16 @@ ion-tab-bar {
 	--padding-end: 8px;
 	--inner-padding-end: 0px;
 
-	margin-inline: 5%;
+	margin-inline: auto;
+	margin-block: calc(var(--ion-safe-area-bottom) + 12px);
 	width: 90%;
 	border-radius: 16px;
 	z-index: 20;
+
+	&:not(.floating) {
+		transform: translateY(calc(var(--ion-safe-area-bottom) + 12px));
+		box-shadow: 0 0 12px #0003;
+	}
 
 	&.hidden {
 		pointer-events: none;

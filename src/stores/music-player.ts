@@ -7,9 +7,11 @@ import { useMusicPlayerState } from "@/stores/music-state";
 
 import { MusicService } from "@/services/Music/MusicService";
 
+import MediaSession, { MediaSessionPluginEvent } from "@/plugins/MediaSession";
 import { Album, AlbumPreview, filledAlbum, Song, SongPreview } from "@/services/Music/objects";
 import { getPlatform } from "@/utils/os";
 import { formatArtists } from "@/utils/songs";
+import { watchAsync } from "@/utils/vue";
 
 export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	const localImages = useLocalImages();
@@ -145,87 +147,41 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	// #endregion
 
 	// #region System Music Controls
-	// Android's WebView doesn't support MediaSession
-	if (getPlatform() === "android") {
-		void import("capacitor-music-controls-plugin").then(({ CapacitorMusicControls }) => {
-			let musicControlsExist = false;
-			watch(
-				[hasPrevious, hasNext, currentSong],
-				async ([hasPrev, hasNext, currentSong]) => {
-					if (musicControlsExist) {
-						musicControlsExist = false;
-						await CapacitorMusicControls.destroy();
+
+	addMusicSessionActionHandlers();
+
+	let initializedMediaSession = false;
+	watchAsync(
+		currentSong,
+		async (song) => {
+			if (!initializedMediaSession) {
+				await MediaSession.initialize();
+
+				document.addEventListener("mediaSession", async (e) => {
+					const event = e as MediaSessionPluginEvent;
+
+					switch (event.action) {
+						case "play":
+							await play();
+							break;
+						case "pause":
+							await pause();
+							break;
+
+						case "seekTo":
+							await seekToTime(event.position);
+							break;
+
+						case "skipToPrevious":
+							await skipPrevious();
+							break;
+						case "skipToNext":
+							await skipNext();
+							break;
 					}
+				});
 
-					await CapacitorMusicControls.create({
-						isPlaying: false,
-						hasPrev,
-						hasSkipBackward: false,
-						hasNext,
-						hasSkipForward: false,
-
-						track: currentSong?.title ?? "",
-						artist: formatArtists(currentSong?.artists),
-						album: currentSong?.album ?? "",
-
-						// FIXME: Local artworks
-						cover:
-							(currentSong?.artwork && (await localImages.getUrl(currentSong.artwork, "large"))) ?? "",
-
-						hasClose: false,
-						dismissable: false,
-
-						hasScrubbing: true,
-						elapsed: 0,
-						duration: currentSong?.duration ?? 0,
-
-						playIcon: "media_play",
-						pauseIcon: "media_pause",
-						prevIcon: "media_prev",
-						nextIcon: "media_next",
-						closeIcon: "media_close",
-						notificationIcon: "notification",
-					});
-					musicControlsExist = true;
-				},
-				{ immediate: true },
-			);
-
-			watch([playing, time], ([isPlaying, elapsed]) => {
-				if (!musicControlsExist) return;
-				CapacitorMusicControls.updateElapsed({ isPlaying, elapsed });
-			});
-
-			document.addEventListener("controlsNotification", async (event: Event) => {
-				if (!("message" in event)) return;
-
-				switch (event.message) {
-					case "music-controls-play":
-						await play();
-						break;
-					case "music-controls-pause":
-						await pause();
-						break;
-					case "music-controls-next":
-						await skipNext();
-						break;
-					case "music-controls-previous":
-						await skipPrevious();
-						break;
-				}
-			});
-		});
-	}
-
-	// iOS, Web and Electron
-	if (getPlatform() !== "android" && "mediaSession" in navigator) {
-		addMusicSessionActionHandlers();
-
-		watch(currentSong, async (song) => {
-			if (!song) {
-				navigator.mediaSession.metadata = null;
-				navigator.mediaSession.playbackState = "none";
-				return;
+				initializedMediaSession = true;
 			}
 
 			// Since iOS's WKWebView is actually its own separate app setting AVAudioSession inside this app does nothing.
@@ -236,16 +192,43 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 				(navigator.audioSession as { type: string }).type = "playback";
 			}
 
-			const artworkUrl = song.artwork && (await localImages.getUrl(song.artwork, "large"));
+			if (song) {
+				let artwork: string | undefined;
+				if (song.artwork) {
+					if (getPlatform() === "android") {
+						artwork = await localImages.getUri(song.artwork, "large");
+					} else {
+						artwork = await localImages.getUrl(song.artwork, "large");
+					}
+				}
 
-			navigator.mediaSession.metadata = new window.MediaMetadata({
-				title: song.title,
-				artist: formatArtists(song.artists),
-				album: song.album,
-				artwork: typeof artworkUrl === "string" ? [{ src: artworkUrl }] : undefined,
-			});
+				await MediaSession.setMetadata({
+					title: song.title,
+					artist: formatArtists(song.artists),
+					album: song.album,
+					artwork: artwork,
+					duration: song.duration,
+				});
+
+				await MediaSession.setPlaybackState({
+					state: state.playing ? "playing" : "paused",
+					elapsed: time.value,
+				});
+			} else {
+				await MediaSession.setPlaybackState({ state: "none", elapsed: 0 });
+			}
+		},
+		{ immediate: true },
+	);
+
+	watchAsync(playing, async (playing) => {
+		if (!initializedMediaSession) return;
+
+		await MediaSession.setPlaybackState({
+			state: playing ? "playing" : "paused",
+			elapsed: time.value,
 		});
-	}
+	});
 
 	/**
 	 * These action handlers MUST also be added after audio elements emitted "playing" event

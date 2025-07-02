@@ -2,9 +2,9 @@
 import AppPage from "@/components/AppPage.vue";
 import { Artist, Filled, filledArtist, SongType } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 
-import { IonIcon, IonSkeletonText, IonThumbnail } from "@ionic/vue";
+import { IonIcon, IonSkeletonText, IonThumbnail, IonTitle } from "@ionic/vue";
 import { chevronForward as chevronForwardIcon } from "ionicons/icons";
 
 import GenericAlbumCard from "@/components/GenericAlbumCard.vue";
@@ -14,18 +14,11 @@ import WrappingMarquee from "@/components/WrappingMarquee.vue";
 import { useNavigation } from "@/stores/navigation";
 import { watchAsync } from "@/utils/vue";
 import { useWindowSize } from "@vueuse/core";
-import { computed, ref } from "vue";
+import { ref } from "vue";
 
 const musicPlayer = useMusicPlayer();
 const navigation = useNavigation();
-const router = useRouter();
 const route = useRoute();
-
-const previousRouteName = computed(() => {
-	const { state } = router.options.history;
-	if (!("back" in state)) return "Songs";
-	return String(router.resolve(state.back as any)?.name);
-});
 
 const artist = ref<Filled<Artist>>();
 watchAsync(
@@ -47,13 +40,17 @@ const { width: windowWidth } = useWindowSize();
 </script>
 
 <template>
-	<AppPage :back-button="previousRouteName">
+	<AppPage>
 		<div id="artist-content" v-if="artist">
 			<LocalImg size="large" v-if="artist.artwork" :src="artist.artwork" />
 
-			<h1 class="ion-text-nowrap" :class="{ 'no-artwork': !artist.artwork }">
-				<WrappingMarquee :text="artist.title ?? 'Unknown title'" />
-			</h1>
+			<ion-header collapse="condense">
+				<ion-toolbar>
+					<ion-title class="ion-text-nowrap" size="large">
+						<WrappingMarquee :text="artist.title ?? 'Unknown artist'" />
+					</ion-title>
+				</ion-toolbar>
+			</ion-header>
 
 			<section class="top-songs" v-if="artist.songs.length">
 				<h1>
@@ -129,22 +126,24 @@ const { width: windowWidth } = useWindowSize();
 
 	animation: fade-in 350ms;
 
-	& > h1 {
-		font-size: min(2.125rem, 61.2px);
-		font-weight: bold;
-
+	& > ion-header {
 		& .wrapping {
 			mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 		}
 
-		margin-top: 0;
-		margin-bottom: 0.25rem;
-		&.no-artwork {
-			margin-top: 1rem;
-		}
+		width: max-content;
+		max-width: 100%;
+		margin-inline: auto;
 
-		--marquee-duration: 20s;
-		--marquee-align: center;
+		& ion-title {
+			transform-origin: top center;
+
+			font-weight: bold;
+			margin: 0;
+
+			--marquee-duration: 20s;
+			--marquee-align: center;
+		}
 	}
 
 	& > .artist,

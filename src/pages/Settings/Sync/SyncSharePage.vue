@@ -23,13 +23,12 @@ import DirectoryPicker from "@/components/DirectoryPicker.vue";
 
 import { useSync } from "@/stores/sync";
 import { pathBreadcrumbs } from "@/utils/path";
-import ShareTicketNav from "./ShareTicketNav.vue";
 
 const sync = useSync();
 
 const directory = ref<string>();
 const expanded = ref(false);
-const ticket = ref();
+const ticket = ref("test");
 
 async function generateTicket(): Promise<void> {
 	if (!directory.value) {
@@ -53,12 +52,12 @@ async function changeDirectory(event: string): Promise<void> {
 </script>
 
 <template>
-	<AppPage title="Share Songs" back-button="Back" :show-content-header="false">
+	<AppPage title="Share Songs" :show-content-header="false">
 		<template #toolbar-end>
 			<ion-buttons>
-				<ion-nav-link v-if="ticket" :component="ShareTicketNav" :component-props="{ ticket }">
-					<ion-button>Get ticket</ion-button>
-				</ion-nav-link>
+				<ion-button v-if="ticket" :router-link="`/settings/sync/share/ticket?ticket=${ticket}`">
+					Get ticket
+				</ion-button>
 				<ion-button v-else disabled>Get ticket</ion-button>
 			</ion-buttons>
 		</template>

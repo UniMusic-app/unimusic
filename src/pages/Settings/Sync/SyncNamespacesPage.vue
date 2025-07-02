@@ -24,7 +24,7 @@ const sync = useSync();
 </script>
 
 <template>
-	<AppPage title="Namespaces" back-button="Back" :show-content-header="false">
+	<AppPage title="Namespaces" :show-content-header="false">
 		<ion-content id="namespaces-page-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="namespacesIcon" color="primary" />

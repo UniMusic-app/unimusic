@@ -37,7 +37,7 @@ async function refreshArtistLibrary(event: RefresherCustomEvent): Promise<void> 
 </script>
 
 <template>
-	<AppPage title="Artists" back-button="Library">
+	<AppPage title="Artists">
 		<ion-refresher slot="fixed" @ion-refresh="refreshArtistLibrary">
 			<ion-refresher-content />
 		</ion-refresher>

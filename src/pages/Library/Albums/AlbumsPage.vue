@@ -58,7 +58,7 @@ async function loadMoreAlbums(event: InfiniteScrollCustomEvent): Promise<void> {
 </script>
 
 <template>
-	<AppPage title="Albums" back-button="Library">
+	<AppPage title="Albums">
 		<ion-refresher slot="fixed" @ion-refresh="refreshAlbumLibrary">
 			<ion-refresher-content />
 		</ion-refresher>
@@ -98,7 +98,7 @@ async function loadMoreAlbums(event: InfiniteScrollCustomEvent): Promise<void> {
 
 .album-cards {
 	display: grid;
-	width: 100vw;
+	width: 100%;
 	padding: 8px;
 	grid-template-rows: auto;
 

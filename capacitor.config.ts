@@ -24,7 +24,7 @@ const config: CapacitorConfig = {
 		"@capacitor/share",
 	],
 	android: {
-		adjustMarginsForEdgeToEdge: "auto",
+		adjustMarginsForEdgeToEdge: "disable",
 		includePlugins: [
 			"@capacitor/app",
 			"@capacitor/filesystem",
@@ -34,7 +34,6 @@ const config: CapacitorConfig = {
 			"@capacitor/status-bar",
 			"@capacitor/barcode-scanner",
 			"@capacitor/share",
-			"capacitor-music-controls-plugin",
 		],
 	},
 };

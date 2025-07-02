@@ -14,7 +14,16 @@ import PlaylistsPage from "@/pages/Library/Playlists/PlaylistsPage.vue";
 import SongPage from "@/pages/Library/Songs/Song/SongPage.vue";
 import SongsPage from "@/pages/Library/Songs/SongsPage.vue";
 import ArtistsSongsPage from "./Library/Artists/Artist/ArtistsSongsPage.vue";
+import LyricsServicesSettingsPage from "./Settings/LyricsServices/LyricsServicesSettingsPage.vue";
+import MetadataServicesSettingsPage from "./Settings/MetadataServices/MetadataServicesSettingsPage.vue";
+import MusicServicesSettingsPage from "./Settings/MusicServices/MusicServicesSettingsPage.vue";
 import SettingsPage from "./Settings/SettingsPage.vue";
+import SyncImportPage from "./Settings/Sync/SyncImportPage.vue";
+import SyncImportTicketPage from "./Settings/Sync/SyncImportTicketPage.vue";
+import SyncNamespacesPage from "./Settings/Sync/SyncNamespacesPage.vue";
+import SyncSettingsPage from "./Settings/Sync/SyncSettingsPage.vue";
+import SyncSharePage from "./Settings/Sync/SyncSharePage.vue";
+import SyncShareTicketPage from "./Settings/Sync/SyncShareTicketPage.vue";
 
 const routes: RouteRecordRaw[] = [
 	{ path: "/", redirect: "/home" },
@@ -24,6 +33,40 @@ const routes: RouteRecordRaw[] = [
 	{ path: "/library", name: "Library", component: LibraryPage },
 
 	{ path: "/settings", name: "Settings", component: SettingsPage },
+	{ path: "/settings/sync", name: "Sync Settings", component: SyncSettingsPage },
+	{ path: "/settings/sync/import", name: "Sync Import", component: SyncImportPage },
+	{
+		path: "/settings/sync/import/ticket",
+		name: "Sync Import Ticket",
+		component: SyncImportTicketPage,
+		props: (route) => ({
+			method: route.query.method,
+			directory: route.query.directory,
+		}),
+	},
+	{ path: "/settings/sync/share", name: "Sync Share", component: SyncSharePage },
+	{
+		path: "/settings/sync/share/ticket",
+		name: "Sync Share Ticket",
+		component: SyncShareTicketPage,
+		props: (route) => ({ ticket: route.query.ticket }),
+	},
+	{ path: "/settings/sync/namespaces", name: "Sync Namespaces", component: SyncNamespacesPage },
+	{
+		path: "/settings/services/music",
+		name: "Music Services Settings",
+		component: MusicServicesSettingsPage,
+	},
+	{
+		path: "/settings/services/lyrics",
+		name: "Lyrics Services Settings",
+		component: LyricsServicesSettingsPage,
+	},
+	{
+		path: "/settings/services/metadata",
+		name: "Metadata Services Settings",
+		component: MetadataServicesSettingsPage,
+	},
 
 	{ path: "/library/songs", name: "Songs", component: SongsPage },
 	{ path: "/items/songs/:songType/:songId", name: "Song", component: SongPage },

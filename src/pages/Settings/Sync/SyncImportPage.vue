@@ -21,10 +21,6 @@ import { ref } from "vue";
 import AppPage from "@/components/AppPage.vue";
 import DirectoryPicker from "@/components/DirectoryPicker.vue";
 import { pathBreadcrumbs } from "@/utils/path";
-import ImportTicketNav from "./ImportTicketNav.vue";
-
-const props = defineProps<{ nav: HTMLIonNavElement }>();
-const nav = props.nav;
 
 const directory = ref<string>();
 const expanded = ref(false);
@@ -36,7 +32,7 @@ function changeDirectory(event: string): void {
 </script>
 
 <template>
-	<AppPage title="Import Songs" back-button="Back" :show-content-header="false">
+	<AppPage title="Import Songs" :show-content-header="false">
 		<ion-content id="import-songs-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="importIcon" color="primary" />
@@ -77,7 +73,7 @@ function changeDirectory(event: string): void {
 				<ion-item
 					:disabled="!directory"
 					button
-					@click="nav.push(ImportTicketNav, { directory, method: 'qr' })"
+					:router-link="`/settings/sync/import/ticket?method=qr&directory=${encodeURIComponent(directory!)}`"
 				>
 					<ion-icon slot="start" color="primary" :icon="qrImportIcon" />
 					Use QR Code
@@ -86,7 +82,7 @@ function changeDirectory(event: string): void {
 				<ion-item
 					:disabled="!directory"
 					button
-					@click="nav.push(ImportTicketNav, { directory, method: 'manual' })"
+					:router-link="`/settings/sync/import/ticket?method=manual&directory=${encodeURIComponent(directory!)}`"
 				>
 					<ion-icon slot="start" color="primary" :icon="manualImportIcon" />
 					Enter ticket manually

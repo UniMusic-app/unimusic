@@ -109,7 +109,7 @@ async function share(): Promise<void> {
 </script>
 
 <template>
-	<AppPage title="Share Ticket" back-button="Back" :show-content-header="false">
+	<AppPage title="Share Ticket" :show-content-header="false">
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button v-if="canShare" @click="share">Share</ion-button>

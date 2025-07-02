@@ -37,7 +37,7 @@ import "@ionic/vue/css/palettes/dark.system.css";
 
 /* Theme variables */
 import "./theme/variables.css";
-import { isMobilePlatform } from "./utils/os";
+import { getPlatform, isMobilePlatform } from "./utils/os";
 
 /* Vue store */
 const pinia = createPinia();
@@ -57,7 +57,13 @@ async function main(): Promise<void> {
 		await import("./mobile");
 	}
 
-	const app = createApp(App).use(IonicVue).use(router).use(pinia);
+	const app = createApp(App)
+		.use(IonicVue, {
+			mode: "ios",
+			swipeBackEnabled: getPlatform() === "ios",
+		})
+		.use(router)
+		.use(pinia);
 
 	await router.isReady().then(() => {
 		app.mount("#app");

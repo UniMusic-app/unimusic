@@ -1,6 +1,8 @@
-/* For information on how to create your own theme, please see:
-http://ionicframework.com/docs/theming/ */
+/* For information on how to create your own theme, please see: http://ionicframework.com/docs/theming/ */
 
-:root {
-	--apple-music-color: #fa2d48;
+body {
+	--ion-safe-area-top: var(--android-safe-area-top, env(safe-area-inset-top));
+	--ion-safe-area-left: var(--android-safe-area-left, env(safe-area-inset-left));
+	--ion-safe-area-right: var(--android-safe-area-right, env(safe-area-inset-right));
+	--ion-safe-area-bottom: var(--android-safe-area-bottom, env(safe-area-inset-bottom));
 }

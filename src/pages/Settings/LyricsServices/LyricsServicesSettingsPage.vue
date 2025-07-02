@@ -54,12 +54,7 @@ async function reorderServices(event: ItemReorderCustomEvent): Promise<void> {
 </script>
 
 <template>
-	<AppPage
-		title="Sync"
-		back-button="Settings"
-		:show-content-header="false"
-		:force-inline-view="false"
-	>
+	<AppPage title="Sync" :show-content-header="false" :force-inline-view="false">
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button @click="reorder = !reorder" :strong="reorder">
