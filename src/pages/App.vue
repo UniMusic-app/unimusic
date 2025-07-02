@@ -117,7 +117,7 @@ ion-tabs:has(~ ion-modal[id^="ion-overlay"]) {
 }
 
 #sidebar-menu {
-	--background: var(--ion-color-step-150, #fafafa);
+	--background: var(--ion-background-color-step-100, #fafafa);
 	width: max-content;
 
 	& > ion-list {
@@ -133,7 +133,7 @@ ion-tabs:has(~ ion-modal[id^="ion-overlay"]) {
 			margin: 8px;
 
 			&.active {
-				--background: var(--ion-color-step-50, #ffffff);
+				--background: var(--ion-background-color-step-150, #ffffff);
 				box-shadow: 0 0 12px #0002;
 				font-weight: bold;
 			}
