@@ -103,7 +103,7 @@ async function importTicket(): Promise<void> {
 </script>
 
 <template>
-	<AppPage title="Import Songs" back-button="Back" :show-content-header="false">
+	<AppPage title="Import Songs" :show-content-header="false">
 		<template #toolbar-end></template>
 
 		<ion-content id="import-ticket-content" class="ion-padding">

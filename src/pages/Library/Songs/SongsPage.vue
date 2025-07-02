@@ -62,7 +62,7 @@ async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 </script>
 
 <template>
-	<AppPage title="Songs" back-button="Library">
+	<AppPage title="Songs">
 		<ion-refresher slot="fixed" @ion-refresh="refreshSongLibrary">
 			<ion-refresher-content />
 		</ion-refresher>

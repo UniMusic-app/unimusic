@@ -147,7 +147,7 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 </script>
 
 <template>
-	<AppPage :title="playlist?.title" :show-content-header="false" back-button="Playlists">
+	<AppPage :title="playlist?.title" :show-content-header="false">
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button v-if="supports.edit" id="edit-playlist">

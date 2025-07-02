@@ -63,7 +63,7 @@ async function refreshPlaylistLibrary(event: RefresherCustomEvent): Promise<void
 </script>
 
 <template>
-	<AppPage title="Playlists" back-button="Library">
+	<AppPage title="Playlists">
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button id="import-playlist">

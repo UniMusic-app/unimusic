@@ -52,7 +52,7 @@ async function changeDirectory(event: string): Promise<void> {
 </script>
 
 <template>
-	<AppPage title="Share Songs" back-button="Back" :show-content-header="false">
+	<AppPage title="Share Songs" :show-content-header="false">
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button v-if="ticket" :router-link="`/settings/sync/share/ticket?ticket=${ticket}`">

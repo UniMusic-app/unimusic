@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, shallowReactive, shallowRef } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, shallowReactive, shallowRef } from "vue";
+import { useRoute } from "vue-router";
 
 import {
 	InfiniteScrollCustomEvent,
@@ -28,14 +28,7 @@ import { watchAsync } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
 const navigation = useNavigation();
-const router = useRouter();
 const route = useRoute();
-
-const previousRouteName = computed(() => {
-	const { state } = router.options.history;
-	if (!("back" in state)) return "Songs";
-	return String(router.resolve(state.back as any)?.name);
-});
 
 const songs = shallowReactive<(Song | SongPreview)[]>([]);
 const iterator = shallowRef<AsyncGenerator<Song | SongPreview>>();
@@ -88,7 +81,7 @@ async function loadMoreSongs(event: InfiniteScrollCustomEvent): Promise<void> {
 </script>
 
 <template>
-	<AppPage :back-button="previousRouteName" title="Top Songs">
+	<AppPage title="Top Songs">
 		<ion-list v-if="isLoading" class="songs-list">
 			<SkeletonItem v-for="i in 25" :key="i" />
 		</ion-list>

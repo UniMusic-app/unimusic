@@ -32,7 +32,7 @@ function changeDirectory(event: string): void {
 </script>
 
 <template>
-	<AppPage title="Import Songs" back-button="Back" :show-content-header="false">
+	<AppPage title="Import Songs" :show-content-header="false">
 		<ion-content id="import-songs-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="importIcon" color="primary" />

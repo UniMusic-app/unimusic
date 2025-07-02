@@ -31,12 +31,7 @@ const sortedServices = computed(() => {
 </script>
 
 <template>
-	<AppPage
-		title="Sync"
-		back-button="Settings"
-		:show-content-header="false"
-		:force-inline-view="false"
-	>
+	<AppPage title="Sync" :show-content-header="false" :force-inline-view="false">
 		<ion-content id="music-services-page-content" class="ion-padding">
 			<header>
 				<ion-icon :icon="musicServicesIcon" color="primary" />

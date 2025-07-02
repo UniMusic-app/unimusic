@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 
 import { IonButton, IonButtons, IonIcon, IonSkeletonText, IonThumbnail } from "@ionic/vue";
 import { pencil as editIcon, play as playIcon } from "ionicons/icons";
@@ -17,14 +17,7 @@ import { watchAsync } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
 const songMetadata = useSongMetadata();
-const router = useRouter();
 const route = useRoute();
-
-const previousRouteName = computed(() => {
-	const { state } = router.options.history;
-	if (!("back" in state)) return "Songs";
-	return String(router.resolve(state.back as any)?.name);
-});
 
 const song = ref<Filled<Song>>();
 watchAsync(
@@ -67,7 +60,7 @@ async function editSong(event: SongEditEvent): Promise<void> {
 </script>
 
 <template>
-	<AppPage :back-button="previousRouteName">
+	<AppPage>
 		<template #toolbar-end>
 			<ion-buttons>
 				<ion-button ref="edit-song" id="edit-song" v-if="song">
@@ -81,9 +74,13 @@ async function editSong(event: SongEditEvent): Promise<void> {
 		<div id="song-content" v-if="song">
 			<LocalImg size="large" :src="song.artwork" />
 
-			<h1 class="ion-text-nowrap">
-				<WrappingMarquee :text="song.title ?? 'Unknown title'" />
-			</h1>
+			<ion-header collapse="condense">
+				<ion-toolbar>
+					<ion-title class="ion-text-nowrap" size="large">
+						<WrappingMarquee :text="song.title ?? 'Unknown title'" />
+					</ion-title>
+				</ion-toolbar>
+			</ion-header>
 
 			<h2>
 				<template v-for="(artist, i) in song.artists">
@@ -140,19 +137,24 @@ async function editSong(event: SongEditEvent): Promise<void> {
 
 	animation: fade-in 350ms;
 
-	& > h1 {
-		font-size: min(2.125rem, 61.2px);
-		font-weight: bold;
-
+	& > ion-header {
 		& .wrapping {
 			mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
 		}
 
-		margin-top: 0;
-		margin-bottom: 0.25rem;
+		width: max-content;
+		max-width: 100%;
+		margin-inline: auto;
 
-		--marquee-duration: 20s;
-		--marquee-align: center;
+		& ion-title {
+			transform-origin: top center;
+
+			font-weight: bold;
+			margin: 0;
+
+			--marquee-duration: 20s;
+			--marquee-align: center;
+		}
 	}
 
 	& > .album {

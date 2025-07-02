@@ -1,7 +1,7 @@
 j
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 
 import {
 	IonButton,
@@ -32,14 +32,7 @@ import { watchAsync } from "@/utils/vue";
 import AlbumDiscItem from "../components/AlbumDiscSong.vue";
 
 const musicPlayer = useMusicPlayer();
-const router = useRouter();
 const route = useRoute();
-
-const previousRouteName = computed(() => {
-	const { state } = router.options.history;
-	if (!("back" in state)) return "Albums";
-	return String(router.resolve(state.back as any)?.name);
-});
 
 const album = ref<Filled<Album>>();
 watchAsync(
@@ -90,7 +83,7 @@ async function addAlbumToQueue(position: "next" | "last"): Promise<void> {
 </script>
 
 <template>
-	<AppPage :title="album?.title" :show-content-header="false" :back-button="previousRouteName">
+	<AppPage>
 		<template #toolbar-end>
 			<ion-buttons id="album-actions">
 				<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">

@@ -250,30 +250,32 @@ watch(
 
 <style>
 /** Zoom out animation when context menu is opened */
-ion-app {
-	&:has(> ion-modal) {
-		& > ion-modal .ion-page {
+@media screen and (max-width: 640px) {
+	ion-app {
+		&:has(> ion-modal) {
+			& > ion-modal .ion-page {
+				&:has(.context-menu.move.opened) {
+					transition: transform 250ms ease-out;
+					transform: scale(95%);
+				}
+
+				&:has(.context-menu.move:not(.opened)) {
+					transition: transform 250ms ease-out;
+					transform: scale(100%);
+				}
+			}
+		}
+
+		&:not(:has(> ion-modal)) {
 			&:has(.context-menu.move.opened) {
 				transition: transform 250ms ease-out;
-				transform: scale(95%);
+				transform: scale(91.5%);
 			}
 
 			&:has(.context-menu.move:not(.opened)) {
 				transition: transform 250ms ease-out;
 				transform: scale(100%);
 			}
-		}
-	}
-
-	&:not(:has(> ion-modal)) {
-		&:has(.context-menu.move.opened) {
-			transition: transform 250ms ease-out;
-			transform: scale(91.5%);
-		}
-
-		&:has(.context-menu.move:not(.opened)) {
-			transition: transform 250ms ease-out;
-			transform: scale(100%);
 		}
 	}
 }
@@ -326,8 +328,11 @@ ion-app {
 			background-color,
 			var(--transition-duration) var(--transition-easing);
 	}
+
 	&.backdrop.opened > .backdrop {
-		backdrop-filter: blur(12px);
+		@media screen and (max-width: 640px) {
+			backdrop-filter: blur(12px);
+		}
 		background-color: rgba(0, 0, 0, 0.2);
 	}
 
@@ -354,32 +359,40 @@ ion-app {
 		flex-direction: var(--flex-direction);
 		align-items: var(--flex-align);
 	}
+
 	&.opened .preview-container {
 		/* Add tiny offset to always trigger transitionend event */
-		top: clamp(var(--ion-safe-area-top), calc(var(--item-top) + 0.001px), var(--item-max-top));
 		bottom: clamp(var(--item-min-bottom), calc(var(--item-bottom) + 0.001px), var(--item-max-bottom));
-	}
-	&.opened.move .preview-container {
 		top: clamp(
-			calc(var(--ion-safe-area-top) + 8px),
-			calc(var(--item-top) - var(--options-height)),
+			var(--ion-safe-area-top),
+			calc(var(--item-top) - (var(--item-height) / 2) + 0.001px),
 			var(--item-max-top)
 		);
-		bottom: clamp(var(--item-min-bottom), var(--item-bottom), var(--item-max-bottom));
 	}
-	&.opened.move.left .preview-container {
-		left: clamp(
-			8px,
-			calc((100vw - var(--move-item-width)) / 2),
-			calc(100vw - var(--move-item-width))
-		);
-	}
-	&.opened.move.right .preview-container {
-		right: clamp(
-			8px,
-			calc((100vw - var(--move-item-width)) / 2),
-			calc(100vw - var(--move-item-width))
-		);
+
+	@media screen and (max-width: 640px) {
+		&.opened.move .preview-container {
+			top: clamp(
+				calc(var(--ion-safe-area-top) + 8px),
+				calc(var(--item-top) - var(--options-height)),
+				var(--item-max-top)
+			);
+			bottom: clamp(var(--item-min-bottom), var(--item-bottom), var(--item-max-bottom));
+		}
+		&.opened.move.left .preview-container {
+			left: clamp(
+				8px,
+				calc((100vw - var(--move-item-width)) / 2),
+				calc(100vw - var(--move-item-width))
+			);
+		}
+		&.opened.move.right .preview-container {
+			right: clamp(
+				8px,
+				calc((100vw - var(--move-item-width)) / 2),
+				calc(100vw - var(--move-item-width))
+			);
+		}
 	}
 
 	& .preview {
