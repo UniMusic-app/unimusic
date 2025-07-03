@@ -14,7 +14,7 @@ import AppPage from "@/components/AppPage.vue";
 </script>
 
 <template>
-	<AppPage title="Settings" :force-inline-view="false">
+	<AppPage title="Settings" :show-back-button="false" :force-inline-view="false">
 		<ion-content id="settings-page-content" class="ion-padding">
 			<ion-list lines="full" inset>
 				<ion-item button router-link="/settings/sync">

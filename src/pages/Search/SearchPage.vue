@@ -105,7 +105,7 @@ async function loadMoreContent(event: InfiniteScrollCustomEvent): Promise<void> 
 </script>
 
 <template>
-	<AppPage title="Search" class="search-page">
+	<AppPage :show-back-button="false" title="Search" class="search-page">
 		<div id="toolbars">
 			<ion-toolbar class="searchbar">
 				<ion-searchbar

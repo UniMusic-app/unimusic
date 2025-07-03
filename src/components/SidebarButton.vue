@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	Animation,
 	createAnimation,
 	getIonPageElement,
 	IonIcon,
@@ -20,7 +21,7 @@ const route = useRoute();
 const active = computed(() => route.path.startsWith(href));
 
 // modified mdTransitionAnimation
-const fadeTransitionAnimation = (_: HTMLElement, options: TransitionOptions) => {
+const fadeTransitionAnimation = (_: HTMLElement, options: TransitionOptions): Animation => {
 	const backDirection = options.direction === "back";
 	const { enteringEl, leavingEl } = options;
 

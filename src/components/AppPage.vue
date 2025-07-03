@@ -13,11 +13,13 @@ import { useRouter } from "vue-router";
 
 const {
 	title,
+	showBackButton = true,
 	showPageHeader = true,
 	showContentHeader = true,
 	class: _class,
 } = defineProps<{
 	title?: string;
+	showBackButton?: boolean;
 	showPageHeader?: boolean;
 	showContentHeader?: boolean;
 	class?: string;
@@ -30,7 +32,7 @@ const previousRouteName = computed(() => {
 	return String(router.resolve(state.back as any)?.name);
 });
 
-const slots = defineSlots<{
+defineSlots<{
 	default(): any;
 
 	"toolbar"(): any;
@@ -54,7 +56,7 @@ const slots = defineSlots<{
 					<ion-toolbar>
 						<div slot="start">
 							<slot name="toolbar-start">
-								<ion-buttons v-if="previousRouteName !== undefined">
+								<ion-buttons v-if="showBackButton && previousRouteName !== undefined">
 									<ion-back-button :text="previousRouteName" />
 								</ion-buttons>
 							</slot>

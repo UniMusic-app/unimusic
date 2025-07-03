@@ -11,7 +11,6 @@ import {
 	IonIcon,
 	IonItem,
 	IonList,
-	IonNavLink,
 	IonNote,
 	IonTitle,
 	IonToolbar,

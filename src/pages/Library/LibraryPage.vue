@@ -17,7 +17,7 @@ import {
 </style>
 
 <template>
-	<AppPage title="Library">
+	<AppPage :show-back-button="false" title="Library">
 		<ion-item router-link="/library/playlists">
 			<ion-icon color="primary" :icon="playlistsIcon" class="padded-icon" size="large" slot="start" />
 			<ion-label>Playlists</ion-label>
