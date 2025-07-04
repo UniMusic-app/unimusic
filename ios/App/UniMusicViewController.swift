@@ -27,4 +27,9 @@ class UniMusicViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(DirectoryPicker())
         bridge?.registerPluginInstance(Chromaprint())
     }
+
+    override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
+        // Force redraw webView, so it has proper dimensions
+        webView?.setNeedsDisplay()
+    }
 }
