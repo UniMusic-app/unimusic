@@ -39,8 +39,8 @@ const mediumScreen = useMediaQuery("(min-width: 768px)");
 
 <template>
 	<ion-app>
-		<ion-split-pane :when="mediumScreen" content-id="main" :key="String(mediumScreen)">
-			<ion-menu id="sidebar-menu" content-id="main">
+		<ion-split-pane :when="mediumScreen" content-id="main-content">
+			<ion-menu id="sidebar-menu" content-id="main-content">
 				<ion-list lines="none" inset>
 					<SidebarButton :icon="homeIcon" :outline-icon="homeOutlineIcon" href="/home">
 						Home
@@ -74,36 +74,38 @@ const mediumScreen = useMediaQuery("(min-width: 768px)");
 				</ion-list>
 			</ion-menu>
 
-			<ion-tabs id="main">
-				<ion-router-outlet />
+			<div id="main-content">
+				<ion-tabs>
+					<ion-router-outlet />
 
-				<div slot="bottom">
-					<MusicPlayer />
-					<MiniMusicPlayer :floating="mediumScreen" />
+					<div slot="bottom">
+						<MusicPlayer />
+						<MiniMusicPlayer :floating="mediumScreen" />
 
-					<ion-tab-bar v-if="!mediumScreen">
-						<ion-tab-button tab="home" href="/home">
-							<ion-icon aria-hidden="true" :icon="homeIcon" />
-							<ion-label>Home</ion-label>
-						</ion-tab-button>
+						<ion-tab-bar v-if="!mediumScreen">
+							<ion-tab-button tab="home" href="/home">
+								<ion-icon aria-hidden="true" :icon="homeIcon" />
+								<ion-label>Home</ion-label>
+							</ion-tab-button>
 
-						<ion-tab-button tab="search" href="/search">
-							<ion-icon aria-hidden="true" :icon="searchIcon" />
-							<ion-label>Search</ion-label>
-						</ion-tab-button>
+							<ion-tab-button tab="search" href="/search">
+								<ion-icon aria-hidden="true" :icon="searchIcon" />
+								<ion-label>Search</ion-label>
+							</ion-tab-button>
 
-						<ion-tab-button tab="library" href="/library">
-							<ion-icon aria-hidden="true" :icon="libraryIcon" />
-							<ion-label>Library</ion-label>
-						</ion-tab-button>
+							<ion-tab-button tab="library" href="/library">
+								<ion-icon aria-hidden="true" :icon="libraryIcon" />
+								<ion-label>Library</ion-label>
+							</ion-tab-button>
 
-						<ion-tab-button tab="sync" href="/settings">
-							<ion-icon aria-hidden="true" :icon="settingsIcon" />
-							<ion-label>Settings</ion-label>
-						</ion-tab-button>
-					</ion-tab-bar>
-				</div>
-			</ion-tabs>
+							<ion-tab-button tab="sync" href="/settings">
+								<ion-icon aria-hidden="true" :icon="settingsIcon" />
+								<ion-label>Settings</ion-label>
+							</ion-tab-button>
+						</ion-tab-bar>
+					</div>
+				</ion-tabs>
+			</div>
 		</ion-split-pane>
 	</ion-app>
 </template>
@@ -157,5 +159,10 @@ ion-tabs:has(~ ion-modal[id^="ion-overlay"]) {
 
 ion-app {
 	animation: fade-in 400ms forwards;
+}
+
+#main-content {
+	width: 100%;
+	height: 100%;
 }
 </style>
