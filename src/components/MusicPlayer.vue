@@ -449,11 +449,11 @@ useEventListener("resize", update);
 					<div class="volume-control" v-if="supportsVolume">
 						<ion-range
 							aria-label="Volume"
+							v-model="state.volume"
 							:snaps="false"
 							:min="0"
 							:max="1"
 							:step="0.01"
-							@ion-input="state.volume = <number>$event.detail.value"
 						>
 							<ion-icon slot="start" :icon="lowVolumeIcon" size="small" />
 							<ion-icon slot="end" :icon="highVolumeIcon" size="small" />
