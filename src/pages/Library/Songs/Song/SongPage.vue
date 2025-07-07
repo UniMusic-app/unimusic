@@ -2,7 +2,16 @@
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useRoute } from "vue-router";
 
-import { IonButton, IonButtons, IonIcon, IonSkeletonText, IonThumbnail } from "@ionic/vue";
+import {
+	IonButton,
+	IonButtons,
+	IonHeader,
+	IonIcon,
+	IonSkeletonText,
+	IonThumbnail,
+	IonTitle,
+	IonToolbar,
+} from "@ionic/vue";
 import { pencil as editIcon, play as playIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
