@@ -52,7 +52,6 @@ import { secondsToMMSS } from "@/utils/time";
 import { Maybe } from "@/utils/types";
 import { watchAsync } from "@/utils/vue";
 import { Haptics } from "@capacitor/haptics";
-import { useEventListener } from "@vueuse/core";
 import { storeToRefs } from "pinia";
 
 const musicPlayer = useMusicPlayer();
@@ -125,6 +124,13 @@ const artworkStyle = computed(() => {
 		"--fg-color": style?.fgColor ?? "#fff",
 	};
 });
+const artworkElement = useTemplateRef("artwork");
+const artworkBounding = ref<DOMRect>();
+function updateArtworkBounding(): void {
+	const artworkEl = artworkElement.value?.$el as HTMLImageElement | undefined;
+	if (!artworkEl) return;
+	artworkBounding.value = artworkEl.getBoundingClientRect();
+}
 
 const formattedArtists = computed(() =>
 	formatArtists(state.currentSong?.artists?.map(filledDisplayableArtist)),
@@ -168,17 +174,6 @@ function toggleView(view: "queue" | "lyrics"): void {
 		currentView.value = view;
 	}
 }
-
-const songControlslement = useTemplateRef("song-controls");
-const artworkElement = useTemplateRef("artwork");
-const songControlsBounding = shallowRef<DOMRect>();
-const artworkBounding = shallowRef<DOMRect>();
-function update(): void {
-	songControlsBounding.value = songControlslement.value?.getBoundingClientRect();
-	artworkBounding.value = artworkElement.value?.$el?.getBoundingClientRect();
-}
-
-useEventListener("resize", update);
 </script>
 
 <template>
@@ -190,7 +185,7 @@ useEventListener("resize", update);
 		:initial-breakpoint="1"
 		:breakpoints="[0, 1]"
 		:style="artworkStyle"
-		@did-present="update"
+		@did-present="updateArtworkBounding"
 	>
 		<ion-content
 			:scroll-y="false"
@@ -328,16 +323,8 @@ useEventListener("resize", update);
 					</ion-list>
 				</div>
 
-				<div ref="song-controls" class="song-controls" :class="{ measured: songControlsBounding }">
-					<div
-						:style="{
-							'--top': `${songControlsBounding?.top}px`,
-							'--left': `${songControlsBounding?.left}px`,
-						}"
-						class="song-info"
-						:class="{ small: currentView !== 'artwork' }"
-						:key="songControlsBounding?.top"
-					>
+				<div ref="song-controls" class="song-controls">
+					<div class="song-info" :class="{ small: currentView !== 'artwork' }">
 						<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
 							<div class="song-details">
 								<h1>
@@ -471,6 +458,7 @@ useEventListener("resize", update);
 							fill="clear"
 							size="default"
 							:class="{ toggled: currentView === 'lyrics' }"
+							:disabled="!musicPlayer.services.canGetLyrics"
 							@pointerdown="toggleView('lyrics')"
 						>
 							<ion-icon aria-hidden="true" :icon="lyricsIcon" slot="icon-only" />
@@ -502,6 +490,28 @@ useEventListener("resize", update);
 
 	to {
 		padding-top: 0px;
+		opacity: 100%;
+	}
+}
+
+@keyframes song-info-fade {
+	0%,
+	33% {
+		opacity: 0%;
+	}
+
+	100% {
+		opacity: 100%;
+	}
+}
+
+@keyframes song-info-fade-small {
+	0%,
+	20% {
+		opacity: 0%;
+	}
+
+	100% {
 		opacity: 100%;
 	}
 }
@@ -558,8 +568,6 @@ useEventListener("resize", update);
 				height: calc(100% - 260px);
 
 				& > .artwork {
-					position: static;
-
 					--img-width: 100%;
 					--img-height: auto;
 
@@ -569,7 +577,7 @@ useEventListener("resize", update);
 						left,
 						width,
 						height,
-						475ms cubic-bezier(0.32, 0.885, 0.55, 1);
+						375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					transform: scale(80%);
 					&.playing {
@@ -595,21 +603,16 @@ useEventListener("resize", update);
 							inset 0 0 36px rgb(from var(--bg-color) r g b / 40%);
 					}
 
-					top: var(--top);
-					left: var(--left);
 					&.small {
 						position: absolute;
 						top: calc(var(--ion-safe-area-top) + 16px);
 						left: calc(var(--ion-safe-area-left) + 16px);
 						width: 3.5rem;
-						height: 54px;
 						--img-border-radius: 6px;
+						transform: none;
 
 						:deep(& img) {
 							margin-block: auto;
-						}
-
-						&::after {
 							box-shadow: 0 0 12px #0004;
 						}
 					}
@@ -625,7 +628,7 @@ useEventListener("resize", update);
 					overflow: auto;
 					mask-image: linear-gradient(to bottom, transparent, black 5% 95%, transparent);
 
-					animation: slide-view 475ms cubic-bezier(0.32, 0.885, 0.55, 1);
+					animation: slide-view 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					transform-origin: bottom center;
 
@@ -686,7 +689,8 @@ useEventListener("resize", update);
 					& > ion-list-header {
 						--background: transparent;
 						--color: white;
-						text-shadow: 0 0 6px #0002;
+						text-shadow: 0 2px 4px #0002;
+						padding-bottom: 12px;
 					}
 
 					:deep(& .context-menu-item),
@@ -749,25 +753,24 @@ useEventListener("resize", update);
 					position: absolute;
 					display: block;
 
-					transition:
-						transform,
-						top,
-						left,
-						width,
-						height,
-						475ms cubic-bezier(0.32, 0.885, 0.55, 1);
+					transition: top 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					width: 80%;
-					transform: translateY(-100%);
 
 					top: var(--top);
 					left: var(--left);
+					transform: translateY(-100%);
+
+					animation: song-info-fade 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					&.small {
-						position: absolute;
-						top: calc(var(--ion-safe-area-top) + 18px);
-						left: calc(var(--ion-safe-area-left) + 80px);
+						position: fixed;
+						top: calc(var(--ion-safe-area-top) + 21px);
+						left: calc(var(--ion-safe-area-left) + 84px);
+						width: 70%;
 						transform: translateY(0);
+
+						animation: song-info-fade-small 750ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 						& .song-details {
 							& > h1 {
