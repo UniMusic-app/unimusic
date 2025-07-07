@@ -92,6 +92,7 @@ watchAsync(
 	},
 );
 
+const lastScroll = ref<number>(0);
 watch(time, (time) => {
 	const syncedLyrics = lyrics.value?.syncedLyrics;
 	if (!syncedLyrics) return;
@@ -100,6 +101,9 @@ watch(time, (time) => {
 	lyricsIndex.value = index;
 
 	requestAnimationFrame(() => {
+		// Don't autoscroll if user manually scrolled within last 3 seconds
+		if (Date.now() - lastScroll.value < 3000) return;
+
 		const element = lyricsElement.value!.$el as HTMLElement;
 		const lineElement = element.querySelector<HTMLElement>(".lyrics-line.current");
 		if (!lineElement) return;
@@ -211,6 +215,7 @@ useEventListener("resize", update);
 						ref="lyrics-element"
 						class="lyrics ion-content-scroll-host"
 						v-show="currentView === 'lyrics'"
+						@scroll="lastScroll = Date.now()"
 					>
 						<template v-if="lyrics?.syncedLyrics">
 							<ion-item
@@ -218,7 +223,7 @@ useEventListener("resize", update);
 								:key="timestamp"
 								class="lyrics-line live"
 								:class="{ current: i === lyricsIndex }"
-								@pointerdown="musicPlayer.seekToTime(timestamp)"
+								@click="musicPlayer.seekToTime(timestamp)"
 								lines="none"
 							>
 								{{ line }}
@@ -630,6 +635,8 @@ useEventListener("resize", update);
 				}
 
 				& > .lyrics {
+					overflow-x: hidden;
+
 					& > ion-item {
 						--background: transparent;
 						--color: white;
@@ -639,13 +646,13 @@ useEventListener("resize", update);
 						font-size: 1.5rem;
 						font-weight: bold;
 						padding-block: 8px;
-						padding-right: 1rem;
+						padding-right: 0.5rem;
 
-						transition: font-size, filter, opacity, 250ms;
+						transition: transform, filter, opacity, 250ms;
+						transform-origin: center left;
 
 						&.current {
-							font-size: 1.55rem;
-							padding-right: 0;
+							transform: scale(103%);
 						}
 
 						&.live:not(.current):not(.attribution):not(:hover) {
