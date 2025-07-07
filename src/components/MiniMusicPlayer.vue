@@ -199,6 +199,10 @@ ion-tab-bar {
 	}
 }
 
+:global(.context-menu-item:has(#mini-music-player)) {
+	content-visibility: visible;
+}
+
 .context-menu-item #mini-music-player {
 	&::part(native) {
 		--background: var(--ion-background-color-step-100, #fff);
