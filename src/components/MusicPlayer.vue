@@ -814,54 +814,19 @@ useEventListener("resize", update);
 						}
 					}
 
-					:deep(& .context-menu-item:has(.song-details)),
-					:deep(& .context-menu:has(.song-details)) {
-						width: 90%;
-
+					&:has(.context-menu) {
 						& .options ion-item > ion-label {
 							display: flex;
 							flex-direction: column;
 						}
 
-						&.opened .song-details {
+						& .song-details {
 							& > h1 {
 								opacity: 80%;
 							}
+
 							& > h2 {
 								opacity: 50%;
-							}
-						}
-
-						& .song-details {
-							overflow: hidden;
-							white-space: nowrap;
-							color: white;
-
-							& > h1,
-							& > h2 {
-								transition: opacity 250ms ease;
-								cursor: pointer;
-								& .wrapping {
-									mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
-								}
-							}
-
-							& > h1 {
-								--marquee-duration: 20s;
-								--marquee-gap: 12px;
-
-								font-size: 1.45rem;
-								font-weight: 700;
-								margin: 0;
-							}
-
-							& > h2 {
-								overflow: hidden;
-
-								font-size: 1.25rem;
-								font-weight: 550;
-								margin: 0;
-								opacity: 80%;
 							}
 						}
 					}

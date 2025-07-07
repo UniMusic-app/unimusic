@@ -100,7 +100,7 @@ async function openContextMenu(): Promise<void> {
 	let $contextMenuItem = contextMenuItem.value;
 	let $contextMenuPreview = contextMenuPreview.value;
 	let $contextMenuOptions = contextMenuOptions.value?.$el as Maybe<HTMLElement>;
-	if (!$contextMenu || !$contextMenuItem || !$contextMenuPreview) return;
+	if (!$contextMenu || !$contextMenuItem) return;
 
 	const itemRect = $contextMenuItem.getBoundingClientRect();
 
@@ -110,7 +110,11 @@ async function openContextMenu(): Promise<void> {
 	// We first reset all styles and recalculate what's appropriate now
 	resetStyle();
 
-	style["--item-top"] = `${itemRect.top}px`;
+	let itemTop = itemRect.top;
+	if (!move) {
+		itemTop += itemRect.height;
+	}
+	style["--item-top"] = `${itemTop}px`;
 	style["--item-max-top"] =
 		`calc(100vh - var(--move-item-height, ${itemRect.height}px) - ${approximateOptionsHeight} - var(--ion-safe-area-bottom))`;
 
@@ -132,7 +136,12 @@ async function openContextMenu(): Promise<void> {
 	}
 
 	if (position === "bottom" || (position === "auto" && itemRect.top > window.innerHeight / 2)) {
-		style["--item-bottom"] = `${Math.max(window.innerHeight - itemRect.bottom, 0)}px`;
+		let itemBottom = Math.max(window.innerHeight - itemRect.bottom, 0);
+		if (!move) {
+			itemBottom += itemRect.height;
+		}
+
+		style["--item-bottom"] = `${itemBottom}px`;
 		style["--item-min-bottom"] = `var(--ion-safe-area-bottom)`;
 		style["--item-max-bottom"] =
 			`calc(${window.innerHeight - itemRect.height}px - ${approximateOptionsHeight})`;
@@ -158,13 +167,13 @@ async function openContextMenu(): Promise<void> {
 	$contextMenuItem = contextMenuItem.value;
 	$contextMenuPreview = contextMenuPreview.value;
 	$contextMenuOptions = contextMenuOptions.value?.$el as Maybe<HTMLElement>;
-	if (!$contextMenu || !$contextMenuItem || !$contextMenuPreview) return;
+	if (!$contextMenu || !$contextMenuItem) return;
 
 	// Adjust the height post-mortem to be accurate
 	if (move) {
 		$contextMenu.addEventListener(
 			"transitionend",
-			() => (style["--item-max-height"] = `${$contextMenuPreview.firstElementChild?.clientHeight}px`),
+			() => (style["--item-max-height"] = `${$contextMenuPreview?.firstElementChild?.clientHeight}px`),
 			{ once: true },
 		);
 	}
@@ -235,7 +244,7 @@ watch(
 			class="preview-container"
 			@transitionend.self="state === 'closing' && immediatelyCloseContextMenu()"
 		>
-			<div class="preview" ref="contextMenuPreview">
+			<div v-if="move" class="preview" ref="contextMenuPreview">
 				<slot name="preview">
 					<slot />
 				</slot>
@@ -284,7 +293,7 @@ watch(
 	display: block;
 	content-visibility: auto;
 
-	&:has(+ .context-menu:not(.closed)) {
+	&:has(+ .context-menu.move:not(.closed)) {
 		visibility: hidden;
 	}
 }
