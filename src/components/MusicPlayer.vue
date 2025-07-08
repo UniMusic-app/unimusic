@@ -498,6 +498,7 @@ function toggleView(view: "queue" | "lyrics"): void {
 	0%,
 	33% {
 		opacity: 0%;
+		transform: translateY(-50%);
 	}
 
 	100% {
@@ -509,10 +510,12 @@ function toggleView(view: "queue" | "lyrics"): void {
 	0%,
 	20% {
 		opacity: 0%;
+		transform: translateY(50%);
 	}
 
 	100% {
 		opacity: 100%;
+		transform: translateY(0);
 	}
 }
 
@@ -613,7 +616,7 @@ function toggleView(view: "queue" | "lyrics"): void {
 
 						:deep(& img) {
 							margin-block: auto;
-							box-shadow: 0 0 12px #0004;
+							box-shadow: 0 0 6px #0003;
 						}
 					}
 				}
@@ -731,21 +734,11 @@ function toggleView(view: "queue" | "lyrics"): void {
 				margin-bottom: calc(var(--ion-safe-area-bottom) + 16px);
 				margin-inline: auto;
 
-				&:not(.measured) {
-					position: relative;
-
-					& > .song-info {
-						top: 0;
-						left: 0;
-					}
-				}
-
 				& > *:not(.song-info) {
 					filter: drop-shadow(0 0 4px rgb(from var(--bg-color) r g b / 20%)) drop-shadow(0 0 12px #0002);
 				}
 
 				& > .song-info {
-					position: absolute;
 					display: block;
 
 					transition: top 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
@@ -754,18 +747,16 @@ function toggleView(view: "queue" | "lyrics"): void {
 
 					top: var(--top);
 					left: var(--left);
-					transform: translateY(-100%);
 
 					animation: song-info-fade 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					&.small {
-						position: fixed;
+						position: absolute;
 						top: calc(var(--ion-safe-area-top) + 21px);
 						left: calc(var(--ion-safe-area-left) + 84px);
 						width: 70%;
-						transform: translateY(0);
 
-						animation: song-info-fade-small 750ms cubic-bezier(0.32, 0.885, 0.55, 1);
+						animation: song-info-fade-small 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 						& .song-details {
 							& > h1 {
