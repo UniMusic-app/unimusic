@@ -262,7 +262,7 @@ watch(
 @media screen and (max-width: 640px) {
 	ion-app {
 		&:has(> ion-modal) {
-			& > ion-modal .ion-page {
+			& > ion-modal ion-content :first-child {
 				&:has(.context-menu.move.opened) {
 					transition: transform 250ms ease-out;
 					transform: scale(95%);
