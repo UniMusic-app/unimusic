@@ -110,14 +110,14 @@ const mediumScreen = useMediaQuery("(min-width: 768px)");
 	</ion-app>
 </template>
 
-<style scoped>
+<style global>
 /** Fix for ion-router-outlet becoming too short while modal with presenting-element is opened */
-ion-tabs:has(~ ion-modal[id^="ion-overlay"]) {
-	& > ion-router-outlet {
-		height: 100vh;
-	}
+ion-split-pane:has(~ ion-modal[id^="ion-overlay"]) ion-router-outlet {
+	height: 100vh;
 }
+</style>
 
+<style scoped>
 #sidebar-menu {
 	--background: var(--ion-background-color-step-100, #fafafa);
 	width: max-content;
