@@ -4,7 +4,14 @@ import { Artist, Filled, filledArtist, SongType } from "@/services/Music/objects
 import { useMusicPlayer } from "@/stores/music-player";
 import { useRoute } from "vue-router";
 
-import { IonIcon, IonSkeletonText, IonThumbnail, IonTitle } from "@ionic/vue";
+import {
+	IonHeader,
+	IonIcon,
+	IonSkeletonText,
+	IonThumbnail,
+	IonTitle,
+	IonToolbar,
+} from "@ionic/vue";
 import { chevronForward as chevronForwardIcon } from "ionicons/icons";
 
 import GenericAlbumCard from "@/components/GenericAlbumCard.vue";

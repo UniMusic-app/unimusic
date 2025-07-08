@@ -52,7 +52,6 @@ import { secondsToMMSS } from "@/utils/time";
 import { Maybe } from "@/utils/types";
 import { watchAsync } from "@/utils/vue";
 import { Haptics } from "@capacitor/haptics";
-import { useEventListener } from "@vueuse/core";
 import { storeToRefs } from "pinia";
 
 const musicPlayer = useMusicPlayer();
@@ -92,6 +91,7 @@ watchAsync(
 	},
 );
 
+const lastScroll = ref<number>(0);
 watch(time, (time) => {
 	const syncedLyrics = lyrics.value?.syncedLyrics;
 	if (!syncedLyrics) return;
@@ -100,6 +100,9 @@ watch(time, (time) => {
 	lyricsIndex.value = index;
 
 	requestAnimationFrame(() => {
+		// Don't autoscroll if user manually scrolled within last 3 seconds
+		if (Date.now() - lastScroll.value < 3000) return;
+
 		const element = lyricsElement.value!.$el as HTMLElement;
 		const lineElement = element.querySelector<HTMLElement>(".lyrics-line.current");
 		if (!lineElement) return;
@@ -121,6 +124,13 @@ const artworkStyle = computed(() => {
 		"--fg-color": style?.fgColor ?? "#fff",
 	};
 });
+const artworkElement = useTemplateRef("artwork");
+const artworkBounding = ref<DOMRect>();
+function updateArtworkBounding(): void {
+	const artworkEl = artworkElement.value?.$el as HTMLImageElement | undefined;
+	if (!artworkEl) return;
+	artworkBounding.value = artworkEl.getBoundingClientRect();
+}
 
 const formattedArtists = computed(() =>
 	formatArtists(state.currentSong?.artists?.map(filledDisplayableArtist)),
@@ -164,17 +174,6 @@ function toggleView(view: "queue" | "lyrics"): void {
 		currentView.value = view;
 	}
 }
-
-const songControlslement = useTemplateRef("song-controls");
-const artworkElement = useTemplateRef("artwork");
-const songControlsBounding = shallowRef<DOMRect>();
-const artworkBounding = shallowRef<DOMRect>();
-function update(): void {
-	songControlsBounding.value = songControlslement.value?.getBoundingClientRect();
-	artworkBounding.value = artworkElement.value?.$el?.getBoundingClientRect();
-}
-
-useEventListener("resize", update);
 </script>
 
 <template>
@@ -186,7 +185,7 @@ useEventListener("resize", update);
 		:initial-breakpoint="1"
 		:breakpoints="[0, 1]"
 		:style="artworkStyle"
-		@did-present="update"
+		@did-present="updateArtworkBounding"
 	>
 		<ion-content
 			:scroll-y="false"
@@ -211,6 +210,7 @@ useEventListener("resize", update);
 						ref="lyrics-element"
 						class="lyrics ion-content-scroll-host"
 						v-show="currentView === 'lyrics'"
+						@scroll="lastScroll = Date.now()"
 					>
 						<template v-if="lyrics?.syncedLyrics">
 							<ion-item
@@ -218,7 +218,7 @@ useEventListener("resize", update);
 								:key="timestamp"
 								class="lyrics-line live"
 								:class="{ current: i === lyricsIndex }"
-								@pointerdown="musicPlayer.seekToTime(timestamp)"
+								@click="musicPlayer.seekToTime(timestamp)"
 								lines="none"
 							>
 								{{ line }}
@@ -323,16 +323,8 @@ useEventListener("resize", update);
 					</ion-list>
 				</div>
 
-				<div ref="song-controls" class="song-controls" :class="{ measured: songControlsBounding }">
-					<div
-						:style="{
-							'--top': `${songControlsBounding?.top}px`,
-							'--left': `${songControlsBounding?.left}px`,
-						}"
-						class="song-info"
-						:class="{ small: currentView !== 'artwork' }"
-						:key="songControlsBounding?.top"
-					>
+				<div ref="song-controls" class="song-controls">
+					<div class="song-info" :class="{ small: currentView !== 'artwork' }">
 						<ContextMenu event="click" :move="false" :backdrop="false" :haptics="false">
 							<div class="song-details">
 								<h1>
@@ -449,11 +441,11 @@ useEventListener("resize", update);
 					<div class="volume-control" v-if="supportsVolume">
 						<ion-range
 							aria-label="Volume"
+							v-model="state.volume"
 							:snaps="false"
 							:min="0"
 							:max="1"
 							:step="0.01"
-							@ion-input="state.volume = <number>$event.detail.value"
 						>
 							<ion-icon slot="start" :icon="lowVolumeIcon" size="small" />
 							<ion-icon slot="end" :icon="highVolumeIcon" size="small" />
@@ -466,6 +458,7 @@ useEventListener("resize", update);
 							fill="clear"
 							size="default"
 							:class="{ toggled: currentView === 'lyrics' }"
+							:disabled="!musicPlayer.services.canGetLyrics"
 							@pointerdown="toggleView('lyrics')"
 						>
 							<ion-icon aria-hidden="true" :icon="lyricsIcon" slot="icon-only" />
@@ -498,6 +491,31 @@ useEventListener("resize", update);
 	to {
 		padding-top: 0px;
 		opacity: 100%;
+	}
+}
+
+@keyframes song-info-fade {
+	0%,
+	33% {
+		opacity: 0%;
+		transform: translateY(-50%);
+	}
+
+	100% {
+		opacity: 100%;
+	}
+}
+
+@keyframes song-info-fade-small {
+	0%,
+	20% {
+		opacity: 0%;
+		transform: translateY(50%);
+	}
+
+	100% {
+		opacity: 100%;
+		transform: translateY(0);
 	}
 }
 
@@ -553,8 +571,6 @@ useEventListener("resize", update);
 				height: calc(100% - 260px);
 
 				& > .artwork {
-					position: static;
-
 					--img-width: 100%;
 					--img-height: auto;
 
@@ -564,7 +580,7 @@ useEventListener("resize", update);
 						left,
 						width,
 						height,
-						475ms cubic-bezier(0.32, 0.885, 0.55, 1);
+						375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					transform: scale(80%);
 					&.playing {
@@ -590,22 +606,17 @@ useEventListener("resize", update);
 							inset 0 0 36px rgb(from var(--bg-color) r g b / 40%);
 					}
 
-					top: var(--top);
-					left: var(--left);
 					&.small {
 						position: absolute;
 						top: calc(var(--ion-safe-area-top) + 16px);
 						left: calc(var(--ion-safe-area-left) + 16px);
 						width: 3.5rem;
-						height: 54px;
 						--img-border-radius: 6px;
+						transform: none;
 
 						:deep(& img) {
 							margin-block: auto;
-						}
-
-						&::after {
-							box-shadow: 0 0 12px #0004;
+							box-shadow: 0 0 6px #0003;
 						}
 					}
 				}
@@ -620,7 +631,7 @@ useEventListener("resize", update);
 					overflow: auto;
 					mask-image: linear-gradient(to bottom, transparent, black 5% 95%, transparent);
 
-					animation: slide-view 475ms cubic-bezier(0.32, 0.885, 0.55, 1);
+					animation: slide-view 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					transform-origin: bottom center;
 
@@ -630,6 +641,8 @@ useEventListener("resize", update);
 				}
 
 				& > .lyrics {
+					overflow-x: hidden;
+
 					& > ion-item {
 						--background: transparent;
 						--color: white;
@@ -639,13 +652,13 @@ useEventListener("resize", update);
 						font-size: 1.5rem;
 						font-weight: bold;
 						padding-block: 8px;
-						padding-right: 1rem;
+						padding-right: 0.5rem;
 
-						transition: font-size, filter, opacity, 250ms;
+						transition: transform, filter, opacity, 250ms;
+						transform-origin: center left;
 
 						&.current {
-							font-size: 1.55rem;
-							padding-right: 0;
+							transform: scale(103%);
 						}
 
 						&.live:not(.current):not(.attribution):not(:hover) {
@@ -679,12 +692,8 @@ useEventListener("resize", update);
 					& > ion-list-header {
 						--background: transparent;
 						--color: white;
-						text-shadow: 0 0 6px #0002;
-					}
-
-					:deep(& .context-menu-item),
-					:deep(& .context-menu:not(.opened)) {
-						content-visibility: auto;
+						text-shadow: 0 2px 4px #0002;
+						padding-bottom: 12px;
 					}
 
 					:deep(& .context-menu-item .song-item),
@@ -725,42 +734,29 @@ useEventListener("resize", update);
 				margin-bottom: calc(var(--ion-safe-area-bottom) + 16px);
 				margin-inline: auto;
 
-				&:not(.measured) {
-					position: relative;
-
-					& > .song-info {
-						top: 0;
-						left: 0;
-					}
-				}
-
 				& > *:not(.song-info) {
 					filter: drop-shadow(0 0 4px rgb(from var(--bg-color) r g b / 20%)) drop-shadow(0 0 12px #0002);
 				}
 
 				& > .song-info {
-					position: absolute;
 					display: block;
 
-					transition:
-						transform,
-						top,
-						left,
-						width,
-						height,
-						475ms cubic-bezier(0.32, 0.885, 0.55, 1);
+					transition: top 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 					width: 80%;
-					transform: translateY(-100%);
 
 					top: var(--top);
 					left: var(--left);
 
+					animation: song-info-fade 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
+
 					&.small {
 						position: absolute;
-						top: calc(var(--ion-safe-area-top) + 18px);
-						left: calc(var(--ion-safe-area-left) + 80px);
-						transform: translateY(0);
+						top: calc(var(--ion-safe-area-top) + 21px);
+						left: calc(var(--ion-safe-area-left) + 84px);
+						width: 70%;
+
+						animation: song-info-fade-small 375ms cubic-bezier(0.32, 0.885, 0.55, 1);
 
 						& .song-details {
 							& > h1 {
@@ -807,54 +803,19 @@ useEventListener("resize", update);
 						}
 					}
 
-					:deep(& .context-menu-item:has(.song-details)),
-					:deep(& .context-menu:has(.song-details)) {
-						width: 90%;
-
+					&:has(.context-menu) {
 						& .options ion-item > ion-label {
 							display: flex;
 							flex-direction: column;
 						}
 
-						&.opened .song-details {
+						& .song-details {
 							& > h1 {
 								opacity: 80%;
 							}
+
 							& > h2 {
 								opacity: 50%;
-							}
-						}
-
-						& .song-details {
-							overflow: hidden;
-							white-space: nowrap;
-							color: white;
-
-							& > h1,
-							& > h2 {
-								transition: opacity 250ms ease;
-								cursor: pointer;
-								& .wrapping {
-									mask-image: linear-gradient(to right, transparent, black 10% 90%, transparent);
-								}
-							}
-
-							& > h1 {
-								--marquee-duration: 20s;
-								--marquee-gap: 12px;
-
-								font-size: 1.45rem;
-								font-weight: 700;
-								margin: 0;
-							}
-
-							& > h2 {
-								overflow: hidden;
-
-								font-size: 1.25rem;
-								font-weight: 550;
-								margin: 0;
-								opacity: 80%;
 							}
 						}
 					}

@@ -242,16 +242,12 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		yield* service.getArtistsSongs(artist);
 	}
 
-	function canGetLyrics(): boolean {
-		return lyricsServices.enabledServices.length > 0;
-	}
+	const canGetLyrics = computed(() => lyricsServices.enabledServices.length > 0);
 	async function getLyrics(song: Song): Promise<Maybe<Lyrics>> {
 		return await lyricsServices.getLyricsFromSong(song);
 	}
 
-	function canGetMetadata(): boolean {
-		return metadataServices.enabledServices.length > 0;
-	}
+	const canGetMetadata = computed(() => metadataServices.enabledServices.length > 0);
 	async function getMetadata(lookup: MetadataLookup): Promise<Maybe<Metadata>> {
 		return await metadataServices.getMetadata(lookup);
 	}
