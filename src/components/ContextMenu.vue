@@ -377,6 +377,7 @@ watch(
 			calc(var(--item-top) - (var(--item-height) / 2) + 0.001px),
 			var(--item-max-top)
 		);
+		left: clamp(8px, var(--item-left), calc(100vw - var(--item-width)));
 	}
 
 	@media screen and (max-width: 640px) {
@@ -412,8 +413,6 @@ watch(
 			var(--transition-duration) var(--transition-easing);
 		display: flex;
 		flex-direction: column;
-
-		interpolate-size: allow-keywords;
 
 		width: var(--item-width);
 		height: var(--item-height);

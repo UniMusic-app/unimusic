@@ -693,11 +693,6 @@ function toggleView(view: "queue" | "lyrics"): void {
 						padding-bottom: 12px;
 					}
 
-					:deep(& .context-menu-item),
-					:deep(& .context-menu:not(.opened)) {
-						content-visibility: auto;
-					}
-
 					:deep(& .context-menu-item .song-item),
 					:deep(& .context-menu:not(.opened) .song-item) {
 						--background: transparent;
