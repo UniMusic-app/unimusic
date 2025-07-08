@@ -51,7 +51,7 @@ if (isMobilePlatform() && event === "contextmenu") {
 					return;
 				}
 			}
-			await openContextMenu();
+			await openContextMenu(event);
 		},
 		{ delay: 200, modifiers: { prevent: true } },
 	);
@@ -71,6 +71,9 @@ const initialStyle = {
 	"--item-height": "auto",
 	"--item-max-height": "auto",
 
+	"--mouse-x": "auto",
+	"--mouse-y": "auto",
+
 	"--flex-direction": "column",
 	"--flex-align": "start",
 	"--direction-y": "top",
@@ -85,7 +88,7 @@ function resetStyle(): void {
 	Object.assign(style, initialStyle);
 }
 
-async function openContextMenu(): Promise<void> {
+async function openContextMenu(event: PointerEvent): Promise<void> {
 	if (disabled) return;
 
 	if (haptics) {
@@ -109,6 +112,9 @@ async function openContextMenu(): Promise<void> {
 
 	// We first reset all styles and recalculate what's appropriate now
 	resetStyle();
+
+	style["--mouse-y"] = `${event.pageY}px`;
+	style["--mouse-x"] = `${event.pageX}px`;
 
 	let itemTop = itemRect.top;
 	if (!move) {
@@ -204,7 +210,7 @@ function immediatelyCloseContextMenu(): void {
 	emit("visibilitychange", false);
 }
 
-async function toggleContextMenu(): Promise<void> {
+async function toggleContextMenu(event: PointerEvent): Promise<void> {
 	switch (state.value) {
 		case "opening":
 		case "opened":
@@ -212,7 +218,7 @@ async function toggleContextMenu(): Promise<void> {
 			break;
 		case "closing":
 		case "closed":
-			await openContextMenu();
+			await openContextMenu(event);
 			break;
 	}
 }
@@ -377,7 +383,16 @@ watch(
 			calc(var(--item-top) - (var(--item-height) / 2) + 0.001px),
 			var(--item-max-top)
 		);
-		left: clamp(8px, var(--item-left), calc(100vw - var(--item-width)));
+	}
+
+	@media screen and (min-width: 640px) {
+		&.opened.move .preview-container {
+			left: clamp(
+				8px,
+				calc(var(--mouse-x) - (var(--move-item-width) / 2)),
+				calc(100vw - var(--move-item-width) - 8px)
+			);
+		}
 	}
 
 	@media screen and (max-width: 640px) {
@@ -393,14 +408,14 @@ watch(
 			left: clamp(
 				8px,
 				calc((100vw - var(--move-item-width)) / 2),
-				calc(100vw - var(--move-item-width))
+				calc(100vw - var(--move-item-width) - 8px)
 			);
 		}
 		&.opened.move.right .preview-container {
 			right: clamp(
 				8px,
 				calc((100vw - var(--move-item-width)) / 2),
-				calc(100vw - var(--move-item-width))
+				calc(100vw - var(--move-item-width) - 8px)
 			);
 		}
 	}
