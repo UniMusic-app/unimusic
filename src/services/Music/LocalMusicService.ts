@@ -216,7 +216,7 @@ export class LocalMusicService extends MusicService<"local"> {
 				localSongs.delete(filePath);
 			}
 
-			if (this.services.canGetMetadata()) {
+			if (this.services.canGetMetadata) {
 				const promises: Promise<LocalSong>[] = [];
 				for (const song of missingMetadata) {
 					const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
@@ -574,10 +574,10 @@ export class LocalMusicService extends MusicService<"local"> {
 			}
 		}
 
-		for (const [i, album] of localAlbums.entries()) {
+		for (const album of localAlbums.values()) {
 			// Remove albums with no songs
 			if (album.songs.length === 0) {
-				album.songs.splice(i, 1);
+				removeFromCache(album);
 				continue;
 			}
 
