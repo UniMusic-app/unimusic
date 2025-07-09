@@ -237,20 +237,19 @@ export const useMusicPlayer = defineStore("MusicPlayer", () => {
 	function addMusicSessionActionHandlers(): void {
 		if (!("mediaSession" in navigator)) return;
 
-		navigator.mediaSession.setActionHandler("pause", async () => {
-			await pause();
-			navigator.mediaSession.playbackState = "paused";
+		navigator.mediaSession.setActionHandler("seekto", async (details) => {
+			if (details.seekTime) {
+				await seekToTime(details.seekTime);
+			}
 		});
-		navigator.mediaSession.setActionHandler("play", async () => {
-			await play();
-			navigator.mediaSession.playbackState = "playing";
-		});
-		navigator.mediaSession.setActionHandler("previoustrack", async () => {
-			await skipPrevious();
-		});
-		navigator.mediaSession.setActionHandler("nexttrack", async () => {
-			await skipNext();
-		});
+
+		navigator.mediaSession.setActionHandler("pause", pause);
+		navigator.mediaSession.setActionHandler("play", play);
+
+		navigator.mediaSession.setActionHandler("seekbackward", null);
+		navigator.mediaSession.setActionHandler("seekforward", null);
+		navigator.mediaSession.setActionHandler("previoustrack", hasPrevious.value ? skipPrevious : null);
+		navigator.mediaSession.setActionHandler("nexttrack", hasNext.value ? skipNext : null);
 	}
 	// #endregion
 
