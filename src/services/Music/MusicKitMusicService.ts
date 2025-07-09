@@ -725,6 +725,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	}
 
 	async handleGetPlaylistFromUrl(url: URL): Promise<Maybe<Playlist>> {
+		const music = this.music!;
 		let endpoint: string | undefined;
 
 		const { pathname } = url;
@@ -753,7 +754,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			return;
 		}
 
-		const response = await this.music!.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
+		const response = await music.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
 			`${endpoint}/${musicKitId}`,
 			{
 				extend: ["editorialArtwork", "editorialVideo", "offers"],
@@ -780,13 +781,33 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		}
 
 		const tracks = playlist.relationships?.tracks.data ?? [];
-		const songs = await Promise.all(
-			tracks.map(async (track) => {
-				const song = await musicKitSong(track);
-				cache(song);
-				return getKey(song);
-			}),
-		);
+		const songs = tracks.map((track) => {
+			const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
+			const song = cached ?? cache(musicKitSongPreview(track));
+			return getKey(song);
+		});
+
+		// Playlist has more than 100 tracks, fetch them all
+		if (playlist.relationships?.tracks.next) {
+			let tracksResponse = await music.api.music<MusicKit.SongsResponse>(
+				playlist.relationships?.tracks.next,
+			);
+
+			while (true) {
+				const tracks = tracksResponse?.data?.data;
+				if (!tracks) break;
+
+				for (const track of tracks) {
+					const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
+					const songPreview: MusicKitSongPreview = cached ?? cache(musicKitSongPreview(track));
+					songs.push(getKey(songPreview));
+				}
+
+				if (!tracksResponse.data.next) break;
+
+				tracksResponse = await music.api.music(tracksResponse.data.next);
+			}
+		}
 
 		return cache<Playlist>({
 			type: "unimusic",
