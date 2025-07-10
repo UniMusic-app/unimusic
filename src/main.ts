@@ -42,13 +42,17 @@ import { getPlatform, isMobilePlatform } from "./utils/os";
 /* Vue store */
 const pinia = createPinia();
 
+/* Globals */
 declare global {
 	var __IS_ELECTRON__: boolean;
 
 	var __SERVICE_LOCAL__: boolean;
 	var __SERVICE_YOUTUBE__: boolean;
 	var __SERVICE_MUSICKIT__: boolean;
+
+	var APP_USER_AGENT: string;
 }
+globalThis.APP_USER_AGENT = `${import.meta.env.VITE_APP_NAME}/${import.meta.env.VITE_APP_VERSION} (https://github.com/unimusic-app/unimusic)`;
 
 async function main(): Promise<void> {
 	if (__IS_ELECTRON__) {

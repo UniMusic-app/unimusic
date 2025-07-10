@@ -261,6 +261,33 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 		display: block;
 		text-wrap: pretty;
 	}
+
+	& #playlist-preview {
+		margin-top: 12px;
+		padding: 0.5rem;
+		border-radius: 12px 12px 0 0;
+		background-color: var(--ion-color-light);
+		animation: appear 750ms;
+		text-align: center;
+
+		& > #preview-headline {
+			font-size: 2.25rem;
+			padding-bottom: 0.5rem;
+			color: var(--ion-color-medium);
+		}
+
+		& > ion-list {
+			background: transparent;
+
+			:global(& ion-item) {
+				--background: var(--ion-color-light);
+			}
+
+			:global(& .context-menu-item ion-item ion-note) {
+				--color: var(--ion-color-medium);
+			}
+		}
+	}
 }
 
 @keyframes appear {
@@ -272,33 +299,6 @@ async function canDismiss(data?: "importedPlaylist"): Promise<boolean> {
 	to {
 		transform: scale(100%) translateY(0px);
 		opacity: 1;
-	}
-}
-
-#playlist-preview {
-	margin-top: 12px;
-	padding: 0.5rem;
-	border-radius: 12px 12px 0 0;
-	background-color: var(--ion-color-light);
-	animation: appear 750ms;
-	text-align: center;
-
-	& > #preview-headline {
-		font-size: 2.25rem;
-		padding-bottom: 0.5rem;
-		color: var(--ion-color-medium);
-	}
-
-	& > ion-list {
-		background: transparent;
-
-		:global(& ion-item) {
-			--background: transparent;
-		}
-
-		:global(& ion-item ion-note) {
-			--color: var(--ion-color-medium);
-		}
 	}
 }
 </style>

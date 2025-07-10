@@ -78,6 +78,24 @@ export function extractDisplayableArtists(
 	return keys;
 }
 
+export function extractISRC(
+	data?:
+		| MusicKit.Songs
+		| MusicKit.LibrarySongs
+		| MusicKit.MusicVideos
+		| MusicKit.LibrarySongsRelationships,
+): Maybe<string> {
+	if (!data) return;
+
+	if ("id" in data) {
+		return data.attributes?.isrc;
+	}
+
+	for (const song of data.catalog.data) {
+		if (song.attributes?.isrc) return song.attributes.isrc;
+	}
+}
+
 export function extractCatalogId(
 	data?:
 		| string
@@ -86,9 +104,7 @@ export function extractCatalogId(
 		| MusicKit.MusicVideos
 		| MusicKit.LibrarySongsRelationships,
 ): Maybe<string> {
-	if (!data) {
-		return;
-	}
+	if (!data) return;
 
 	if (typeof data === "string") {
 		if (musicKitIdType(data) === "catalog") {
@@ -177,7 +193,7 @@ export function musicKitSongPreview(
 	const genres = extractGenres(relationships?.genres?.data ?? attributes?.genreNames);
 	const explicit = song.attributes?.contentRating === "explicit";
 	const available = typeof song.attributes?.playParams === "object";
-
+	const isrc = extractISRC(relationships && "catalog" in relationships ? relationships : song);
 	const catalogId = extractCatalogId(
 		relationships && "catalog" in relationships ? relationships : song,
 	);
@@ -200,6 +216,7 @@ export function musicKitSongPreview(
 		artwork,
 
 		data: {
+			isrc,
 			catalogId,
 			musicVideo: song.type === "music-videos",
 		},
@@ -245,6 +262,7 @@ export async function musicKitPreviewToSong(
 		artwork,
 
 		data: {
+			isrc: songPreview.data?.isrc,
 			catalogId,
 			musicVideo: songPreview.data?.musicVideo,
 		},
@@ -261,7 +279,7 @@ export async function musicKitSong(
 	const genres = extractGenres(relationships?.genres?.data ?? attributes?.genreNames);
 	const explicit = song.attributes?.contentRating === "explicit";
 	const available = typeof song.attributes?.playParams === "object";
-
+	const isrc = extractISRC(relationships && "catalog" in relationships ? relationships : song);
 	const catalogId = extractCatalogId(
 		relationships && "catalog" in relationships ? relationships : song,
 	);
@@ -284,6 +302,7 @@ export async function musicKitSong(
 		artwork,
 
 		data: {
+			isrc,
 			catalogId,
 			musicVideo: song.type === "music-videos",
 		},
@@ -816,6 +835,12 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			title,
 			artwork,
 			songs,
+			data: {
+				importInfo: {
+					service: "musickit",
+					playlistId: playlist.id,
+				},
+			},
 		});
 	}
 
@@ -959,6 +984,31 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		if (cached) return cached;
 
 		return cache(await musicKitPreviewToSong(songPreview));
+	}
+
+	async handleGetSongFromIsrcs(isrcs: string[]): Promise<Maybe<MusicKitSong>> {
+		if (isrcs.length === 0) return;
+
+		const response = await this.music!.api.music<
+			MusicKit.SongsResponse | MusicKit.LibrarySongsResponse
+		>(`/v1/catalog/{{storefrontId}}/songs`, {
+			"filter[isrc]": isrcs[0],
+			include: ["artists", "catalog"],
+		});
+
+		const [song] = response.data.data;
+		if (!song) return undefined;
+
+		return cache(musicKitSong(song));
+	}
+
+	async handleGetIsrcsFromSong(songPreview: MusicKitSongPreview): Promise<string[]> {
+		if (songPreview.data?.isrc) return [songPreview.data.isrc];
+
+		const song = await this.handleGetSong(songPreview.id, false);
+		if (song.data.isrc) return [song.data.isrc];
+
+		return [];
 	}
 
 	async handleGetSong(songId: string, useCache = true): Promise<MusicKitSong> {

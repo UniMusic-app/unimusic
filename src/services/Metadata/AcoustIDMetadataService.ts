@@ -13,7 +13,6 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 
 const MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/";
 const ACOUSTID_ENDPOINT = "https://api.acoustid.org/v2/lookup";
-const APP_USER_AGENT = `${import.meta.env.VITE_APP_NAME}/${import.meta.env.VITE_APP_VERSION} (https://github.com/unimusic-app/unimusic)`;
 
 const cachedMetadata = await useIDBKeyvalAsync<Record<string, Metadata>>(
 	"acoustIdMetadataCache",
@@ -112,6 +111,7 @@ export class AcoustIDMetadataService extends MusicBrainzParsingMetadataService {
 				this.log("Got metadata from fingerprint");
 
 				const metadata: Metadata = {
+					musicbrainzId: recording.id,
 					title: recording.title,
 					album: recording.releasegroups.find((group) => group.type === "Album")?.title,
 				};

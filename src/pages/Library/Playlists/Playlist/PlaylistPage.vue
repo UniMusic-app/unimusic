@@ -1,11 +1,13 @@
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 
 import AppPage from "@/components/AppPage.vue";
+import ContextMenu from "@/components/ContextMenu.vue";
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import LocalImg from "@/components/LocalImg.vue";
 import WrappingMarquee from "@/components/WrappingMarquee.vue";
-import PlaylistEditModal, { PlaylistEditEvent } from "../components/PlaylistEditModal.vue";
+import PlaylistEditModal from "../components/PlaylistEditModal.vue";
 
 import {
 	ActionSheetButton,
@@ -15,6 +17,7 @@ import {
 	IonHeader,
 	IonIcon,
 	IonItem,
+	IonItemDivider,
 	IonList,
 	IonNote,
 	IonTitle,
@@ -23,8 +26,11 @@ import {
 } from "@ionic/vue";
 import {
 	listOutline as addSongToQueueIcon,
+	swapHorizontalOutline as convertIcon,
+	pieChartOutline as convertStatusIcon,
 	trashOutline as deleteIcon,
 	pencil as editIcon,
+	ellipsisHorizontal as ellipsisIcon,
 	play as playIcon,
 	playOutline as playSongNextIcon,
 	shuffle as shuffleIcon,
@@ -42,7 +48,7 @@ import { useMusicPlayer } from "@/stores/music-player";
 import { useNavigation } from "@/stores/navigation";
 import { Maybe } from "@/utils/types";
 import { watchAsync } from "@/utils/vue";
-import { useRoute } from "vue-router";
+import PlaylistConvertModal from "../components/PlaylistConvertModal.vue";
 
 const musicPlayer = useMusicPlayer();
 const navigation = useNavigation();
@@ -54,11 +60,21 @@ const service = ref<MusicService>();
 
 const supports = computed(() => {
 	const isUniMusic = playlist.value?.type === "unimusic";
+	const isMusicKit = playlist.value?.type === "musickit";
 
 	return {
 		edit: isUniMusic || !!service?.value?.handleModifyPlaylist,
 		delete: isUniMusic || !!service?.value?.handleDeletePlaylist,
+		convert: isMusicKit,
+		convertStatus: isUniMusic && playlist.value?.data?.convert,
 	};
+});
+
+const opened = reactive({
+	edit: false,
+	delete: false,
+	convert: false,
+	convertStatus: false,
 });
 
 const forceUpdate = ref(0);
@@ -125,17 +141,6 @@ async function playPlaylist(shuffle = false): Promise<void> {
 	musicPlayer.state.queueIndex = 0;
 }
 
-async function editPlaylist(event: PlaylistEditEvent): Promise<void> {
-	if (!playlist.value) return;
-
-	if (service.value) {
-		await service.value.modifyPlaylist(playlist.value.id, event);
-	} else {
-		Object.assign(musicPlayer.state.playlists[playlist.value.id]!, event);
-		forceUpdate.value += 1;
-	}
-}
-
 function onDeleteActionDismiss(event: CustomEvent): void {
 	if (typeof event.detail !== "object" || !playlist.value) return;
 
@@ -150,28 +155,86 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 	<AppPage :title="playlist?.title" :show-content-header="false">
 		<template #toolbar-end>
 			<ion-buttons>
-				<ion-button v-if="supports.edit" id="edit-playlist">
-					<ion-icon slot="icon-only" :icon="editIcon" />
-				</ion-button>
-				<ion-button v-if="supports.delete" id="delete-playlist">
-					<ion-icon slot="icon-only" :icon="deleteIcon" />
-				</ion-button>
+				<ContextMenu
+					v-if="supports.edit || supports.delete || supports.convert"
+					event="click"
+					:move="false"
+					:backdrop="false"
+					:haptics="false"
+				>
+					<ion-button>
+						<ion-icon slot="icon-only" :icon="ellipsisIcon" />
+					</ion-button>
+
+					<template #options>
+						<ion-item
+							v-if="supports.edit"
+							@click="opened.edit = !opened.edit"
+							button
+							aria-label="Edit playlist"
+							lines="full"
+							:detail="false"
+						>
+							Edit
+							<ion-icon slot="end" :icon="editIcon" />
+						</ion-item>
+
+						<ion-item
+							v-if="supports.delete"
+							@click="opened.delete = !opened.delete"
+							button
+							aria-label="Delete playlist"
+							lines="full"
+							:detail="false"
+						>
+							Delete
+							<ion-icon slot="end" :icon="deleteIcon" />
+						</ion-item>
+
+						<ion-item-divider
+							v-if="(supports.edit || supports.delete) && (supports.convert || supports.convertStatus)"
+						/>
+
+						<ion-item
+							v-if="supports.convert"
+							@click="opened.convert = !opened.convert"
+							button
+							aria-label="Convert playlist"
+							lines="full"
+							:detail="false"
+						>
+							Convert playlist
+							<ion-icon slot="end" :icon="convertIcon" />
+						</ion-item>
+					</template>
+				</ContextMenu>
 			</ion-buttons>
 		</template>
 
 		<ion-action-sheet
 			v-if="playlist && supports.delete"
-			trigger="delete-playlist"
+			:is-open="opened.delete"
 			:header="`Are you sure you want to delete playlist ${playlist.title}?`"
 			:buttons="deleteActionSheetButtons"
 			@didDismiss="onDeleteActionDismiss"
 		/>
 
 		<PlaylistEditModal
-			v-if="playlist && supports.edit"
+			v-if="playlist && service && supports.edit"
 			:playlist
-			trigger="edit-playlist"
-			@change="editPlaylist"
+			:service
+			:is-open="opened.edit"
+			@dismiss="opened.edit = false"
+			@change="forceUpdate += 1"
+		/>
+
+		<PlaylistConvertModal
+			v-if="playlist && service && supports.convert"
+			:playlist
+			:service
+			:is-open="opened.convert"
+			@dismiss="opened.convert = false"
+			@change="forceUpdate += 1"
 		/>
 
 		<div id="playlist-content" v-if="playlist">

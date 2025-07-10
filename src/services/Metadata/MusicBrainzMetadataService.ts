@@ -7,7 +7,6 @@ import { MusicBrainzResponse } from "./shared/MusicBrainz";
 import { MusicBrainzParsingMetadataService } from "./shared/MusicBrainzParsingService";
 
 const MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/";
-const APP_USER_AGENT = `${import.meta.env.VITE_APP_NAME}/${import.meta.env.VITE_APP_VERSION} (https://github.com/unimusic-app/unimusic)`;
 
 const cachedMetadata = await useIDBKeyvalAsync<Record<string, Metadata>>(
 	"musicBrainzMetadataCache",

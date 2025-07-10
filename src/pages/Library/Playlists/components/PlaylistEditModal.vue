@@ -1,14 +1,10 @@
-<script lang="ts">
-import { PlaylistModifications } from "@/services/Music/MusicService";
-import { Filled, Playlist } from "@/services/Music/objects";
-
-export type PlaylistEditEvent = PlaylistModifications;
-</script>
-
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from "vue";
 
 import LocalImagePicker from "@/components/LocalImagePicker.vue";
+import { MusicService, PlaylistModifications } from "@/services/Music/MusicService";
+import { Filled, Playlist } from "@/services/Music/objects";
+import { useMusicPlayer } from "@/stores/music-player";
 import {
 	actionSheetController,
 	IonButton,
@@ -25,12 +21,14 @@ import {
 
 import { stateSnapshot, usePresentingElement } from "@/utils/vue";
 
-const { trigger, playlist } = defineProps<{
-	trigger: string;
+const musicPlayer = useMusicPlayer();
+
+const emit = defineEmits<{ change: []; dismiss: [] }>();
+
+const { isOpen, service, playlist } = defineProps<{
+	isOpen: boolean;
+	service: MusicService;
 	playlist: Filled<Playlist>;
-}>();
-const emit = defineEmits<{
-	change: [PlaylistEditEvent];
 }>();
 
 const modal = useTemplateRef("modal");
@@ -41,7 +39,7 @@ const artwork = ref(playlist.artwork);
 const modified = ref(false);
 const canEdit = computed(() => !!playlistTitle.value && modified.value);
 
-function edit(): void {
+async function edit(): Promise<void> {
 	if (!canEdit.value) return;
 
 	const modifications: PlaylistModifications = {};
@@ -54,13 +52,18 @@ function edit(): void {
 		modifications.title = playlistTitle.value;
 	}
 
-	emit("change", modifications);
+	if (service) {
+		await service.modifyPlaylist(playlist.id, modifications);
+	} else {
+		Object.assign(musicPlayer.state.playlists[playlist.id]!, modifications);
+		emit("change");
+	}
 
-	modal.value?.$el.dismiss("editedPlaylist");
+	dismiss("editedPlaylist");
 }
 
-function dismiss(): void {
-	modal.value?.$el.dismiss();
+function dismiss(reason?: string): void {
+	modal.value?.$el.dismiss(reason);
 }
 
 async function canDismiss(reason?: "editedPlaylist"): Promise<boolean> {
@@ -89,7 +92,14 @@ async function canDismiss(reason?: "editedPlaylist"): Promise<boolean> {
 </script>
 
 <template>
-	<ion-modal ref="modal" :trigger :presenting-element="presentingElement" :can-dismiss="canDismiss">
+	<ion-modal
+		ref="modal"
+		:is-open
+		:presenting-element="presentingElement"
+		:can-dismiss="canDismiss"
+		@will-present="playlistTitle = playlist.title"
+		@did-dismiss="emit('dismiss')"
+	>
 		<ion-header>
 			<ion-toolbar>
 				<ion-buttons slot="start">

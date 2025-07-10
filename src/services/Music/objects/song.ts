@@ -5,6 +5,7 @@ import type { Filled, Identifiable, ItemKey } from "./shared";
 type SongTypes = {
 	youtube: { albumId?: string };
 	musickit: {
+		isrc?: string;
 		catalogId?: string;
 		musicVideo?: boolean;
 	};
@@ -12,6 +13,7 @@ type SongTypes = {
 		path: string;
 		discNumber?: number;
 		trackNumber?: number;
+		musicbrainzId?: string;
 		isrc?: string[];
 		hasMetadata: boolean;
 		includedMetadata: boolean;

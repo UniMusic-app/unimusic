@@ -286,6 +286,7 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		canGetLyrics,
 		getLyrics,
 
+		metadataServices,
 		canGetMetadata,
 		getMetadata,
 

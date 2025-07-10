@@ -5,7 +5,6 @@ import { Metadata, MetadataLookup, MetadataService } from "../MetadataService";
 import { MusicBrainzResponse } from "./MusicBrainz";
 
 const COVERARTARCHIVE_ENDPOINT = "https://coverartarchive.org/";
-const APP_USER_AGENT = `${import.meta.env.VITE_APP_NAME}/${import.meta.env.VITE_APP_VERSION} (https://github.com/unimusic-app/unimusic)`;
 
 export abstract class MusicBrainzParsingMetadataService extends MetadataService {
 	async getArtwork(
@@ -29,7 +28,6 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 		}
 
 		const image = await response.blob();
-		console.log(image);
 
 		const localImages = useLocalImages();
 		await localImages.associateImage(lookup.id, image);
@@ -59,6 +57,7 @@ export abstract class MusicBrainzParsingMetadataService extends MetadataService 
 		const releaseGroup = release["release-group"];
 
 		const metadata: Metadata = {
+			musicbrainzId: recording.id,
 			title: recording.title,
 		};
 
