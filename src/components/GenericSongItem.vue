@@ -26,22 +26,30 @@ const {
 	title,
 	type,
 	kind,
+	lines,
 	artists,
 	album,
 	artwork,
 	duration,
 	reorder,
 	disabled,
+	disabledContextMenu,
+	fallbackIcon,
 	routerLink,
 	song,
+	description,
 } = defineProps<
 	Pick<Partial<Song>, "type" | "duration" | "album" | "artists" | "artwork" | "title"> & {
 		kind?: "song" | "songPreview";
 		reorder?: boolean;
 		button?: boolean;
+		lines?: "full" | "inset" | "none";
 		disabled?: boolean;
+		disabledContextMenu?: boolean;
+		fallbackIcon?: string;
 		routerLink?: string;
 		song?: Song | SongPreview;
+		description?: string;
 	}
 >();
 
@@ -72,16 +80,18 @@ function emitClick(event: PointerEvent): void {
 
 <template>
 	<ContextMenu
-		:class="$props.class"
 		ref="contextMenu"
-		@visibilitychange="contextMenuOpen = $event"
 		position="top"
+		:class="$props.class"
+		:disabled="disabledContextMenu"
+		@visibilitychange="contextMenuOpen = $event"
 	>
 		<ion-item
 			:router-link
 			:button
 			:disabled
 			:detail="contextMenuOpen"
+			:lines
 			@click="emitClick"
 			class="song-item"
 			:class="$attrs.class"
@@ -90,7 +100,7 @@ function emitClick(event: PointerEvent): void {
 				slot="start"
 				:src="artwork"
 				:alt="`Artwork for song '${title}' by ${formattedArtists}`"
-				:fallback-icon="songIcon"
+				:fallback-icon="fallbackIcon ?? songIcon"
 			/>
 
 			<ion-label>
@@ -115,6 +125,9 @@ function emitClick(event: PointerEvent): void {
 					</template>
 					<template v-else-if="duration">
 						<p>{{ formattedDuration }}</p>
+					</template>
+					<template v-else-if="description">
+						<p>{{ description }}</p>
 					</template>
 				</ion-note>
 			</ion-label>

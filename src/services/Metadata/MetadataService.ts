@@ -4,6 +4,7 @@ import { Maybe } from "@/utils/types";
 import { computed, ref } from "vue";
 
 export interface Metadata {
+	musicbrainzId?: string;
 	isrc?: string[];
 
 	title?: string;

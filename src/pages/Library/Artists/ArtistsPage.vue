@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useLocalStorage } from "@vueuse/core";
-import { onUpdated, ref } from "vue";
+import { onMounted, ref } from "vue";
 
 import AppPage from "@/components/AppPage.vue";
 import SkeletonItem from "@/components/SkeletonItem.vue";
@@ -14,7 +14,7 @@ const musicPlayer = useMusicPlayer();
 
 const libraryArtists = useLocalStorage<(Artist | ArtistPreview)[]>("libraryArtists", []);
 const isLoading = ref(libraryArtists.value.length === 0);
-onUpdated(async () => {
+onMounted(async () => {
 	isLoading.value = true;
 	const artists: (Artist | ArtistPreview)[] = [];
 	for await (const artist of musicPlayer.services.libraryArtists()) {

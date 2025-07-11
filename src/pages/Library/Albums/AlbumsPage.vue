@@ -7,7 +7,7 @@ import {
 	IonRefresherContent,
 	RefresherCustomEvent,
 } from "@ionic/vue";
-import { onUpdated, ref, shallowRef } from "vue";
+import { onMounted, ref, shallowRef } from "vue";
 
 import AppPage from "@/components/AppPage.vue";
 
@@ -23,7 +23,7 @@ const musicPlayer = useMusicPlayer();
 const iterator = shallowRef<AsyncGenerator<Album | AlbumPreview>>();
 const libraryAlbums = useLocalStorage<(Album | AlbumPreview)[]>("libraryAlbums", []);
 const isLoading = ref(libraryAlbums.value.length === 0);
-onUpdated(async () => {
+onMounted(async () => {
 	isLoading.value = true;
 	iterator.value = musicPlayer.services.libraryAlbums();
 	const albums: (Album | AlbumPreview)[] = [];

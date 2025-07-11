@@ -118,7 +118,7 @@ async function openContextMenu(event: PointerEvent): Promise<void> {
 
 	let itemTop = itemRect.top;
 	if (!move) {
-		itemTop += itemRect.height;
+		itemTop += itemRect.height + 16;
 	}
 	style["--item-top"] = `${itemTop}px`;
 	style["--item-max-top"] =

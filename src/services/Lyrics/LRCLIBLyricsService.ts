@@ -4,7 +4,6 @@ import { filledDisplayableArtist, Song, SongPreview, SongType } from "../Music/o
 import { Lyrics, LyricsService, parseLyricsLines, parseSyncLyricsLines } from "./LyricsService";
 
 const LRCLIB_ENDPOINT = "https://lrclib.net/api/";
-const APP_USER_AGENT = `${import.meta.env.VITE_APP_NAME}/${import.meta.env.VITE_APP_VERSION} (https://github.com/unimusic-app/unimusic)`;
 
 interface LRCLIBGetResponse {
 	id: number;

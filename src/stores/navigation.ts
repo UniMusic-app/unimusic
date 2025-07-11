@@ -7,6 +7,8 @@ import {
 	Artist,
 	ArtistPreview,
 	filledDisplayableArtist,
+	Playlist,
+	PlaylistPreview,
 	Song,
 	SongPreview,
 } from "@/services/Music/objects";
@@ -50,11 +52,16 @@ export const useNavigation = defineStore("Navigation", () => {
 		ionRouter.push(`/items/artists/${artist.type}/${artist.id}`);
 	}
 
+	function goToPlaylist(playlist: Playlist | PlaylistPreview): void {
+		ionRouter.push(`/items/playlists/${playlist.type}/${playlist.id}`);
+	}
+
 	return {
 		goToSong,
 		goToAlbum,
 		goToSongsAlbum,
 		goToArtist,
 		goToSongsArtist,
+		goToPlaylist,
 	};
 });

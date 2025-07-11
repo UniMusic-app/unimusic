@@ -15,6 +15,17 @@ export const useMetadataServices = defineStore("MetadataServices", () => {
 		registeredServices[service.name] = service;
 	}
 
+	function getService(type?: string): Maybe<MetadataService> {
+		if (!type) {
+			return;
+		}
+
+		const service = registeredServices[type];
+		if (service?.enabled?.value) {
+			return service;
+		}
+	}
+
 	async function getMetadata(lookup: MetadataLookup): Promise<Maybe<Metadata>> {
 		for (const service of enabledServices.value) {
 			const metadata = service.getMetadata(lookup);
@@ -34,6 +45,7 @@ export const useMetadataServices = defineStore("MetadataServices", () => {
 		enabledServices,
 		registerService,
 
+		getService,
 		getMetadata,
 	};
 });

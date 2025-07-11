@@ -3,6 +3,19 @@ import { getCachedFromKey } from "./cache";
 import { Filled, Identifiable } from "./shared";
 import type { SongKey, SongPreviewKey, SongType } from "./song";
 
+type PlaylistTypes = Record<SongType, undefined> & {
+	unimusic?: {
+		importInfo?: {
+			service: SongType;
+			playlistId: string;
+			sync: boolean;
+		};
+		convert?: {
+			to: SongType;
+		};
+	};
+};
+
 export type PlaylistType = SongType | "unimusic";
 export type PlaylistId = string;
 
@@ -15,6 +28,7 @@ export interface Playlist<Type extends PlaylistType = PlaylistType> extends Iden
 	artwork?: LocalImage;
 
 	songs: PlaylistSong<Type>[];
+	data?: PlaylistTypes[Type];
 }
 
 export type PlaylistSong<Type extends PlaylistType> = Type extends SongType
@@ -57,5 +71,7 @@ export function filledPlaylist(playlist: Playlist): Filled<Playlist> {
 			}
 			return cached;
 		}),
+
+		data: playlist.data,
 	};
 }

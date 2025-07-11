@@ -724,6 +724,13 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 			title,
 			artwork,
 			songs,
+			data: {
+				importInfo: {
+					service: "youtube",
+					playlistId: youtubeId,
+					sync: false,
+				},
+			},
 		});
 	}
 
