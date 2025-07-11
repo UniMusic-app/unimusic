@@ -8,9 +8,9 @@ type PlaylistTypes = Record<SongType, undefined> & {
 		importInfo?: {
 			service: SongType;
 			playlistId: string;
+			sync: boolean;
 		};
 		convert?: {
-			from: SongType;
 			to: SongType;
 		};
 	};
@@ -71,5 +71,7 @@ export function filledPlaylist(playlist: Playlist): Filled<Playlist> {
 			}
 			return cached;
 		}),
+
+		data: playlist.data,
 	};
 }

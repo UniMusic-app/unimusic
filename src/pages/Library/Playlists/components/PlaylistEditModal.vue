@@ -27,7 +27,7 @@ const emit = defineEmits<{ change: []; dismiss: [] }>();
 
 const { isOpen, service, playlist } = defineProps<{
 	isOpen: boolean;
-	service: MusicService;
+	service?: MusicService;
 	playlist: Filled<Playlist>;
 }>();
 

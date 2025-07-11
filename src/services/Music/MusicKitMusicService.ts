@@ -837,6 +837,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			songs,
 			data: {
 				importInfo: {
+					sync: false,
 					service: "musickit",
 					playlistId: playlist.id,
 				},

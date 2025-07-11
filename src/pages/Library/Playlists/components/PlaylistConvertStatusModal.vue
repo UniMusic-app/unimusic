@@ -1,24 +1,26 @@
 <script lang="ts" setup>
-import { computed, ref, shallowRef, useTemplateRef } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 
 import {
 	arrowForward as arrowRightIcon,
 	swapHorizontalOutline as convertIcon,
 	checkmarkOutline as matchingIcon,
 	closeCircleOutline as missingIcon,
+	refreshOutline as updateIcon,
 	hourglassOutline as waitingIcon,
 } from "ionicons/icons";
 
 import { MusicService } from "@/services/Music/MusicService";
 import {
 	Filled,
+	filledPlaylist,
+	getCachedFromKey,
 	getKey,
 	Identifiable,
 	Playlist,
 	Song,
 	SongKey,
 	SongPreview,
-	SongType,
 } from "@/services/Music/objects";
 import { useMusicPlayer } from "@/stores/music-player";
 import {
@@ -28,12 +30,9 @@ import {
 	IonContent,
 	IonHeader,
 	IonIcon,
-	IonInput,
 	IonItem,
 	IonList,
 	IonModal,
-	IonSelect,
-	IonSelectOption,
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
@@ -41,12 +40,9 @@ import {
 
 import GenericSongItem from "@/components/GenericSongItem.vue";
 import { useNavigation } from "@/stores/navigation";
-import { generateUUID } from "@/utils/crypto";
-import { songTypeToDisplayName } from "@/utils/songs";
-import { stateSnapshot, usePresentingElement } from "@/utils/vue";
+import { usePresentingElement } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
-const navigation = useNavigation();
 
 const emit = defineEmits<{ change: []; dismiss: [] }>();
 
@@ -65,17 +61,10 @@ const presentingElement = usePresentingElement();
 
 let abortController = new AbortController();
 const loading = ref(false);
-const canConvert = ref(false);
-const canCreate = ref(false);
-const playlistTitle = ref(playlist.title);
+const canUpdate = ref(true);
+const canApply = ref(false);
 
-const targetServiceType = shallowRef<SongType>();
-const supportedServices = computed(() =>
-	musicPlayer.services.enabledServices.filter(
-		(enabledService) =>
-			enabledService.type !== playlistService?.type && enabledService.handleGetIsrcsFromSong,
-	),
-);
+const targetServiceType = computed(() => playlist.data?.convert?.to);
 
 const converted = ref<
 	Map<Song | SongPreview, Song | (SongPreview & Identifiable) | "matching" | "loading" | "missing">
@@ -85,13 +74,39 @@ function dismiss(reason?: string): void {
 	modal.value?.$el.dismiss(reason);
 }
 
-async function convert(): Promise<void> {
-	if (!canConvert.value || !targetServiceType.value) return;
+async function load(): Promise<void> {
+	converted.value = new Map();
+	for (const song of playlist.songs) {
+		converted.value.set(song, song.type === targetServiceType.value ? "matching" : "missing");
+	}
+}
+
+async function update(): Promise<void> {
+	if (!canUpdate.value || !targetServiceType.value) return;
 
 	const abortSignal = abortController.signal;
 
 	loading.value = true;
-	canCreate.value = false;
+	canApply.value = false;
+	canUpdate.value = false;
+
+	const importInfo = playlist.data?.importInfo;
+	if (importInfo) {
+		const { playlistId, service, sync } = importInfo;
+		const sourceService = musicPlayer.services.getService(service);
+
+		if (!sourceService) {
+			console.error(`Failed to get service: ${service}, cannot sync playlist.`);
+		} else if (sync) {
+			const latestPlaylist = await sourceService.getPlaylist(playlistId);
+			if (!latestPlaylist) {
+				console.error(`Failed to fetch playlist ${playlistId}, cannot sync.`);
+			} else {
+				const filledLatestPlaylist = filledPlaylist(latestPlaylist);
+				playlist.songs = filledLatestPlaylist.songs;
+			}
+		}
+	}
 
 	const targetService = musicPlayer.services.getService(targetServiceType.value)!;
 
@@ -105,7 +120,7 @@ async function convert(): Promise<void> {
 		if (abortSignal.aborted) return;
 
 		const service = playlistService ?? musicPlayer.services.getService(song.type);
-		if (!service?.handleGetIsrcsFromSong || song.type === targetServiceType.value) {
+		if (!service?.handleGetIsrcsFromSong) {
 			continue;
 		}
 
@@ -120,20 +135,20 @@ async function convert(): Promise<void> {
 	}
 
 	loading.value = false;
-	canCreate.value = true;
+	canApply.value = true;
+	canUpdate.value = true;
 }
 
 function reset(): void {
 	abortController.abort();
 	loading.value = false;
-	targetServiceType.value = undefined;
-	canConvert.value = false;
-	canCreate.value = false;
+	canUpdate.value = true;
+	canApply.value = false;
 	abortController = new AbortController();
 }
 
-function create(): void {
-	if (!canConvert.value || !targetServiceType.value) return;
+function apply(): void {
+	if (!canUpdate.value || !targetServiceType.value) return;
 
 	const songs: SongKey[] = [];
 
@@ -146,44 +161,29 @@ function create(): void {
 		songs.push(getKey(targetSong));
 	}
 
-	const convertedPlaylist: Playlist<"unimusic"> = {
-		id: generateUUID(),
-		kind: "playlist",
-		type: "unimusic",
+	const localPlaylist = musicPlayer.state.getPlaylist(playlist.id)!;
+	localPlaylist.songs = songs;
 
-		title: playlistTitle.value,
-		artwork: stateSnapshot(playlist.artwork),
-		songs,
+	playlist.songs = songs.map((song) => {
+		const cached = getCachedFromKey(song);
+		if (!cached) {
+			throw new Error(`Tried to retrieve song ${song}, but it is not cached`);
+		}
+		return cached;
+	});
 
-		data: {
-			convert: { to: targetServiceType.value! },
-		},
-	};
-
-	if (playlistService) {
-		convertedPlaylist.data!.importInfo = {
-			playlistId: playlist.id,
-			service: playlistService?.type,
-			sync: true,
-		};
-	}
-
-	musicPlayer.state.addPlaylist(convertedPlaylist);
-
-	navigation.goToPlaylist(convertedPlaylist);
-
-	dismiss("convertedPlaylist");
+	dismiss("updatedPlaylist");
 }
 
-async function canDismiss(reason?: "convertedPlaylist"): Promise<boolean> {
-	if (reason === "convertedPlaylist" || !canConvert.value) return true;
+async function canDismiss(reason?: "updatedPlaylist"): Promise<boolean> {
+	if (reason === "updatedPlaylist" || !canUpdate.value) return true;
 
 	const actionSheet = await actionSheetController.create({
 		header: `Playlist ${playlist.title}`,
-		subHeader: "Are you sure you want to abort converting this playlist?",
+		subHeader: "Are you sure you want to abort updating this playlist?",
 		buttons: [
 			{ text: "Discard", role: "destructive", data: { action: "discard" } },
-			{ text: "Keep converting", role: "cancel", data: { action: "keep" } },
+			{ text: "Keep updating", role: "cancel", data: { action: "keep" } },
 		],
 	});
 
@@ -205,7 +205,7 @@ async function canDismiss(reason?: "convertedPlaylist"): Promise<boolean> {
 		:is-open
 		:presenting-element="presentingElement"
 		:can-dismiss="canDismiss"
-		@will-present="playlistTitle = playlist.title"
+		@will-present="load"
 		@did-dismiss="(emit('dismiss'), reset())"
 	>
 		<ion-header>
@@ -214,53 +214,32 @@ async function canDismiss(reason?: "convertedPlaylist"): Promise<boolean> {
 					<ion-button color="danger" @click="dismiss()">Cancel</ion-button>
 				</ion-buttons>
 
-				<ion-title>Convert Playlist</ion-title>
+				<ion-title>Convert Status</ion-title>
 
 				<ion-buttons slot="end">
-					<ion-button :disabled="!canCreate || loading" strong @click="create()">Create</ion-button>
+					<ion-button :disabled="!canApply" strong @click="apply()">Apply</ion-button>
 				</ion-buttons>
 			</ion-toolbar>
 		</ion-header>
 
-		<ion-content id="convert-playlist-content">
+		<ion-content id="convert-status-playlist-content">
 			<ion-list>
-				<ion-item>
-					<ion-input aria-label="Playlist Title" placeholder="Playlist Title" v-model="playlistTitle" />
-				</ion-item>
-
-				<ion-item>
-					<ion-select
-						label="Convert to"
-						placeholder="Local"
-						v-model="targetServiceType"
-						@ion-change="canConvert = !!$event.target.value"
-					>
-						<ion-select-option
-							v-for="service in supportedServices"
-							:value="service.type"
-							:key="service.type"
-						>
-							{{ songTypeToDisplayName(service.type) }}
-						</ion-select-option>
-					</ion-select>
-				</ion-item>
-
 				<ion-item lines="none">
-					<ion-button :disabled="!canConvert" size="default" strong @click="convert">
+					<ion-button :disabled="!canUpdate || loading" size="default" strong @click="update">
 						<template v-if="loading">
 							<ion-spinner slot="start" />
 							Loading...
 						</template>
 						<template v-else>
-							<ion-icon slot="start" :icon="convertIcon" />
-							Convert
+							<ion-icon slot="start" :icon="updateIcon" />
+							Update
 						</template>
 					</ion-button>
 				</ion-item>
 			</ion-list>
 
-			<div id="playlist-preview" v-if="loading || canCreate">
-				<h1>Preview</h1>
+			<div id="playlist-convert-status">
+				<h1>Status</h1>
 
 				<!-- TODO: Allow declining and manually choosing replacement -->
 				<ion-list>
@@ -314,7 +293,7 @@ async function canDismiss(reason?: "convertedPlaylist"): Promise<boolean> {
 								:button="false"
 								lines="none"
 								title="Matched"
-								description="Song is already using correct service"
+								description="Song is using target service"
 								:artwork="{ style: { bgColor: '#90ff90' } }"
 								:fallback-icon="matchingIcon"
 							/>
@@ -327,7 +306,7 @@ async function canDismiss(reason?: "convertedPlaylist"): Promise<boolean> {
 </template>
 
 <style scoped>
-#convert-playlist-content {
+#convert-status-playlist-content {
 	text-align: center;
 	display: flex;
 	flex-direction: column;
@@ -382,14 +361,14 @@ async function canDismiss(reason?: "convertedPlaylist"): Promise<boolean> {
 		}
 	}
 
-	& #playlist-preview {
+	& #playlist-convert-status {
 		margin-top: 12px;
 		padding: 0.5rem;
 		border-radius: 12px 12px 0 0;
 		background-color: var(--ion-color-light);
 		animation: appear 750ms;
 		text-align: center;
-		min-height: calc(100% - 132px);
+		min-height: calc(100% - 90px);
 
 		& > h1 {
 			font-size: 2.25rem;

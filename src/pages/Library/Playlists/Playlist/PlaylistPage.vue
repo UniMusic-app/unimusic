@@ -49,6 +49,7 @@ import { useNavigation } from "@/stores/navigation";
 import { Maybe } from "@/utils/types";
 import { watchAsync } from "@/utils/vue";
 import PlaylistConvertModal from "../components/PlaylistConvertModal.vue";
+import PlaylistConvertStatusModal from "../components/PlaylistConvertStatusModal.vue";
 
 const musicPlayer = useMusicPlayer();
 const navigation = useNavigation();
@@ -206,13 +207,25 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 							Convert playlist
 							<ion-icon slot="end" :icon="convertIcon" />
 						</ion-item>
+
+						<ion-item
+							v-if="supports.convertStatus"
+							@click="opened.convertStatus = !opened.convertStatus"
+							button
+							aria-label="Convert status"
+							lines="full"
+							:detail="false"
+						>
+							Convert status
+							<ion-icon slot="end" :icon="convertStatusIcon" />
+						</ion-item>
 					</template>
 				</ContextMenu>
 			</ion-buttons>
 		</template>
 
 		<ion-action-sheet
-			v-if="playlist && supports.delete"
+			v-if="playlist && opened.delete"
 			:is-open="opened.delete"
 			:header="`Are you sure you want to delete playlist ${playlist.title}?`"
 			:buttons="deleteActionSheetButtons"
@@ -220,7 +233,7 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 		/>
 
 		<PlaylistEditModal
-			v-if="playlist && service && supports.edit"
+			v-if="playlist && opened.edit"
 			:playlist
 			:service
 			:is-open="opened.edit"
@@ -229,11 +242,19 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 		/>
 
 		<PlaylistConvertModal
-			v-if="playlist && service && supports.convert"
+			v-if="playlist && opened.convert"
 			:playlist
 			:service
 			:is-open="opened.convert"
 			@dismiss="opened.convert = false"
+			@change="forceUpdate += 1"
+		/>
+
+		<PlaylistConvertStatusModal
+			v-if="playlist && opened.convertStatus"
+			:playlist
+			:is-open="opened.convertStatus"
+			@dismiss="opened.convertStatus = false"
 			@change="forceUpdate += 1"
 		/>
 
