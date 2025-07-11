@@ -289,8 +289,6 @@ export class LocalMusicService extends MusicService<"local"> {
 			getAllCached<LocalSong>("local", "song").map((song) => [song.data.path, song]),
 		);
 
-		console.log(localSongs);
-
 		// Required for Documents folder to show up in Files
 		// NOTE: Hidden file doesn't work
 		if (getPlatform() === "ios") {
@@ -443,7 +441,7 @@ export class LocalMusicService extends MusicService<"local"> {
 
 		const recordingIds = json.recordings.map((recording) => recording.id);
 
-		localSongs.find((song) => {
+		return localSongs.find((song) => {
 			if (song.data.musicbrainzId && recordingIds.includes(song.data.musicbrainzId)) {
 				return true;
 			}
