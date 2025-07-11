@@ -1,9 +1,9 @@
+<!-- eslint-disable vue/no-mutating-props -->
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from "vue";
 
 import {
 	arrowForward as arrowRightIcon,
-	swapHorizontalOutline as convertIcon,
 	checkmarkOutline as matchingIcon,
 	closeCircleOutline as missingIcon,
 	refreshOutline as updateIcon,
@@ -39,7 +39,6 @@ import {
 } from "@ionic/vue";
 
 import GenericSongItem from "@/components/GenericSongItem.vue";
-import { useNavigation } from "@/stores/navigation";
 import { usePresentingElement } from "@/utils/vue";
 
 const musicPlayer = useMusicPlayer();
@@ -49,6 +48,7 @@ const emit = defineEmits<{ change: []; dismiss: [] }>();
 const {
 	isOpen,
 	service: playlistService,
+	// NOTE: Playlist gets mutated to in-place refresh PlaylistPage
 	playlist,
 } = defineProps<{
 	isOpen: boolean;
@@ -74,7 +74,7 @@ function dismiss(reason?: string): void {
 	modal.value?.$el.dismiss(reason);
 }
 
-async function load(): Promise<void> {
+function load(): void {
 	converted.value = new Map();
 	for (const song of playlist.songs) {
 		converted.value.set(song, song.type === targetServiceType.value ? "matching" : "missing");

@@ -83,5 +83,3 @@ export function getCached<Item extends Identifiable>(
 export function getCachedFromKey<Item extends Identifiable>(key: ItemKey<Item>): Maybe<Item> {
 	return getCached(...unpackKey(key));
 }
-
-globalThis.getAllCached = getAllCached;
