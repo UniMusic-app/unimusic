@@ -1,4 +1,3 @@
-/* eslint-disable no-var */
 import { createPinia } from "pinia";
 import { createApp } from "vue";
 

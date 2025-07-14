@@ -3,7 +3,6 @@ import { IonContent, IonIcon, IonItem, IonList } from "@ionic/vue";
 
 import {
 	hammerOutline as developmentIcon,
-	// @ts-expect-error it actually exists
 	readerOutline as lyricsServicesIcon,
 	idCardOutline as metadataServicesIcon,
 	musicalNotesOutline as musicServicesIcon,

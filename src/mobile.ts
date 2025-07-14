@@ -4,7 +4,6 @@
  */
 
 declare global {
-	// eslint-disable-next-line no-var
 	var capacitorFetch: typeof window.fetch;
 }
 

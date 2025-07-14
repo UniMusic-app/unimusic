@@ -67,13 +67,11 @@ declare global {
 		};
 	}
 
-	// eslint-disable-next-line no-var
 	var $ElectronBridge: $ElectronBridge | undefined;
 
 	interface ElectronBridge extends $ElectronBridge {
 		fetchShim: typeof globalThis.fetch;
 	}
-	// eslint-disable-next-line no-var
 	var ElectronBridge: ElectronBridge | undefined;
 }
 
