@@ -1,3 +1,13 @@
+export async function* racedPromisesIterator<T extends Promise<unknown>>(
+	promises: Iterable<T>,
+): AsyncGenerator<Awaited<T>> {
+	const pending = new Set(promises);
+	for (const promise of pending) {
+		void promise.finally(() => pending.delete(promise));
+	}
+	while (pending.size) yield await Promise.race<T>(pending);
+}
+
 export async function* racedIterators<T>(
 	iteratorsIterable: Iterable<AsyncIterator<T>>,
 ): AsyncGenerator<T> {

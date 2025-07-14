@@ -4,6 +4,7 @@ import { LocalImage, useLocalImages } from "@/stores/local-images";
 
 import { MusicKitAuthorizationService } from "@/services/Authorization/MusicKitAuthorizationService";
 import {
+	HomeFeedItem,
 	MusicService,
 	MusicServiceEvent,
 	SearchFilter,
@@ -14,6 +15,7 @@ import {
 import { generateUUID } from "@/utils/crypto";
 import { Maybe } from "@/utils/types";
 
+import { racedPromisesIterator } from "@/utils/iterators";
 import {
 	Album,
 	AlbumKey,
@@ -56,6 +58,8 @@ type MusicKitSongKey = SongKey<"musickit">;
 type MusicKitSongPreview = SongPreview<"musickit", true>;
 type MusicKitSongPreviewKey = SongPreviewKey<"musickit">;
 type MusicKitDisplayableArtist = DisplayableArtist<"musickit">;
+type MusicKitHomeFeedItem = HomeFeedItem<"musickit">;
+type MusicKitSearchResultItem = SearchResultItem<"musickit">;
 
 export function extractDisplayableArtists(
 	artists: MusicKit.Artists[] | Maybe<string>,
@@ -172,6 +176,51 @@ export async function extractArtwork(
 				bgColor: `#${artwork.bgColor ?? "000"}`,
 			},
 		};
+	}
+}
+
+export function musicKitSearchResultItem(
+	item:
+		| MusicKit.MusicVideos
+		| MusicKit.Playlists
+		| MusicKit.Songs
+		| MusicKit.LibrarySongs
+		| MusicKit.Albums
+		| MusicKit.Artists
+		| MusicKit.Resource,
+): Maybe<MusicKitSearchResultItem> {
+	switch (item.type) {
+		case "music-videos":
+		case "songs":
+		case "library-songs":
+			return (
+				getCached("song", item.id) ??
+				getCached("songPreview", item.id) ??
+				cache(musicKitSongPreview(item as MusicKit.Songs))
+			);
+		case "library-albums":
+		case "albums":
+			return (
+				getCached("album", item.id) ??
+				getCached("albumPreview", item.id) ??
+				cache(musicKitAlbumPreview(item as MusicKit.Albums))
+			);
+		case "artists":
+			return (
+				getCached("artist", item.id) ??
+				getCached("artistPreview", item.id) ??
+				cache(musicKitArtistPreview(item as MusicKit.Artists))
+			);
+		case "library-playlists":
+		case "playlists":
+			return (
+				getCached("playlist", item.id) ??
+				getCached("playlistPreview", item.id) ??
+				cache(musicKitPlaylistPreview(item as MusicKit.Playlists))
+			);
+		default:
+			// TODO: Support stations
+			console.warn("Could not parse SearchResultItem (unknown type):", item);
 	}
 }
 
@@ -520,6 +569,69 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 	constructor() {
 		super();
+	}
+
+	async *handleGetHomeFeed(): AsyncGenerator<MusicKitHomeFeedItem> {
+		const music = this.music!;
+
+		const iterator = racedPromisesIterator([
+			music.api
+				.music<MusicKit.PersonalRecommendationResponse>("/v1/me/recommendations")
+				.then(({ data }) => ({ title: "Recommendations", data }) as const),
+			music.api
+				.music<MusicKit.PaginatedResourceCollectionResponse>("/v1/me/recent/played")
+				.then(({ data }) => ({ title: "Recently Played", data }) as const),
+			music.api
+				.music<MusicKit.PaginatedResourceCollectionResponse>("/v1/me/history/heavy-rotation")
+				.then(({ data }) => ({ title: "Heavy Rotation", data }) as const),
+			music.api
+				.music<MusicKit.PaginatedResourceCollectionResponse>("/v1/me/library/recently-added")
+				.then(({ data }) => ({ title: "Recently Added", data }) as const),
+		]);
+
+		for await (const { title, data } of iterator) {
+			if (title !== "Recommendations") {
+				const homeFeedItem: MusicKitHomeFeedItem = {
+					title,
+					items: [],
+				};
+
+				for (const item of data.data) {
+					const searchResult = musicKitSearchResultItem(item);
+					if (searchResult) {
+						homeFeedItem.items.push(searchResult);
+					}
+				}
+
+				if (homeFeedItem.items.length) {
+					yield homeFeedItem;
+				}
+
+				continue;
+			}
+
+			for (const recommendation of data.data) {
+				if (!recommendation.relationships || !recommendation.attributes) {
+					continue;
+				}
+
+				const homeFeedItem: MusicKitHomeFeedItem = {
+					title: recommendation.attributes.title?.stringForDisplay ?? title,
+					items: [],
+				};
+
+				for (const item of recommendation.relationships.contents.data) {
+					const searchResult = musicKitSearchResultItem(item);
+					if (searchResult) {
+						homeFeedItem.items.push(searchResult);
+					}
+				}
+
+				if (homeFeedItem.items.length) {
+					yield homeFeedItem;
+				}
+			}
+		}
 	}
 
 	// NOTE: Apple does not allow us to set custom playlist artwork as of now.
@@ -913,7 +1025,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 	async *handleSearchForItems(
 		term: string,
 		filter: SearchFilter,
-	): AsyncGenerator<SearchResultItem<"musickit">> {
+	): AsyncGenerator<MusicKitSearchResultItem> {
 		const music = this.music!;
 		const query: MusicKit.CatalogSearchQuery = {
 			term,
@@ -949,26 +1061,9 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			if (!items?.data) break;
 
 			for (const item of items.data) {
-				switch (item.type) {
-					case "music-videos":
-					case "songs": {
-						yield getCached("song", item.id) ??
-							getCached("songPreview", item.id) ??
-							cache(musicKitSongPreview(item));
-						break;
-					}
-					case "albums": {
-						yield getCached("album", item.id) ??
-							getCached("albumPreview", item.id) ??
-							cache(musicKitAlbumPreview(item));
-						break;
-					}
-					case "artists": {
-						yield getCached("artist", item.id) ??
-							getCached("artistPreview", item.id) ??
-							cache(musicKitArtistPreview(item));
-						break;
-					}
+				const searchResult = musicKitSearchResultItem(item);
+				if (searchResult) {
+					yield searchResult;
 				}
 			}
 
