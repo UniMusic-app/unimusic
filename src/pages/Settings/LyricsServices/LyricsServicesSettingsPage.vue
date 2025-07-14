@@ -17,10 +17,7 @@ import {
 	ItemReorderCustomEvent,
 } from "@ionic/vue";
 
-import {
-	// @ts-expect-error it actually exists
-	readerOutline as lyricsServicesIcon,
-} from "ionicons/icons";
+import { readerOutline as lyricsServicesIcon } from "ionicons/icons";
 
 import AppPage from "@/components/AppPage.vue";
 import { useLyricsServices } from "@/stores/lyrics-services";

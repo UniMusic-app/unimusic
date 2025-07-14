@@ -14,6 +14,7 @@ import PlaylistsPage from "@/pages/Library/Playlists/PlaylistsPage.vue";
 import SongPage from "@/pages/Library/Songs/Song/SongPage.vue";
 import SongsPage from "@/pages/Library/Songs/SongsPage.vue";
 import ArtistsSongsPage from "./Library/Artists/Artist/ArtistsSongsPage.vue";
+import DevelopmentSettingsPage from "./Settings/Development/DevelopmentSettingsPage.vue";
 import LyricsServicesSettingsPage from "./Settings/LyricsServices/LyricsServicesSettingsPage.vue";
 import MetadataServicesSettingsPage from "./Settings/MetadataServices/MetadataServicesSettingsPage.vue";
 import MusicServicesSettingsPage from "./Settings/MusicServices/MusicServicesSettingsPage.vue";
@@ -66,6 +67,11 @@ const routes: RouteRecordRaw[] = [
 		path: "/settings/services/metadata",
 		name: "Metadata Services Settings",
 		component: MetadataServicesSettingsPage,
+	},
+	{
+		path: "/settings/development",
+		name: "Development Settings",
+		component: DevelopmentSettingsPage,
 	},
 
 	{ path: "/library/songs", name: "Songs", component: SongsPage },
