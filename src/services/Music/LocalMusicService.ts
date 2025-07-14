@@ -15,8 +15,10 @@ import {
 import { generateHash, generateUUID } from "@/utils/crypto";
 import { getPlatform } from "@/utils/os";
 import { audioMimeTypeFromPath, getFileStream, getSongPaths } from "@/utils/path";
+import { RateLimiter } from "@/utils/rate-limiter";
 import { Maybe } from "@/utils/types";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
+import type { MusicBrainzResponse } from "../Metadata/shared/MusicBrainz";
 import {
 	Album,
 	AlbumSong,
@@ -46,6 +48,14 @@ type _LocalArtistKey = ArtistKey<"local">;
 type LocalSong = Song<"local">;
 type LocalSongPreview = SongPreview<"local">;
 type LocalDisplayableArtist = DisplayableArtist<"local">;
+
+const MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/";
+
+const rateLimiter = new RateLimiter({
+	// 1 request per second
+	// see: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting#Source_IP_address
+	"musicbrainz.org": 1000,
+});
 
 export class LocalMusicService extends MusicService<"local"> {
 	logName = "LocalMusicService";
@@ -151,18 +161,133 @@ export class LocalMusicService extends MusicService<"local"> {
 				path,
 				discNumber,
 				trackNumber,
+				musicbrainzId: common.musicbrainz_recordingid,
 				hasMetadata: !!common.title,
 				includedMetadata: !!common.title,
 			},
 		};
 	}
 
+	async #updateSongMetadata(song: LocalSong): Promise<LocalSong> {
+		const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
+
+		let songTitle: string | undefined;
+		let songArtists: string[] | undefined;
+
+		// Try to guess title and artists of a song from its fileName
+		// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
+		//
+		//  Possible groups:
+		//  - title - Song Title
+		//  - artists - Song Artists (unparsed)
+		//  - feat - Additional artists that have been noted separately (unparsed)
+		//  - extension - File extension
+		const fileNamePatterns = [
+			// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
+			/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
+
+			// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
+			/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
+
+			// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
+			/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+?))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
+
+			// Michael Jackson - Billie Jean (Official Video)
+			// Michael Jackson — Billie Jean (lyrics) [HD]
+			// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
+			// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
+			/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
+
+			// Michael Jackson - Billie Jean
+			// Michael Jackson - Billie Jean.wav
+			/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
+
+			// いめ44「遊び」feat. 歌愛ユキ
+			// いめ44「遊び」feat. 歌愛ユキ.mp3
+			/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
+
+			// Billie Jean
+			// Billie Jean (Official Video)
+			/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
+		];
+
+		// artist_a, artist_b & artist_c
+		// artist_a & artist_b & artist_c
+		// artist_a x artist_b x artist_c
+		const artistsPattern = /(?:\s+(?:&|x)\s+)|(?:\s*,\s+)/;
+
+		for (const pattern of fileNamePatterns) {
+			const match = fileName.match(pattern);
+			if (!match) continue;
+
+			const { title, artists, feat } = match.groups!;
+
+			const parsedArtists = [];
+			if (artists) parsedArtists.push(...artists.split(artistsPattern));
+			if (feat) parsedArtists.push(...feat.split(artistsPattern));
+
+			songTitle = title;
+			songArtists = parsedArtists;
+			break;
+		}
+
+		this.log("Missing metadata, trying to get one for", song.data.path);
+
+		if (!songTitle) {
+			this.log("Failed to guess song title from", fileName);
+			return song;
+		}
+
+		this.log(`Guessed title and artists for ${song.data.path}:`, songTitle, songArtists);
+
+		song.title = songTitle;
+		song.artists = songArtists?.map((artist) => ({ title: artist })) ?? [];
+		cache(song);
+
+		const metadata = await this.services.getMetadata({
+			id: song.id,
+			duration: song.duration,
+			title: songTitle,
+			artists: songArtists,
+			filePath: song.data.path,
+		});
+
+		// TODO: Allow searching for partial missing metadata
+		if (!metadata) {
+			song.data.hasMetadata = false;
+			return cache(song);
+		}
+
+		if (metadata.title) song.title = metadata.title;
+		if (metadata.album) song.album = metadata.album;
+		if (metadata.artists) {
+			song.artists = metadata.artists.map((artist) => {
+				const artistPreview = cache<LocalArtistPreview>({
+					type: "local",
+					kind: "artistPreview",
+					id: artist.id ?? artist.title,
+					title: artist.title,
+				});
+
+				return getKey(artistPreview);
+			});
+		}
+		if (metadata.genres) song.genres = metadata.genres;
+		if (metadata.isrc) song.data.isrc = metadata.isrc;
+		if (metadata.musicbrainzId) song.data.musicbrainzId = metadata.musicbrainzId;
+		if (metadata.discNumber) song.data.discNumber = metadata.discNumber;
+		if (metadata.trackNumber) song.data.trackNumber = metadata.trackNumber;
+		if (metadata.artwork) song.artwork = metadata.artwork;
+
+		song.data.hasMetadata = true;
+
+		return cache(song);
+	}
+
 	async *#parseLocalSongs(): AsyncGenerator<LocalSong> {
 		const localSongs = new Map(
 			getAllCached<LocalSong>("local", "song").map((song) => [song.data.path, song]),
 		);
-
-		console.log(localSongs);
 
 		// Required for Documents folder to show up in Files
 		// NOTE: Hidden file doesn't work
@@ -219,123 +344,7 @@ export class LocalMusicService extends MusicService<"local"> {
 			if (this.services.canGetMetadata) {
 				const promises: Promise<LocalSong>[] = [];
 				for (const song of missingMetadata) {
-					const fileName = song.data.path.split("\\").pop()!.split("/").pop()!;
-
-					let songTitle: string | undefined;
-					let songArtists: string[] | undefined;
-
-					// Try to guess title and artists of a song from its fileName
-					// Patterns are sorted by their "specificity" – how narrowly can it determine a specific pattern
-					//
-					//  Possible groups:
-					//  - title - Song Title
-					//  - artists - Song Artists (unparsed)
-					//  - feat - Additional artists that have been noted separately (unparsed)
-					//  - extension - File extension
-					const fileNamePatterns = [
-						// Move (feat. Camila Cabello) - Adam Port, Stryv, Malachiii, Orso (Official Visualizer)
-						/^(?<title>.+?)(\s*\((feat|ft)\.\s*(?<feat>.+?)\))\s+[-—–]\s+(?<artists>.+?)(\s*[([].+?[)\]]).*?(?<extension>\..+)?$/,
-
-						// Billion Dollar Bitch (feat. Yung Baby Tate) (Swizzymack Remix) [SNq8umw9K2I].webm
-						/^(?<title>[^-—–]+?)\s+(\((feat|ft)\.\s*(?<feat>.+?)\))[^-—–]+?\.(?<extension>.+)/,
-
-						// Shotgun Willy - Fuego feat. TRAQULA (Lyric Video) [3LIisa4u0Vc].webm
-						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+(feat|ft)\.\s*(?<feat>.+?))(\s+[([].+?[)\]]))+(.*(?<extension>\..+)?)?/,
-
-						// Michael Jackson - Billie Jean (Official Video)
-						// Michael Jackson — Billie Jean (lyrics) [HD]
-						// Post Malone - I Had Some Help (feat. Morgan Wallen) (Official Video)
-						// BABY GRAVY - Nightmare on Peachtree St. (feat. Freddie Dredd) Official Lyric Video [faK9ml3y950].webm
-						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)((\s+\((feat|ft)\.\s*(?<feat>.+?)\))|(\s+[([].+?[)\]]))+(.*(?<extension>\..+))?/,
-
-						// Michael Jackson - Billie Jean
-						// Michael Jackson - Billie Jean.wav
-						/(?<artists>.+?)\s+[-—–]\s+(?<title>.+?)(\.(?<extension>.+))?$/,
-
-						// いめ44「遊び」feat. 歌愛ユキ
-						// いめ44「遊び」feat. 歌愛ユキ.mp3
-						/(?<title>.+?)\s*(feat|ft)\.\s*(?<artists>.+?)(\.(?<extension>.+))?$/,
-
-						// Billie Jean
-						// Billie Jean (Official Video)
-						/^(?<title>.+?)((\s*([([].*)*\s*(?<extension>\..+))|([([].*))?$/,
-					];
-
-					// artist_a, artist_b & artist_c
-					// artist_a & artist_b & artist_c
-					// artist_a x artist_b x artist_c
-					const artistsPattern = /(?:\s+(?:&|x)\s+)|(?:\s*,\s+)/;
-
-					for (const pattern of fileNamePatterns) {
-						const match = fileName.match(pattern);
-						if (!match) continue;
-
-						const { title, artists, feat } = match.groups!;
-
-						const parsedArtists = [];
-						if (artists) parsedArtists.push(...artists.split(artistsPattern));
-						if (feat) parsedArtists.push(...feat.split(artistsPattern));
-
-						songTitle = title;
-						songArtists = parsedArtists;
-						break;
-					}
-
-					this.log("Missing metadata, trying to get one for", song.data.path);
-
-					if (!songTitle) {
-						this.log("Failed to guess song title from", fileName);
-						continue;
-					}
-
-					this.log(`Guessed title and artists for ${song.data.path}:`, songTitle, songArtists);
-
-					song.title = songTitle;
-					song.artists = songArtists?.map((artist) => ({ title: artist })) ?? [];
-					cache(song);
-
-					const promise = this.services
-						.getMetadata({
-							id: song.id,
-							duration: song.duration,
-							title: songTitle,
-							artists: songArtists,
-							filePath: song.data.path,
-						})
-						.then((metadata) => {
-							// TODO: Allow searching for partial missing metadata
-
-							if (!metadata) {
-								song.data.hasMetadata = false;
-								return cache(song);
-							}
-
-							if (metadata.title) song.title = metadata.title;
-							if (metadata.album) song.album = metadata.album;
-							if (metadata.artists) {
-								song.artists = metadata.artists.map((artist) => {
-									const artistPreview = cache<LocalArtistPreview>({
-										type: "local",
-										kind: "artistPreview",
-										id: artist.id ?? artist.title,
-										title: artist.title,
-									});
-
-									return getKey(artistPreview);
-								});
-							}
-							if (metadata.genres) song.genres = metadata.genres;
-							if (metadata.isrc) song.data.isrc = metadata.isrc;
-							if (metadata.discNumber) song.data.discNumber = metadata.discNumber;
-							if (metadata.trackNumber) song.data.trackNumber = metadata.trackNumber;
-							if (metadata.artwork) song.artwork = metadata.artwork;
-
-							song.data.hasMetadata = true;
-
-							return cache(song);
-						});
-
-					promises.push(promise);
+					promises.push(this.#updateSongMetadata(song));
 				}
 
 				yield* promises;
@@ -410,8 +419,64 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 	}
 
-	handleGetSongFromPreview(songPreview: LocalSong): LocalSong {
-		return songPreview;
+	handleGetSongFromPreview(song: LocalSong): LocalSong {
+		return song;
+	}
+
+	async handleGetSongFromIsrcs(isrcs: string[]): Promise<Maybe<LocalSong>> {
+		const localSongs = getAllCached<LocalSong>("local", "song").toArray();
+
+		for (const song of localSongs) {
+			if (song.data.isrc && song.data.isrc.some((isrc) => isrcs.includes(isrc))) {
+				return song;
+			}
+		}
+
+		const url = new URL("recording", MUSICBRAINZ_ENDPOINT);
+		url.searchParams.set("query", isrcs.map((isrc) => `isrc:${isrc}`).join(" OR "));
+		url.searchParams.set("fmt", "json");
+
+		const response = await rateLimiter.fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
+		const json: MusicBrainzResponse = await response.json();
+
+		const recordingIds = json.recordings.map((recording) => recording.id);
+
+		return localSongs.find((song) => {
+			if (song.data.musicbrainzId && recordingIds.includes(song.data.musicbrainzId)) {
+				return true;
+			}
+			return false;
+		});
+	}
+
+	async handleGetIsrcsFromSong(song: LocalSong): Promise<string[]> {
+		if (song.data.isrc) return song.data.isrc;
+
+		if (!song.data.hasMetadata) {
+			song = await this.#updateSongMetadata(song);
+		}
+
+		if (song.data.isrc) return song.data.isrc;
+
+		const { musicbrainzId } = song.data;
+
+		if (musicbrainzId) {
+			const url = new URL(`recording/${musicbrainzId}`, MUSICBRAINZ_ENDPOINT);
+			url.searchParams.set("fmt", "json");
+
+			const response = await rateLimiter.fetch(url, { headers: { "user-agent": APP_USER_AGENT } });
+			const json: MusicBrainzResponse = await response.json();
+
+			for (const recording of json.recordings) {
+				if (recording.isrcs) {
+					song.data.isrc = recording.isrcs;
+					cache(song);
+					return recording.isrcs;
+				}
+			}
+		}
+
+		return [];
 	}
 
 	async *handleGetLibraryArtists(): AsyncGenerator<LocalArtistPreview | LocalArtist> {
@@ -452,7 +517,7 @@ export class LocalMusicService extends MusicService<"local"> {
 		}
 	}
 
-	async handleGetArtist(id: string): Promise<Maybe<Artist<"local">>> {
+	async handleGetArtist(id: string): Promise<Maybe<LocalArtist>> {
 		const cached = getCached("artist", id);
 		if (cached) {
 			return cached;

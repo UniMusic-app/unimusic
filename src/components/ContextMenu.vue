@@ -118,7 +118,7 @@ async function openContextMenu(event: PointerEvent): Promise<void> {
 
 	let itemTop = itemRect.top;
 	if (!move) {
-		itemTop += itemRect.height;
+		itemTop += itemRect.height + 16;
 	}
 	style["--item-top"] = `${itemTop}px`;
 	style["--item-max-top"] =
@@ -386,10 +386,18 @@ watch(
 	}
 
 	@media screen and (min-width: 640px) {
-		&.opened.move .preview-container {
+		&.opened.move.left .preview-container {
 			left: clamp(
 				8px,
 				calc(var(--mouse-x) - (var(--move-item-width) / 2)),
+				calc(100vw - var(--move-item-width) - 8px)
+			);
+		}
+
+		&.opened.move.right .preview-container {
+			right: clamp(
+				8px,
+				calc(100vw - var(--mouse-x) - (var(--move-item-width) / 2)),
 				calc(100vw - var(--move-item-width) - 8px)
 			);
 		}

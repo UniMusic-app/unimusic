@@ -356,6 +356,24 @@ export abstract class MusicService<
 		return await this.withUnrecoverableErrorHandling(this.handleGetSongFromPreview, songPreview);
 	}
 
+	handleGetSongFromIsrcs?(isrcs: string[]): Maybe<Song<Type>> | Promise<Maybe<Song<Type>>>;
+	async getSongFromIsrcs(isrcs: string[]): Promise<Maybe<Song<Type>>> {
+		this.log("getSongFromIsrcs");
+		if (!this.handleGetSongFromIsrcs) {
+			throw new Error("This service does not support getSongFromIsrcs");
+		}
+		return await this.withErrorHandling(undefined, this.handleGetSongFromIsrcs, isrcs);
+	}
+
+	handleGetIsrcsFromSong?(songPreview: SongPreview<Type>): string[] | Promise<string[]>;
+	async getIsrcsFromSong(songPreview: SongPreview<Type>): Promise<string[]> {
+		this.log("getISRCFromSongPreview");
+		if (!this.handleGetIsrcsFromSong) {
+			throw new Error("This service does not support getISRCFromSongPreview");
+		}
+		return await this.withErrorHandling([], this.handleGetIsrcsFromSong, songPreview);
+	}
+
 	handleGetSearchHints?(term: string): AnyGenerator<string>;
 	async *getSearchHints(term: string): AsyncGenerator<string> {
 		this.log("getSearchHints");

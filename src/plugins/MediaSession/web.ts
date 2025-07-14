@@ -7,9 +7,13 @@ import {
 
 // Web implementation of MediaSession
 export class MediaSession extends WebPlugin implements MediaSessionPlugin {
+	#metadata: MediaSessionPluginMetadata | undefined;
+
 	initialize(): void {}
 
 	setMetadata(metadata: MediaSessionPluginMetadata): void {
+		this.#metadata = metadata;
+
 		let artwork: [MediaImage] | undefined;
 		if (metadata.artwork) {
 			artwork = [{ src: metadata.artwork }];
@@ -21,14 +25,24 @@ export class MediaSession extends WebPlugin implements MediaSessionPlugin {
 			artist: metadata.artist,
 			artwork: artwork,
 		});
+
+		navigator.mediaSession.setPositionState({
+			position: 0,
+			duration: metadata.duration,
+		});
 	}
 
-	setPlaybackState({ state }: MediaSessionPluginPlaybackState): void {
-		switch (state) {
-			case "none":
-				navigator.mediaSession.metadata = null;
-			default:
-				navigator.mediaSession.playbackState = state;
+	setPlaybackState({ state, elapsed }: MediaSessionPluginPlaybackState): void {
+		if (state === "none") {
+			navigator.mediaSession.metadata = null;
+		} else if (this.#metadata?.duration) {
+			console.log("Elapsed", elapsed, "/", this.#metadata.duration);
+			navigator.mediaSession.setPositionState({
+				position: elapsed,
+				duration: this.#metadata.duration,
+			});
 		}
+
+		navigator.mediaSession.playbackState = state;
 	}
 }
