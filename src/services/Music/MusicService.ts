@@ -72,6 +72,7 @@ export type SearchResultItem<Type extends SongType = SongType> =
 export interface HomeFeedItem<Type extends SongType = SongType> {
 	title: string;
 	items: SearchResultItem<Type>[];
+	style: { type: "list"; rows?: number } | { type: "cards" } | { type: "items" };
 }
 
 type AnyGenerator<T, TReturn = unknown, TNext = unknown> =

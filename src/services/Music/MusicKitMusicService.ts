@@ -593,10 +593,12 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			if (title !== "Recommendations") {
 				const homeFeedItem: MusicKitHomeFeedItem = {
 					title,
+					style: { type: "items" },
 					items: [],
 				};
 
 				for (const item of data.data) {
+					console.log("Not Recommendation:", item);
 					const searchResult = musicKitSearchResultItem(item);
 					if (searchResult) {
 						homeFeedItem.items.push(searchResult);
@@ -615,8 +617,15 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 					continue;
 				}
 
+				const { attributes } = recommendation;
+
+				const isCards =
+					attributes.resourceTypes.length === 1 &&
+					["playlists", "stations"].includes(attributes.resourceTypes[0]!);
+
 				const homeFeedItem: MusicKitHomeFeedItem = {
-					title: recommendation.attributes.title?.stringForDisplay ?? title,
+					title: attributes.title?.stringForDisplay ?? title,
+					style: { type: isCards ? "cards" : "items" },
 					items: [],
 				};
 

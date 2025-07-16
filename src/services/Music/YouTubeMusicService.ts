@@ -585,12 +585,18 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		let homeFeed = await this.innertube!.music.getHomeFeed();
 
 		while (homeFeed.sections) {
+			console.log("SECTIONS:", homeFeed.sections);
+
 			for (const section of homeFeed.sections) {
 				if (!section.is(YTNodes.MusicCarouselShelf)) continue;
 
 				const title = section.header?.title?.toString() ?? "Recommended";
 				const homeFeedItem: YouTubeHomeFeedItem = {
 					title,
+					style: {
+						type: section.num_items_per_column ? "list" : "items",
+						rows: section.num_items_per_column,
+					},
 					items: [],
 				};
 
