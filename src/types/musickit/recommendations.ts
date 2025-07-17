@@ -37,7 +37,7 @@ declare global {
 			/** The next date in UTC format for updating the recommendation. */
 			nextUpdateDate: string;
 			/** The localized title for the recommendation. */
-			title?: { stringForDisplay: string };
+			title?: { stringForDisplay: string; contentIds?: string[] };
 			/** The localized reason for the recommendation. */
 			reason?: string;
 			/** The resource types supported by the recommendation. */

@@ -572,7 +572,7 @@ export async function musicKitArtist(
 }
 
 export function musicKitIdType(id: string): "library" | "catalog" {
-	if (!isNaN(Number(id))) {
+	if (!isNaN(Number(id)) || id.split(".")[0]?.length == 2) {
 		return "catalog";
 	}
 	return "library";
@@ -600,8 +600,12 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 
 		const iterator = racedPromisesIterator([
 			music.api
-				.music<MusicKit.PersonalRecommendationResponse>("/v1/me/recommendations")
+				.music<MusicKit.FormatMap<MusicKit.PersonalRecommendationResponse>>("/v1/me/recommendations", {
+					"format[resources]": "map",
+					"include[albums]": "artists",
+				})
 				.then(({ data }) => ({ title: "Recommendations", data }) as const),
+
 			music.api
 				.music<MusicKit.PaginatedResourceCollectionResponse>("/v1/me/recent/played")
 				.then(({ data }) => ({ title: "Recently Played", data }) as const),
@@ -613,16 +617,18 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 				.then(({ data }) => ({ title: "Recently Added", data }) as const),
 		]);
 
-		for await (const { title, data } of iterator) {
-			if (title !== "Recommendations") {
+		for await (const section of iterator) {
+			if (section.title !== "Recommendations") {
 				const homeFeedItem: MusicKitHomeFeedItem = {
-					title,
+					title: section.title,
 					style: { type: "items" },
 					items: [],
+					relatedItems: [],
 				};
 
-				for (const item of data.data) {
+				for (const item of section.data.data) {
 					console.log("Not Recommendation:", item);
+
 					const searchResult = musicKitSearchResultItem(item);
 					if (searchResult) {
 						homeFeedItem.items.push(searchResult);
@@ -636,28 +642,79 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 				continue;
 			}
 
-			for (const recommendation of data.data) {
+			const personalRecommendations = section.data.resources["personal-recommendation"];
+			if (!personalRecommendations) {
+				return;
+			}
+
+			console.log("MK PR:", section.data);
+
+			for (const recommendation of Object.values(personalRecommendations)) {
 				if (!recommendation.relationships || !recommendation.attributes) {
 					continue;
 				}
 
-				const { attributes } = recommendation;
+				const { resourceTypes, title, reason } = recommendation.attributes;
 
 				const isCards =
-					attributes.resourceTypes.length === 1 &&
-					["playlists", "stations"].includes(attributes.resourceTypes[0]!);
+					resourceTypes.length === 1 && ["playlists", "stations"].includes(resourceTypes[0]!);
 
 				const homeFeedItem: MusicKitHomeFeedItem = {
-					title: attributes.title?.stringForDisplay ?? title,
+					title: title?.stringForDisplay ?? section.title,
+					description: reason,
+					relatedItems: [],
 					style: { type: isCards ? "cards" : "items" },
 					items: [],
 				};
 
-				for (const item of recommendation.relationships.contents.data) {
-					const searchResult = musicKitSearchResultItem(item);
-					if (searchResult) {
-						homeFeedItem.items.push(searchResult);
+				if (!homeFeedItem.description) {
+					const groups = homeFeedItem.title.match(
+						/(?<subtitle>More (like|from))\s(?<title>.+)/i,
+					)?.groups;
+					if (groups) {
+						homeFeedItem.description = groups.subtitle!;
+						homeFeedItem.title = groups.title!;
 					}
+				}
+
+				const {
+					playlists,
+					artists,
+					albums,
+					songs,
+					"music-videos": musicVideos,
+				} = section.data.resources;
+
+				if (title?.contentIds) {
+					for (const id of title.contentIds) {
+						const resource =
+							artists?.[id] ?? albums?.[id] ?? songs?.[id] ?? musicVideos?.[id] ?? playlists?.[id];
+
+						if (!resource) {
+							console.warn("MK Failed to find resource:", id);
+							continue;
+						}
+
+						const item = musicKitSearchResultItem(resource);
+						if (item) homeFeedItem.relatedItems.push(item);
+					}
+				}
+
+				console.log("MK DATA:", recommendation.relationships.contents.data);
+
+				for (const item of recommendation.relationships.contents.data) {
+					const { id } = item;
+					const resource =
+						artists?.[id] ?? albums?.[id] ?? songs?.[id] ?? musicVideos?.[id] ?? playlists?.[id];
+
+					console.log("MK RESOURCE", resource, "ITEM", item);
+					if (!resource) {
+						console.warn("MK Failed to find resource:", id);
+						continue;
+					}
+
+					const searchResult = musicKitSearchResultItem(resource);
+					if (searchResult) homeFeedItem.items.push(searchResult);
 				}
 
 				if (homeFeedItem.items.length) {

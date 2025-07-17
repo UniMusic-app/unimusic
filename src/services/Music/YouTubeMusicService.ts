@@ -10,7 +10,6 @@ import {
 } from "@/services/Music/MusicService";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
-import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { Maybe } from "@/utils/types";
 import { YTNode } from "youtubei.js/dist/src/parser/helpers";
@@ -192,6 +191,7 @@ export function youtubeSongPreview(
 	nodeId?: string,
 	albumId?: string,
 ): YouTubeSongPreview {
+	// FIXME: support "non_music_track"
 	if (node.item_type !== "song" && node.item_type !== "video" && node.item_type !== "unknown") {
 		console.warn(node);
 		throw new Error("youtubeSongPreview can only be called on 'song', 'video' and 'unknown' nodes");
@@ -643,6 +643,7 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 						type: section.num_items_per_column ? "list" : "items",
 						rows: section.num_items_per_column,
 					},
+					relatedItems: [],
 					items: [],
 				};
 

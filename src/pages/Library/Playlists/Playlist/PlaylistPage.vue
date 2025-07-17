@@ -271,7 +271,10 @@ function onDeleteActionDismiss(event: CustomEvent): void {
 
 			<ion-note v-if="isEmpty">This playlist has no songs, fill it up!</ion-note>
 			<template v-else>
-				<h2>{{ playlist.songs.length }} songs, {{ Math.round(totalDuration / 60) }} minutes</h2>
+				<h2>
+					{{ playlist.songs.length }} songs
+					<template v-if="totalDuration">, {{ Math.round(totalDuration / 60) }} minutes</template>
+				</h2>
 
 				<div class="buttons">
 					<ion-button strong @click="playPlaylist(false)">

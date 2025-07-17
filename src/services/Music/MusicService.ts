@@ -71,7 +71,9 @@ export type SearchResultItem<Type extends SongType = SongType> =
 
 export interface HomeFeedItem<Type extends SongType = SongType> {
 	title: string;
+	description?: string;
 	items: SearchResultItem<Type>[];
+	relatedItems: SearchResultItem<Type>[];
 	style: { type: "list"; rows?: number } | { type: "cards" } | { type: "items" };
 }
 

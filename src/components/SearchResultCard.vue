@@ -84,7 +84,7 @@ const contextMenuOpen = ref(false);
 				size="large"
 				:src="item.artwork"
 				:alt="`Artwork for ${item.kind} '${item.title}'`"
-				:class="{ [item.kind]: true }"
+				:class="{ [item.kind.replace('Preview', '')]: true }"
 			/>
 
 			<ion-card-header>
@@ -211,6 +211,15 @@ const contextMenuOpen = ref(false);
 
 	& > .local-img {
 		border-radius: 8px;
+
+		&.artist {
+			border-radius: 9999px;
+		}
+
+		&.album {
+			border-radius: 16px;
+		}
+
 		border: 0.55px solid #0002;
 		width: 100%;
 		--img-width: 100%;
