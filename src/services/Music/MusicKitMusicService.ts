@@ -12,7 +12,6 @@ import {
 	SilentError,
 } from "@/services/Music/MusicService";
 
-import { generateUUID } from "@/utils/crypto";
 import { Maybe } from "@/utils/types";
 
 import { racedPromisesIterator } from "@/utils/iterators";
@@ -358,7 +357,10 @@ export async function musicKitSong(
 	});
 }
 
-export async function musicKitPlaylist(album: MusicKit.Playlists): Promise<MusicKitPlaylist> {
+export async function musicKitPlaylist(
+	album: MusicKit.Playlists,
+	music: MusicKit.MusicKitInstance,
+): Promise<MusicKitPlaylist> {
 	const { id, attributes, relationships } = album;
 
 	const title = attributes?.name ?? "Unknown title";
@@ -371,6 +373,28 @@ export async function musicKitPlaylist(album: MusicKit.Playlists): Promise<Music
 			const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
 			const songPreview: MusicKitSongPreview = cached ?? cache(musicKitSongPreview(track));
 			songs.push(getKey(songPreview));
+		}
+	}
+
+	// Playlist has more than 100 tracks, fetch them all
+	if (relationships?.tracks.next) {
+		let tracksResponse = await music.api.music<MusicKit.SongsResponse>(relationships?.tracks.next);
+
+		while (true) {
+			const tracks = tracksResponse?.data?.data;
+			if (!tracks) break;
+
+			for (const track of tracks) {
+				const song =
+					getCached("song", track.id) ??
+					getCached("songPreview", track.id) ??
+					cache(musicKitSongPreview(track));
+				songs.push(getKey(song));
+			}
+
+			if (!tracksResponse.data.next) break;
+
+			tracksResponse = await music.api.music(tracksResponse.data.next);
 		}
 	}
 
@@ -864,24 +888,11 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 		return album;
 	}
 
-	async handleGetPlaylistFromUrl(url: URL): Promise<Maybe<Playlist>> {
-		const music = this.music!;
-		let endpoint: string | undefined;
-
+	async handleGetPlaylistFromUrl(url: URL): Promise<Maybe<MusicKitPlaylist>> {
 		const { pathname } = url;
 
 		if (!url.origin.endsWith("music.apple.com")) {
 			return;
-		}
-
-		/// e.g.
-		// https://music.apple.com/library/playlist/<libraryPlaylistId>
-		if (pathname.includes("library")) {
-			endpoint = "/v1/me/library/playlists";
-		} else {
-			// https://music.apple.com/pl/playlist/heavy-rotation-mix/<storefrontPlaylistId>
-			// https://music.apple.com/pl/playlist/get-up-mix/<storefrontPlaylistId>
-			endpoint = "/v1/catalog/{{storefrontId}}/playlists";
 		}
 
 		const idStartIndex = pathname.lastIndexOf("/");
@@ -894,76 +905,7 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			return;
 		}
 
-		const response = await music.api.music<MusicKit.PlaylistsResponse, MusicKit.PlaylistsQuery>(
-			`${endpoint}/${musicKitId}`,
-			{
-				extend: ["editorialArtwork", "editorialVideo", "offers"],
-				include: ["tracks"],
-			},
-		);
-		const playlist = response.data.data?.[0];
-
-		if (!playlist) {
-			return;
-		}
-
-		const id = generateUUID();
-		const { attributes } = playlist;
-		const title = attributes?.name ?? "Unknown title";
-
-		let artwork: Maybe<LocalImage>;
-		if (attributes?.artwork) {
-			const localImages = useLocalImages();
-			const artworkUrl = MusicKit.formatArtworkURL(attributes.artwork, 256, 256);
-			const artworkBlob = await (await fetch(artworkUrl)).blob();
-			await localImages.associateImage(id, artworkBlob);
-			artwork = { id, url: artworkUrl };
-		}
-
-		const tracks = playlist.relationships?.tracks.data ?? [];
-		const songs = tracks.map((track) => {
-			const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
-			const song = cached ?? cache(musicKitSongPreview(track));
-			return getKey(song);
-		});
-
-		// Playlist has more than 100 tracks, fetch them all
-		if (playlist.relationships?.tracks.next) {
-			let tracksResponse = await music.api.music<MusicKit.SongsResponse>(
-				playlist.relationships?.tracks.next,
-			);
-
-			while (true) {
-				const tracks = tracksResponse?.data?.data;
-				if (!tracks) break;
-
-				for (const track of tracks) {
-					const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
-					const songPreview: MusicKitSongPreview = cached ?? cache(musicKitSongPreview(track));
-					songs.push(getKey(songPreview));
-				}
-
-				if (!tracksResponse.data.next) break;
-
-				tracksResponse = await music.api.music(tracksResponse.data.next);
-			}
-		}
-
-		return cache<Playlist>({
-			type: "unimusic",
-			kind: "playlist",
-			id,
-			title,
-			artwork,
-			songs,
-			data: {
-				importInfo: {
-					sync: false,
-					service: "musickit",
-					playlistId: playlist.id,
-				},
-			},
-		});
+		return await this.getPlaylist(musicKitId);
 	}
 
 	async handleGetPlaylistFromPreview(
@@ -984,37 +926,16 @@ export class MusicKitMusicService extends MusicService<"musickit"> {
 			idType === "catalog"
 				? `/v1/catalog/{{storefrontId}}/playlists/${id}`
 				: `/v1/me/library/playlists/${id}`,
-			{ include: ["tracks"] },
+			{
+				extend: ["editorialArtwork", "editorialVideo", "offers"],
+				include: ["tracks"],
+			},
 		);
 
 		const playlist = response.data?.data?.[0];
 		if (!playlist) return;
 
-		const parsedPlaylist = await musicKitPlaylist(playlist);
-
-		// Playlist has more than 100 tracks, fetch them all
-		if (playlist.relationships?.tracks.next) {
-			let tracksResponse = await music.api.music<MusicKit.SongsResponse>(
-				playlist.relationships?.tracks.next,
-			);
-
-			while (true) {
-				const tracks = tracksResponse?.data?.data;
-				if (!tracks) break;
-
-				for (const track of tracks) {
-					const cached = getCached("song", track.id) ?? getCached("songPreview", track.id);
-					const songPreview: MusicKitSongPreview = cached ?? cache(musicKitSongPreview(track));
-					parsedPlaylist.songs.push(getKey(songPreview));
-				}
-
-				if (!tracksResponse.data.next) break;
-
-				tracksResponse = await music.api.music(tracksResponse.data.next);
-			}
-		}
-
-		return cache(parsedPlaylist);
+		return cache(await musicKitPlaylist(playlist, music));
 	}
 
 	async *handleGetLibraryPlaylists(): AsyncGenerator<MusicKitPlaylistPreview> {
