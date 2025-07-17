@@ -118,4 +118,6 @@ export abstract class MetadataService extends Service<MetadataServiceState> {
 		const metadata = await this.handleGetMetadata(lookup);
 		return metadata;
 	}
+
+	// TODO: getMetadataPossibilities
 }

@@ -1,7 +1,12 @@
 import { defineStore } from "pinia";
 import { computed, reactive } from "vue";
 
-import { MusicService, SearchFilter, SearchResultItem } from "@/services/Music/MusicService";
+import {
+	HomeFeedItem,
+	MusicService,
+	SearchFilter,
+	SearchResultItem,
+} from "@/services/Music/MusicService";
 
 import { Lyrics } from "@/services/Lyrics/LyricsService";
 import { Metadata, MetadataLookup } from "@/services/Metadata/MetadataService";
@@ -54,6 +59,16 @@ export const useMusicServices = defineStore("MusicServices", () => {
 	// #region Actions for calling service methods
 	function withAllServices<T>(callback: (service: MusicService) => T): Promise<Awaited<T>[]> {
 		return Promise.all(enabledServices.value.map(callback));
+	}
+
+	function getHomeFeed(): AsyncGenerator<HomeFeedItem> {
+		const iterators: AsyncGenerator<HomeFeedItem>[] = [];
+		for (const service of enabledServices.value) {
+			if (!service.handleGetHomeFeed) continue;
+			iterators.push(service.getHomeFeed());
+		}
+
+		return abortableAsyncGenerator(racedIterators(iterators));
 	}
 
 	async function* searchHints(term: string): AsyncGenerator<string> {
@@ -289,6 +304,8 @@ export const useMusicServices = defineStore("MusicServices", () => {
 		metadataServices,
 		canGetMetadata,
 		getMetadata,
+
+		getHomeFeed,
 
 		getSong,
 		refreshSong,

@@ -2,6 +2,7 @@ import BG, { buildURL, WebPoSignalOutput } from "bgutils-js";
 import Innertube, { YTMusic, YTNodes } from "youtubei.js/web";
 
 import {
+	HomeFeedItem,
 	MusicService,
 	MusicServiceEvent,
 	SearchFilter,
@@ -9,9 +10,9 @@ import {
 } from "@/services/Music/MusicService";
 
 import { LocalImage, useLocalImages } from "@/stores/local-images";
-import { generateUUID } from "@/utils/crypto";
 import { getPlatform, isElectron } from "@/utils/os";
 import { Maybe } from "@/utils/types";
+import { YTNode } from "youtubei.js/dist/src/parser/helpers";
 import type { Thumbnail } from "youtubei.js/dist/src/parser/misc";
 import type { SearchContinuation } from "youtubei.js/dist/src/parser/ytmusic/Search";
 import type { MusicSearchFilters } from "youtubei.js/dist/src/types";
@@ -30,6 +31,8 @@ import {
 	generateCacheMethod,
 	getKey,
 	Playlist,
+	PlaylistPreview,
+	PlaylistSong,
 	Song,
 	SongKey,
 	SongPreview,
@@ -39,7 +42,7 @@ import {
 const getCached = generateCacheMethod("youtube");
 
 type YouTubeAlbum = Album<"youtube">;
-type YoutubeAlbumPreview = AlbumPreview<"youtube">;
+type YouTubeAlbumPreview = AlbumPreview<"youtube">;
 type YouTubeAlbumPreviewKey = AlbumPreviewKey<"youtube">;
 type YouTubeAlbumKey = AlbumKey<"youtube">;
 type YouTubeAlbumSong = AlbumSong<"youtube">;
@@ -50,7 +53,12 @@ type YouTubeSong = Song<"youtube">;
 type YouTubeSongKey = SongKey<"youtube">;
 type YouTubeSongPreview<HasId extends boolean = false> = SongPreview<"youtube", HasId>;
 type YouTubeSongPreviewKey = SongPreviewKey<"youtube">;
-type YoutubeDisplayableArtist = DisplayableArtist<"youtube">;
+type YouTubeDisplayableArtist = DisplayableArtist<"youtube">;
+type YouTubeSearchResultItem = SearchResultItem<"youtube">;
+type YouTubePlaylistPreview = PlaylistPreview<"youtube">;
+type YouTubeHomeFeedItem = HomeFeedItem<"youtube">;
+type YouTubePlaylist = Playlist<"youtube">;
+type YouTubePlaylistSong = PlaylistSong<"youtube">;
 
 export async function extractArtwork(
 	id: string,
@@ -78,7 +86,7 @@ export async function extractArtwork(
 export function youtubeDisplayableArtist(artist: {
 	channel_id?: string;
 	name: string;
-}): YoutubeDisplayableArtist {
+}): YouTubeDisplayableArtist {
 	const id = artist.channel_id;
 	const title = artist.name;
 
@@ -117,7 +125,57 @@ export function youtubeArtistPreview(node: YTNodes.MusicResponsiveListItem): You
 	};
 }
 
+export function youtubeSearchResultItem(node: YTNode): Maybe<YouTubeSearchResultItem> {
+	if (node.is(YTNodes.MusicResponsiveListItem) && node.id) {
+		switch (node.item_type) {
+			case "song":
+			case "video":
+			case "unknown":
+				return (
+					getCached("song", node.id) ??
+					getCached("songPreview", node.id) ??
+					cache(youtubeSongPreview(node, node.id))
+				);
+			case "artist":
+			case "library_artist":
+				// NOTE: We don't return cached artist here, since YouTube's Artist
+				//		 has a wide thumbnail, which does not look pleasing
+				return getCached("artistPreview", node.id) ?? cache(youtubeArtistPreview(node));
+			default:
+				console.warn(
+					"Could not parse SearchResultItem (MusicResponsiveListItem) (unknown type):",
+					node,
+				);
+		}
+	} else if (node.is(YTNodes.MusicTwoRowItem) && node.id) {
+		switch (node.item_type) {
+			case "song":
+			case "video":
+				return (
+					getCached("song", node.id) ??
+					getCached("songPreview", node.id) ??
+					cache(youtubeSongPreview(node))
+				);
+			case "album":
+				return (
+					getCached("album", node.id) ??
+					getCached("albumPreview", node.id) ??
+					cache(youtubeAlbumPreview(node))
+				);
+			case "playlist":
+				return (
+					getCached("playlist", node.id) ??
+					getCached("playlistPreview", node.id) ??
+					cache(youtubePlaylistPreview(node))
+				);
+			default:
+				console.warn("Could not parse SearchResultItem (MusicTwoRowItem) (unknown type):", node);
+		}
+	}
+}
+
 // TODO: Figure out why "artists" field is not populated on Android
+export function youtubeSongPreview(node: YTNodes.MusicTwoRowItem): YouTubeSongPreview<true>;
 export function youtubeSongPreview(
 	node: YTNodes.MusicResponsiveListItem,
 	nodeId: string,
@@ -129,52 +187,71 @@ export function youtubeSongPreview(
 	albumId?: string,
 ): YouTubeSongPreview<false>;
 export function youtubeSongPreview(
-	node: YTNodes.MusicResponsiveListItem,
+	node: YTNodes.MusicResponsiveListItem | YTNodes.MusicTwoRowItem,
 	nodeId?: string,
 	albumId?: string,
 ): YouTubeSongPreview {
+	// FIXME: support "non_music_track"
 	if (node.item_type !== "song" && node.item_type !== "video" && node.item_type !== "unknown") {
+		console.warn(node);
 		throw new Error("youtubeSongPreview can only be called on 'song', 'video' and 'unknown' nodes");
 	}
 
-	const { id, title, album } = node;
+	let artwork: Maybe<LocalImage>;
+	const thumbnails = "thumbnails" in node ? node.thumbnails : node.thumbnail;
+	if (thumbnails?.[0]) {
+		artwork = { url: thumbnails[0].url };
+	}
 
-	const artwork = node.thumbnails?.[0] && { url: node.thumbnails[0].url };
-
-	const artists: YoutubeDisplayableArtist[] = [];
-	if (node.artists?.length || node.authors?.length) {
-		for (const artist of (node.artists ?? node.authors)!) {
+	const artists: YouTubeDisplayableArtist[] = [];
+	const authors = "authors" in node ? node.authors : node.artists;
+	if (authors?.length) {
+		for (const artist of (node.artists ?? authors)!) {
 			artists.push(youtubeDisplayableArtist(artist));
 		}
 	} else if (node?.author) {
 		artists.push(youtubeDisplayableArtist(node.author));
 	}
 
-	const available = node.item_type !== "unknown";
-	const explicit =
-		node.badges?.some(
-			(badge) => badge.is(YTNodes.MusicInlineBadge) && badge.icon_type === "MUSIC_EXPLICIT_BADGE",
-		) ?? false;
+	if (node.is(YTNodes.MusicResponsiveListItem)) {
+		const available = node.item_type !== "unknown";
+		const explicit =
+			node.badges?.some(
+				(badge) => badge.is(YTNodes.MusicInlineBadge) && badge.icon_type === "MUSIC_EXPLICIT_BADGE",
+			) ?? false;
 
-	return {
-		type: "youtube",
-		kind: "songPreview",
-		// Song might not have a visible ID if its not available
-		id,
+		return {
+			type: "youtube",
+			kind: "songPreview",
+			// Song might not have a visible ID if its not available
+			id: node.id ?? nodeId,
 
-		title,
-		artists,
-		artwork,
+			title: node.title,
+			artists,
+			artwork,
 
-		available,
-		explicit,
+			available,
+			explicit,
 
-		album: album?.name,
+			album: node.album?.name,
 
-		genres: [],
+			genres: [],
 
-		data: { albumId },
-	};
+			data: { albumId },
+		};
+	} else {
+		return {
+			type: "youtube",
+			kind: "songPreview",
+			id: node.id,
+
+			title: node.title.toString(),
+			artists,
+			artwork,
+
+			genres: [],
+		};
+	}
 }
 
 export async function youtubeSong(
@@ -254,14 +331,80 @@ export async function youtubeSong(
 	};
 }
 
+export function youtubePlaylistPreview(
+	node: YTNodes.MusicTwoRowItem | YTNodes.MusicResponsiveListItem,
+): YouTubePlaylistPreview {
+	if (!node.id) {
+		throw new Error("Cannot create PlaylistPreview from a node without id");
+	}
+
+	let artwork: Maybe<LocalImage>;
+	const thumbnails = "thumbnails" in node ? node.thumbnails : node.thumbnail;
+	if (thumbnails?.[0]) {
+		artwork = { url: thumbnails[0].url };
+	}
+
+	return {
+		id: node.id!,
+		type: "youtube",
+		kind: "playlistPreview",
+
+		title: (("name" in node && node.name) || node.title?.toString()) ?? "Unknown title",
+
+		artwork,
+	};
+}
+
+export async function youtubePlaylist(
+	playlist: YTMusic.Playlist,
+	id: string,
+): Promise<YouTubePlaylist> {
+	const header = playlist.header?.as(YTNodes.MusicResponsiveHeader);
+	const title = header?.title?.toString() ?? "Unknown title";
+	const thumbnail = header?.thumbnail?.contents?.[0];
+
+	let artwork: Maybe<LocalImage>;
+	if (thumbnail) {
+		const localImages = useLocalImages();
+		const artworkBlob = await (await fetch(thumbnail.url)).blob();
+		await localImages.associateImage(id, artworkBlob);
+		artwork = { id, url: thumbnail.url };
+	}
+
+	const songs: YouTubePlaylistSong[] = [];
+	while (playlist?.contents) {
+		for (const node of playlist.contents) {
+			if (!node.is(YTNodes.MusicResponsiveListItem) || !node.id) continue;
+
+			const song =
+				getCached("song", node.id) ??
+				getCached("songPreview", node.id) ??
+				cache(youtubeSongPreview(node, node.id));
+			songs.push(getKey(song));
+		}
+
+		if (!playlist.has_continuation) break;
+		playlist = await playlist.getContinuation();
+	}
+
+	return cache<YouTubePlaylist>({
+		id,
+		type: "youtube",
+		kind: "playlist",
+		title,
+		artwork,
+		songs,
+	});
+}
+
 export function youtubeAlbumPreview(
 	node: YTNodes.MusicTwoRowItem | YTNodes.MusicResponsiveListItem,
-): YoutubeAlbumPreview {
+): YouTubeAlbumPreview {
 	if (!node.id) {
 		throw new Error("Cannot create AlbumPreview from a node without id");
 	}
 
-	const artists: YoutubeDisplayableArtist[] = [];
+	const artists: YouTubeDisplayableArtist[] = [];
 	if (node.artists?.length) {
 		for (const artist of node.artists) {
 			artists.push(youtubeDisplayableArtist(artist));
@@ -293,7 +436,7 @@ export async function youtubeAlbum(id: string, album: YTMusic.Album): Promise<Yo
 
 	const artwork = await extractArtwork(id, thumbnail);
 
-	const artists: YoutubeDisplayableArtist[] = [];
+	const artists: YouTubeDisplayableArtist[] = [];
 	const artistText = album.header?.as(YTNodes.MusicResponsiveHeader)?.strapline_text_one?.runs;
 	if (artistText) {
 		for (const run of artistText) {
@@ -484,10 +627,50 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 
 	handleDeinitialization(): void {}
 
+	async *handleGetHomeFeed(): AsyncGenerator<YouTubeHomeFeedItem> {
+		let homeFeed = await this.innertube!.music.getHomeFeed();
+
+		while (homeFeed.sections) {
+			console.log("SECTIONS:", homeFeed.sections);
+
+			for (const section of homeFeed.sections) {
+				if (!section.is(YTNodes.MusicCarouselShelf)) continue;
+
+				const title = section.header?.title?.toString() ?? "Recommended";
+				const homeFeedItem: YouTubeHomeFeedItem = {
+					title,
+					style: {
+						type: section.num_items_per_column ? "list" : "items",
+						rows: section.num_items_per_column,
+					},
+					relatedItems: [],
+					items: [],
+				};
+
+				for (const node of section.contents) {
+					const searchResult = youtubeSearchResultItem(node);
+					if (searchResult) {
+						homeFeedItem.items.push(searchResult);
+					}
+				}
+
+				if (homeFeedItem.items.length) {
+					yield homeFeedItem;
+				}
+			}
+
+			if (!homeFeed.has_continuation) {
+				break;
+			}
+
+			homeFeed = await homeFeed.getContinuation();
+		}
+	}
+
 	async *handleSearchForItems(
 		term: string,
 		filter: SearchFilter,
-	): AsyncGenerator<SearchResultItem<"youtube">, any, any> {
+	): AsyncGenerator<YouTubeSearchResultItem> {
 		const searchFilters: MusicSearchFilters = {};
 
 		switch (filter) {
@@ -515,24 +698,9 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 			for (const result of contents) {
 				if (!result.id) continue;
 
-				switch (result.item_type) {
-					case "video":
-					case "song":
-						yield getCached("song", result.id) ??
-							getCached("songPreview", result.id) ??
-							cache(youtubeSongPreview(result, result.id));
-						break;
-					case "album":
-						yield getCached("album", result.id) ??
-							getCached("albumPreview", result.id) ??
-							cache(youtubeAlbumPreview(result));
-						break;
-					case "artist":
-					case "library_artist":
-						// NOTE: We don't return cached artist here, since YouTube's Artist
-						//		 has a wide thumbnail, which does not look pleasing
-						yield getCached("artistPreview", result.id) ?? cache(youtubeArtistPreview(result));
-						break;
+				const searchResult = youtubeSearchResultItem(result);
+				if (searchResult) {
+					yield searchResult;
 				}
 			}
 
@@ -590,7 +758,7 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		return cache(await youtubeAlbum(id, album));
 	}
 
-	async handleGetAlbumFromPreview(albumPreview: YoutubeAlbumPreview): Promise<YouTubeAlbum> {
+	async handleGetAlbumFromPreview(albumPreview: YouTubeAlbumPreview): Promise<YouTubeAlbum> {
 		const album = await this.getAlbum(albumPreview.id);
 		if (!album) {
 			throw new Error(`Failed to find album for albumPreview: ${albumPreview.id}`);
@@ -627,7 +795,10 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 
 			for (const node of section.contents) {
 				if (node.is(YTNodes.MusicResponsiveListItem) && node.id) {
-					const songPreview = cache(youtubeSongPreview(node, node.id));
+					const songPreview =
+						getCached("song", node.id) ??
+						getCached("songPreview", node.id) ??
+						cache(youtubeSongPreview(node, node.id));
 					songs.push(getKey(songPreview));
 				} else if (node.is(YTNodes.MusicTwoRowItem) && node.item_type === "album" && node.id) {
 					const albumPreview =
@@ -678,60 +849,16 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		}
 	}
 
-	async handleGetPlaylistFromUrl(idOrUrl: URL): Promise<Maybe<Playlist>> {
+	async handleGetPlaylistFromUrl(idOrUrl: URL): Promise<Maybe<YouTubePlaylist>> {
 		const youtubeId = idOrUrl.searchParams.get("list");
-		if (!youtubeId) {
-			return;
-		}
+		if (!youtubeId) return;
+		return await this.getPlaylist(youtubeId);
+	}
 
-		let playlist = await this.innertube!.music.getPlaylist(youtubeId);
-		if (!playlist.contents) {
-			return;
-		}
-
-		const id = generateUUID();
-		const header = playlist.header?.as(YTNodes.MusicResponsiveHeader);
-		const title = header?.title?.toString() ?? "Unknown title";
-		const thumbnail = header?.thumbnail?.contents?.[0];
-
-		let artwork: Maybe<LocalImage>;
-		if (thumbnail) {
-			const localImages = useLocalImages();
-			const artworkBlob = await (await fetch(thumbnail.url)).blob();
-			await localImages.associateImage(id, artworkBlob);
-			artwork = { id, url: thumbnail.url };
-		}
-
-		const songs: SongKey[] = [];
-		while (playlist?.contents) {
-			for (const node of playlist.contents) {
-				if (!node.is(YTNodes.MusicResponsiveListItem)) continue;
-				if (node.id) {
-					const songPreview = cache(youtubeSongPreview(node, node.id));
-					const song = await this.getSongFromPreview(songPreview);
-					songs.push(getKey(song));
-				}
-			}
-
-			if (!playlist.has_continuation) break;
-			playlist = await playlist.getContinuation();
-		}
-
-		return cache<Playlist>({
-			id,
-			type: "unimusic",
-			kind: "playlist",
-			title,
-			artwork,
-			songs,
-			data: {
-				importInfo: {
-					service: "youtube",
-					playlistId: youtubeId,
-					sync: false,
-				},
-			},
-		});
+	async getPlaylist(id: string): Promise<Maybe<YouTubePlaylist>> {
+		const playlist = await this.innertube!.music.getPlaylist(id);
+		if (!playlist.contents) return;
+		return youtubePlaylist(playlist, id);
 	}
 
 	async handleGetSong(songId: string, useCache = true): Promise<YouTubeSong> {

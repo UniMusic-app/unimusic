@@ -6,6 +6,20 @@ import "./search";
 
 declare global {
 	namespace MusicKit {
+		type FormatMap<Y extends { data: unknown[] }> = {
+			data: Y extends { data: (infer T extends Resource)[] }
+				? Pick<T, "id" | "type" | "href">[]
+				: never;
+			resources: {
+				"personal-recommendation"?: Record<string, PersonalRecommendation>;
+				playlists?: Record<string, Playlists>;
+				artists?: Record<string, Artists>;
+				albums?: Record<string, Albums>;
+				songs?: Record<string, Songs>;
+				"music-videos"?: Record<string, Songs>;
+			};
+		};
+
 		/**
 		 * A resource—such as an album, song, or playlist.
 		 * A Resource object may contain just these identifier members: id, type, href, and meta.
@@ -62,7 +76,7 @@ declare global {
 		 * Attributes representing the metadata of the resource.
 		 * @see https://developer.apple.com/documentation/applemusicapi/resource/attributes
 		 */
-		type ResourceAttributes = Record<string, string>;
+		type ResourceAttributes = Record<string, unknown>;
 
 		/**
 		 * Views belonging to the resource.

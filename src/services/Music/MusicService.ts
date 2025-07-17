@@ -65,7 +65,17 @@ export type SearchResultItem<Type extends SongType = SongType> =
 	| Artist<Type>
 	| ArtistPreview<Type>
 	| Album<Type>
-	| AlbumPreview<Type>;
+	| AlbumPreview<Type>
+	| Playlist<Type>
+	| PlaylistPreview<Type>;
+
+export interface HomeFeedItem<Type extends SongType = SongType> {
+	title: string;
+	description?: string;
+	items: SearchResultItem<Type>[];
+	relatedItems: SearchResultItem<Type>[];
+	style: { type: "list"; rows?: number } | { type: "cards" } | { type: "items" };
+}
 
 type AnyGenerator<T, TReturn = unknown, TNext = unknown> =
 	| Generator<T, TReturn, TNext>
@@ -243,6 +253,20 @@ export abstract class MusicService<
 
 			return fallback;
 		}
+	}
+
+	handleGetHomeFeed?(): AnyGenerator<HomeFeedItem>;
+	async *getHomeFeed(): AsyncGenerator<HomeFeedItem> {
+		this.log("getHomeFeed");
+		await this.initialize();
+
+		if (!this.handleGetHomeFeed) {
+			throw new Error("This service does not support getHomeFeed");
+		}
+
+		const homeFeed = await this.withUnrecoverableErrorHandling(this.handleGetHomeFeed);
+
+		yield* homeFeed;
 	}
 
 	handleCreatePlaylist?(title: string, artwork?: LocalImage): PlaylistId | Promise<PlaylistId>;
