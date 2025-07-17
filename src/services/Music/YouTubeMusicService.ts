@@ -33,6 +33,7 @@ import {
 	getKey,
 	Playlist,
 	PlaylistPreview,
+	PlaylistSong,
 	Song,
 	SongKey,
 	SongPreview,
@@ -57,6 +58,8 @@ type YouTubeDisplayableArtist = DisplayableArtist<"youtube">;
 type YouTubeSearchResultItem = SearchResultItem<"youtube">;
 type YouTubePlaylistPreview = PlaylistPreview<"youtube">;
 type YouTubeHomeFeedItem = HomeFeedItem<"youtube">;
+type YouTubePlaylist = Playlist<"youtube">;
+type YouTubePlaylistSong = PlaylistSong<"youtube">;
 
 export async function extractArtwork(
 	id: string,
@@ -190,6 +193,7 @@ export function youtubeSongPreview(
 	albumId?: string,
 ): YouTubeSongPreview {
 	if (node.item_type !== "song" && node.item_type !== "video" && node.item_type !== "unknown") {
+		console.warn(node);
 		throw new Error("youtubeSongPreview can only be called on 'song', 'video' and 'unknown' nodes");
 	}
 
@@ -349,6 +353,48 @@ export function youtubePlaylistPreview(
 
 		artwork,
 	};
+}
+
+export async function youtubePlaylist(
+	playlist: YTMusic.Playlist,
+	id: string,
+): Promise<YouTubePlaylist> {
+	const header = playlist.header?.as(YTNodes.MusicResponsiveHeader);
+	const title = header?.title?.toString() ?? "Unknown title";
+	const thumbnail = header?.thumbnail?.contents?.[0];
+
+	let artwork: Maybe<LocalImage>;
+	if (thumbnail) {
+		const localImages = useLocalImages();
+		const artworkBlob = await (await fetch(thumbnail.url)).blob();
+		await localImages.associateImage(id, artworkBlob);
+		artwork = { id, url: thumbnail.url };
+	}
+
+	const songs: YouTubePlaylistSong[] = [];
+	while (playlist?.contents) {
+		for (const node of playlist.contents) {
+			if (!node.is(YTNodes.MusicResponsiveListItem) || !node.id) continue;
+
+			const song =
+				getCached("song", node.id) ??
+				getCached("songPreview", node.id) ??
+				cache(youtubeSongPreview(node, node.id));
+			songs.push(getKey(song));
+		}
+
+		if (!playlist.has_continuation) break;
+		playlist = await playlist.getContinuation();
+	}
+
+	return cache<YouTubePlaylist>({
+		id,
+		type: "youtube",
+		kind: "playlist",
+		title,
+		artwork,
+		songs,
+	});
 }
 
 export function youtubeAlbumPreview(
@@ -802,60 +848,16 @@ export class YouTubeMusicService extends MusicService<"youtube"> {
 		}
 	}
 
-	async handleGetPlaylistFromUrl(idOrUrl: URL): Promise<Maybe<Playlist>> {
+	async handleGetPlaylistFromUrl(idOrUrl: URL): Promise<Maybe<YouTubePlaylist>> {
 		const youtubeId = idOrUrl.searchParams.get("list");
-		if (!youtubeId) {
-			return;
-		}
+		if (!youtubeId) return;
+		return await this.getPlaylist(youtubeId);
+	}
 
-		let playlist = await this.innertube!.music.getPlaylist(youtubeId);
-		if (!playlist.contents) {
-			return;
-		}
-
-		const id = generateUUID();
-		const header = playlist.header?.as(YTNodes.MusicResponsiveHeader);
-		const title = header?.title?.toString() ?? "Unknown title";
-		const thumbnail = header?.thumbnail?.contents?.[0];
-
-		let artwork: Maybe<LocalImage>;
-		if (thumbnail) {
-			const localImages = useLocalImages();
-			const artworkBlob = await (await fetch(thumbnail.url)).blob();
-			await localImages.associateImage(id, artworkBlob);
-			artwork = { id, url: thumbnail.url };
-		}
-
-		const songs: SongKey[] = [];
-		while (playlist?.contents) {
-			for (const node of playlist.contents) {
-				if (!node.is(YTNodes.MusicResponsiveListItem)) continue;
-				if (node.id) {
-					const songPreview = cache(youtubeSongPreview(node, node.id));
-					const song = await this.getSongFromPreview(songPreview);
-					songs.push(getKey(song));
-				}
-			}
-
-			if (!playlist.has_continuation) break;
-			playlist = await playlist.getContinuation();
-		}
-
-		return cache<Playlist>({
-			id,
-			type: "unimusic",
-			kind: "playlist",
-			title,
-			artwork,
-			songs,
-			data: {
-				importInfo: {
-					service: "youtube",
-					playlistId: youtubeId,
-					sync: false,
-				},
-			},
-		});
+	async getPlaylist(id: string): Promise<Maybe<YouTubePlaylist>> {
+		const playlist = await this.innertube!.music.getPlaylist(id);
+		if (!playlist.contents) return;
+		return youtubePlaylist(playlist, id);
 	}
 
 	async handleGetSong(songId: string, useCache = true): Promise<YouTubeSong> {
