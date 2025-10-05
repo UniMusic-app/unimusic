@@ -1,5 +1,6 @@
 import 'package:dynamic_system_colors/dynamic_system_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:unimusic/services/database/database.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/views/home_view.dart';
 import 'package:unimusic/views/library_view.dart';
@@ -18,6 +19,8 @@ Future<void> main() async {
     androidNotificationChannelName: "UniMusic Audio Playback",
     androidNotificationOngoing: true,
   );
+
+  await DatabaseHelper.instantiate();
 
   runApp(ChangeNotifierProvider(create: (context) => MusicManager(), child: const UniMusicApp()));
 }

@@ -22,6 +22,7 @@ class SearchHintTile extends StatelessWidget {
           artwork: searchHint.artwork,
           icon: Icon(searchHint.type?.icon ?? Icons.search),
           width: 48,
+          size: ArtworkSize.small,
           animationDuration: Duration(milliseconds: 150),
         ),
       ),

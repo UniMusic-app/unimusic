@@ -102,7 +102,7 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
                 final items = libraryItems[itemType];
 
                 return ListView.builder(
-                  padding: EdgeInsetsGeometry.only(top: 16, bottom: safeAreaPadding.bottom + 48),
+                  padding: EdgeInsets.only(top: 16, bottom: safeAreaPadding.bottom + 48),
                   itemCount: items?.length ?? 0,
                   itemBuilder: (context, index) {
                     final item = items![index];
