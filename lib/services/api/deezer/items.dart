@@ -174,9 +174,9 @@ class DeezerArtwork extends CachedArtwork {
   @override
   Uri getImageUri(ArtworkSize size) {
     final quality = 80;
-    final width = size.width;
-    final height = size.width;
-    return Uri(pathSegments: [imageCdnUrl, id, "${height}x$width-000000-$quality-0-0.jpg"]);
+    final width = size.width.toInt();
+    final height = width;
+    return Uri.parse("$imageCdnUrl/$id/${height}x$width-000000-$quality-0-0.jpg");
   }
 }
 
