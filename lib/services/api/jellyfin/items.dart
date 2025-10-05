@@ -1,49 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:unimusic/services/api/jellyfin/api.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:unimusic/services/database/cached_artwork.dart';
 import 'package:just_audio/just_audio.dart';
 
-part "items.g.dart";
-
-@JsonSerializable()
-class JellyfinArtwork extends Artwork {
+class JellyfinArtwork extends CachedArtwork {
   final JellyfinApi api;
   final String type;
   final String? tag;
 
-  const JellyfinArtwork({required super.id, required this.api, required this.type, this.tag});
-
-  factory JellyfinArtwork.fromJson(Map<String, dynamic> json) => _$JellyfinArtworkFromJson(json);
-  Map<String, dynamic> toJson() => _$JellyfinArtworkToJson(this);
+  const JellyfinArtwork({required super.id, required this.api, required this.type, this.tag})
+    : super(providerId: providerId);
 
   @override
-  Uri getImageUri({int? width, int? height, int? quality}) {
-    final imageUri = api.imageUri(
-      itemId: id,
-      type: type,
-      tag: tag,
-      width: width,
-      height: height,
-      quality: quality,
-    );
-    return imageUri;
-  }
+  String getMimeType() => 'image/jpeg';
 
   @override
-  ImageProvider getImage({int? width, int? height, int? quality}) {
-    final imageUri = getImageUri(width: width, height: height, quality: quality);
-    return NetworkImage(imageUri.toString());
+  Uri getImageUri(ArtworkSize size) {
+    return api.imageUri(itemId: id, type: type, tag: tag, width: size.width.toInt(), quality: 90);
   }
 }
 
-@JsonSerializable()
 class JellyfinArtist extends Artist<JellyfinArtwork> {
   JellyfinArtist({required super.id, required super.name, super.artwork, super.favourite})
     : super(providerId: providerId);
-
-  factory JellyfinArtist.fromJson(Map<String, dynamic> json) => _$JellyfinArtistFromJson(json);
-  Map<String, dynamic> toJson() => _$JellyfinArtistToJson(this);
 
   JellyfinArtist.fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json)
     : this(
@@ -72,7 +52,6 @@ class JellyfinArtist extends Artist<JellyfinArtwork> {
 }
 
 // FIXME: Inherit albums artwork in case song is missing one
-@JsonSerializable()
 class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> {
   final JellyfinApi api;
 
@@ -86,9 +65,6 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> {
     super.favourite,
     super.artwork,
   }) : super(providerId: providerId);
-
-  factory JellyfinSong.fromJson(Map<String, dynamic> json) => _$JellyfinSongFromJson(json);
-  Map<String, dynamic> toJson() => _$JellyfinSongToJson(this);
 
   JellyfinSong.fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json)
     : this(
@@ -142,7 +118,6 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> {
   }
 }
 
-@JsonSerializable()
 class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork> {
   final JellyfinApi api;
 
@@ -154,9 +129,6 @@ class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork> {
     super.artwork,
     super.favourite,
   }) : super(providerId: providerId);
-
-  factory JellyfinAlbum.fromJson(Map<String, dynamic> json) => _$JellyfinAlbumFromJson(json);
-  Map<String, dynamic> toJson() => _$JellyfinAlbumToJson(this);
 
   JellyfinAlbum.fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json)
     : this(

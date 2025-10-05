@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/utils/pixels.dart';
 
 class LazyImage extends StatefulWidget {
   final Artwork? artwork;
   final Widget icon;
   final double? width;
   final double? height;
-  final int? quality;
+  final ArtworkSize size;
   final Duration? animationDuration;
 
   const LazyImage({
     super.key,
     required this.artwork,
     required this.icon,
+    required this.size,
     this.width,
     this.height,
-    this.quality,
     this.animationDuration,
   });
 
@@ -64,6 +63,7 @@ class LazyImageState extends State<LazyImage> {
           );
 
     if (image != null) {
+      // FIXME: Handle the delay so it only shows loading animation if it is loading
       return AnimatedSwitcher(
         duration: widget.animationDuration ?? Duration(milliseconds: 350),
         switchInCurve: Curves.easeInOutSine,
@@ -98,16 +98,13 @@ class LazyImageState extends State<LazyImage> {
   }
 
   void _loadImage() {
-    final image = widget.artwork?.getImage(
-      width: widget.width?.logicalPixelsToDevicePixels(context),
-      height: widget.height?.logicalPixelsToDevicePixels(context),
-      quality: widget.quality,
-    );
-
+    final image = widget.artwork?.getImage(widget.size);
     oldImage = this.image;
 
-    setState(() {
-      this.image = image;
-    });
+    if (mounted) {
+      setState(() {
+        this.image = image;
+      });
+    }
   }
 }

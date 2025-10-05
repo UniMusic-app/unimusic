@@ -35,16 +35,14 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
     final double artworkWidth = min(size.width - 48, size.height - 384);
 
     return Padding(
-      padding: EdgeInsetsGeometry.symmetric(horizontal: 24 + safeAreaPadding.horizontal),
+      padding: EdgeInsets.symmetric(horizontal: 24 + safeAreaPadding.horizontal),
       child: OverflowBox(
         alignment: Alignment.topCenter,
         maxHeight: widget.maxHeight,
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsetsGeometry.only(
-                top: safeAreaPadding.top * widget.animationController.value,
-              ),
+              padding: EdgeInsets.only(top: safeAreaPadding.top * widget.animationController.value),
               child: Center(
                 child: Container(
                   width: 32,
@@ -69,12 +67,13 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                         icon: Icon(Icons.music_note),
                         artwork: currentItem?.artwork,
                         width: artworkWidth,
+                        size: ArtworkSize.large,
                       ),
                     ),
                   ),
                   // TODO: Marquee
                   Padding(
-                    padding: EdgeInsetsGeometry.only(top: 16),
+                    padding: const EdgeInsets.only(top: 16),
                     child: Text(
                       currentItem?.name ?? "Nothing is playing",
                       style: Theme.of(context).textTheme.headlineSmall,
@@ -89,7 +88,7 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Padding(
-                    padding: EdgeInsetsGeometry.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -169,7 +168,7 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                     ),
                   ),
                   const Padding(
-                    padding: EdgeInsetsGeometry.only(top: 16),
+                    padding: EdgeInsets.only(top: 16),
                     child: ExpandedMusicPlayerSeekbar(),
                   ),
                   // Row(
@@ -187,7 +186,7 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                   //   ],
                   // ),
                   Padding(
-                    padding: EdgeInsetsGeometry.only(top: 16),
+                    padding: const EdgeInsets.only(top: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [

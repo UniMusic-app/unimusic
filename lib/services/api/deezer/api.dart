@@ -12,8 +12,6 @@ import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/utils/stream.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part "api.g.dart";
-
 const providerId = "deezer";
 
 const deezerUrl = "https://deezer.com";
@@ -55,9 +53,6 @@ class DeezerUserData {
     required this.timestamp,
   });
 
-  factory DeezerUserData.fromJson(Map<String, dynamic> json) => _$DeezerUserDataFromJson(json);
-  Map<String, dynamic> toJson() => _$DeezerUserDataToJson(this);
-
   factory DeezerUserData.fromDeezerJson(Map<String, dynamic> json) {
     final results = json["results"];
     final options = results["USER"]["OPTIONS"];
@@ -84,9 +79,6 @@ class DeezerApi {
 
   DeezerApi({required this.arl, required this.userData}) : dio = getDio(arl: arl);
   DeezerApi.withDio({required this.arl, required this.userData, required this.dio});
-
-  factory DeezerApi.fromJson(Map<String, dynamic> json) => _$DeezerApiFromJson(json);
-  Map<String, dynamic> toJson() => _$DeezerApiToJson(this);
 
   static Dio getDio({required String arl}) {
     return Dio(
@@ -141,11 +133,11 @@ class DeezerApi {
     if (response.data is Map &&
         response.data?["error"] is Map &&
         response.data?["error"].entries.isNotEmpty) {
-      throw Error.safeToString("${response.data["error"]}");
+      throw Exception("${response.data["error"]}");
     }
 
     if (response.statusCode! > 200) {
-      throw Error.safeToString(response.data);
+      throw Exception(response.data);
     }
 
     return response;
@@ -222,12 +214,12 @@ class DeezerApi {
 
     final data = response.data;
     if (data["data"] == null || data["data"]?[0]?["errors"] != null) {
-      throw Error.safeToString("Error: $data");
+      throw Exception("Error: $data");
     }
 
     final media = data["data"][0]["media"];
     if (media.length == 0) {
-      throw Error.safeToString("Empty media!: $data");
+      throw Exception("Empty media!: $data");
     }
 
     final url = media[0]["sources"][0]["url"];

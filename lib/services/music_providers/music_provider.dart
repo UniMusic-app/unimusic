@@ -15,12 +15,36 @@ abstract class MusicItem {
   }
 }
 
-abstract class Artwork {
-  final String id;
-  const Artwork({required this.id});
+enum ArtworkSize {
+  large(1024),
+  medium(256),
+  small(96);
 
-  Uri? getImageUri({int? width, int? height, int? quality});
-  ImageProvider? getImage({int? width, int? height, int? quality});
+  final double width;
+  const ArtworkSize(this.width);
+
+  factory ArtworkSize.fromString(String sizeString) => switch (sizeString) {
+    "small" => ArtworkSize.small,
+    "medium" => ArtworkSize.medium,
+    "large" => ArtworkSize.large,
+    _ => throw Exception("Unknown ArtworkSize: $sizeString"),
+  };
+
+  @override
+  String toString() => switch (this) {
+    ArtworkSize.small => "small",
+    ArtworkSize.medium => "medium",
+    ArtworkSize.large => "large",
+  };
+}
+
+abstract class Artwork {
+  final String providerId;
+  final String id;
+  const Artwork({required this.providerId, required this.id});
+
+  Uri? getImageUri(ArtworkSize size);
+  ImageProvider? getImage(ArtworkSize size);
 }
 
 abstract class Artist<ArtworkType extends Artwork> extends MusicItem {

@@ -23,6 +23,7 @@ class CollapsedMusicPlayer extends StatelessWidget {
                 icon: Icon(Icons.music_note),
                 artwork: currentItem.artwork,
                 width: 48,
+                size: ArtworkSize.small,
               ),
             ),
       trailing: Wrap(

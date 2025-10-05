@@ -1,9 +1,11 @@
 import 'package:async/async.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:unimusic/services/api/deezer/api.dart';
+
 import 'package:unimusic/services/api/jellyfin/api.dart';
-import 'package:unimusic/services/music_providers/deezer_provider.dart';
+import 'package:unimusic/services/api/local/api.dart';
+
 import 'package:unimusic/services/music_providers/jellyfin_provider.dart';
+import 'package:unimusic/services/music_providers/local_provider.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -16,15 +18,16 @@ class MusicManager extends ChangeNotifier {
   }
 
   _init() async {
-    // final jellyfinApi = await JellyfinApi.authenticateByName(
-    //   serverUri: Uri.parse("https://demo.jellyfin.org/stable"),
-    //   username: "demo",
-    // );
-    // final jellyfinProvider = JellyfinMusicProvider(api: jellyfinApi);
-    // providers.add(jellyfinProvider);
+    final jellyfinApi = await JellyfinApi.authenticateByName(
+      serverUri: Uri.parse("https://demo.jellyfin.org/stable"),
+      username: "demo",
+    );
+    final jellyfinProvider = JellyfinMusicProvider(api: jellyfinApi);
+    providers.add(jellyfinProvider);
 
-    // final deezerProvider = DeezerMusicProvider(deezer: await DeezerApi.create(arl: "DEEZER_ARL"));
-    // providers.add(deezerProvider);
+    final localApi = LocalApi(musicDirectories: LocalApi.getDefaultMusicDirectories());
+    final localProvider = LocalMusicProvider(api: localApi);
+    providers.add(localProvider);
 
     player.currentIndexStream.listen((currentIndex) {
       queuePosition = currentIndex ?? 0;

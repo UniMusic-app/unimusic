@@ -72,7 +72,7 @@ class GenericItemTile<T> extends StatelessWidget {
 
       leading: ClipRRect(
         borderRadius: borderRadius,
-        child: LazyImage(artwork: artwork, icon: icon, width: 48),
+        child: LazyImage(artwork: artwork, icon: icon, width: 48, size: ArtworkSize.small),
       ),
 
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),

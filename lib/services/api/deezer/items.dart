@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:unimusic/services/api/deezer/api.dart';
 import 'package:unimusic/services/api/deezer/audio_source.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:unimusic/services/database/cached_artwork.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-
-part "items.g.dart";
 
 mixin DeezerFavouriteItem on MusicItem {
   DeezerApi get api;
@@ -30,21 +28,17 @@ mixin DeezerFavouriteItem on MusicItem {
   }
 }
 
-@JsonSerializable()
 class DeezerTrack {
   final DeezerApi api;
   final Map<String, dynamic> trackInfo;
 
   const DeezerTrack({required this.api, required this.trackInfo});
 
-  factory DeezerTrack.fromJson(Map<String, dynamic> json) => _$DeezerTrackFromJson(json);
-  Map<String, dynamic> toJson() => _$DeezerTrackToJson(this);
-
   static Future<DeezerTrack> fetch(DeezerApi api, String trackId) async {
     final response = await api.callMethod("deezer.pageTrack", data: {"SNG_ID": trackId});
 
     if (response.data['results']['DATA']['MD5_ORIGIN'] == null) {
-      throw Error.safeToString("TOKEN EXPIRED");
+      throw Exception("TOKEN EXPIRED");
     }
 
     return DeezerTrack(api: api, trackInfo: response.data["results"]["DATA"]);
@@ -86,7 +80,6 @@ class DeezerTrack {
   }
 }
 
-@JsonSerializable()
 class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteItem {
   @override
   final DeezerApi api;
@@ -106,9 +99,6 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
     this.trackToken,
     this.trackTokenExpire,
   }) : super(providerId: providerId);
-
-  factory DeezerSong.fromJson(Map<String, dynamic> json) => _$DeezerSongFromJson(json);
-  Map<String, dynamic> toJson() => _$DeezerSongToJson(this);
 
   DeezerSong.fromTrack({required DeezerApi api, required DeezerTrack track, bool? favourite})
     : this(
@@ -166,48 +156,30 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
         title: name,
         album: album,
         artist: artists.formatted,
-        artUri: artwork?.getImageUri(),
+        artUri: artwork?.getImageUri(ArtworkSize.medium),
         duration: duration,
       ),
     );
   }
 }
 
-@JsonSerializable()
-class DeezerArtwork extends Artwork {
-  const DeezerArtwork({required super.id});
+class DeezerArtwork extends CachedArtwork {
+  const DeezerArtwork({required super.id}) : super(providerId: providerId);
   const DeezerArtwork.withType({required String id, required String imageType})
     : this(id: "$imageType/$id");
 
-  factory DeezerArtwork.fromJson(Map<String, dynamic> json) => _$DeezerArtworkFromJson(json);
-  Map<String, dynamic> toJson() => _$DeezerArtworkToJson(this);
+  @override
+  String getMimeType() => 'image/jpeg';
 
   @override
-  Uri getImageUri({int? width, int? height, int? quality}) {
-    quality ??= 80;
-    switch ((width, height)) {
-      case (null, null):
-        width = 1200;
-        height = 1200;
-      case (null, _):
-        width = height;
-      case _:
-        height = width;
-    }
-
-    final url = "$imageCdnUrl/$id/${height}x$width-000000-$quality-0-0.jpg";
-
-    return Uri.parse(url);
-  }
-
-  @override
-  ImageProvider getImage({int? width, int? height, int? quality}) {
-    final imageUri = getImageUri(width: width, height: height, quality: quality);
-    return NetworkImage(imageUri.toString());
+  Uri getImageUri(ArtworkSize size) {
+    final quality = 80;
+    final width = size.width;
+    final height = size.width;
+    return Uri(pathSegments: [imageCdnUrl, id, "${height}x$width-000000-$quality-0-0.jpg"]);
   }
 }
 
-@JsonSerializable()
 class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
   @override
   final DeezerApi api;
@@ -219,9 +191,6 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
     super.artwork,
     super.favourite,
   }) : super(providerId: providerId);
-
-  factory DeezerArtist.fromJson(Map<String, dynamic> json) => _$DeezerArtistFromJson(json);
-  Map<String, dynamic> toJson() => _$DeezerArtistToJson(this);
 
   factory DeezerArtist.fromDeezerJson(DeezerApi api, Map<String, dynamic> json) {
     if (json["id"] != null) {
@@ -245,7 +214,6 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
   }
 }
 
-@JsonSerializable()
 class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavouriteItem {
   @override
   final DeezerApi api;
@@ -258,9 +226,6 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
     super.artwork,
     super.favourite,
   }) : super(providerId: providerId);
-
-  factory DeezerAlbum.fromJson(Map<String, dynamic> json) => _$DeezerAlbumFromJson(json);
-  Map<String, dynamic> toJson() => _$DeezerAlbumToJson(this);
 
   factory DeezerAlbum.fromDeezerJson(DeezerApi api, Map<String, dynamic> json) {
     if (json["id"] != null) {
