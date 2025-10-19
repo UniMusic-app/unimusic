@@ -12,6 +12,9 @@
 .swiftpm/
 migrate_working_dir/
 
+# Nova.app
+.nova
+
 # IntelliJ related
 *.iml
 *.ipr

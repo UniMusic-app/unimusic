@@ -1,16 +1,19 @@
+import 'dart:io';
+
 import 'package:async/async.dart';
 import 'package:flutter/cupertino.dart';
-
-import 'package:unimusic/services/api/jellyfin/api.dart';
+import 'package:unimusic/services/api/local/android/api.dart';
 import 'package:unimusic/services/api/local/api.dart';
-
-import 'package:unimusic/services/music_providers/jellyfin_provider.dart';
+import 'package:unimusic/services/api/local/desktop/api.dart';
 import 'package:unimusic/services/music_providers/local_provider.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:just_audio/just_audio.dart';
 
 class MusicManager extends ChangeNotifier {
-  final player = AudioPlayer(useLazyPreparation: true, useProxyForRequestHeaders: false);
+  final player = AudioPlayer(
+    useLazyPreparation: true,
+    useProxyForRequestHeaders: false,
+  );
   final Set<MusicProvider> providers = {};
 
   MusicManager() {
@@ -18,14 +21,14 @@ class MusicManager extends ChangeNotifier {
   }
 
   _init() async {
-    final jellyfinApi = await JellyfinApi.authenticateByName(
-      serverUri: Uri.parse("https://demo.jellyfin.org/stable"),
-      username: "demo",
-    );
-    final jellyfinProvider = JellyfinMusicProvider(api: jellyfinApi);
-    providers.add(jellyfinProvider);
-
-    final localApi = LocalApi(musicDirectories: LocalApi.getDefaultMusicDirectories());
+    final LocalApi localApi;
+    if (Platform.isAndroid) {
+      localApi = LocalAndroidApi();
+    } else {
+      localApi = LocalDesktopApi(
+        musicDirectories: LocalDesktopApi.getDefaultMusicDirectories(),
+      );
+    }
     final localProvider = LocalMusicProvider(api: localApi);
     providers.add(localProvider);
 
@@ -163,7 +166,9 @@ class MusicManager extends ChangeNotifier {
     await player.seek(to);
   }
 
-  Stream<MusicItem> getLibraryItems({required Set<LibraryItemType> itemTypes}) async* {
+  Stream<MusicItem> getLibraryItems({
+    required Set<LibraryItemType> itemTypes,
+  }) async* {
     final pendingMusicItems = providers.map(
       (provider) => provider.getLibraryItems(itemTypes: itemTypes),
     );
@@ -195,7 +200,8 @@ class MusicManager extends ChangeNotifier {
     },
   }) async* {
     final pendingSearchResults = providers.map(
-      (provider) => provider.getSearchResults(query: query, itemTypes: itemTypes),
+      (provider) =>
+          provider.getSearchResults(query: query, itemTypes: itemTypes),
     );
     final mergedStream = StreamGroup.merge(pendingSearchResults);
     yield* mergedStream;
