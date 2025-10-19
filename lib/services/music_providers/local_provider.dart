@@ -1,3 +1,4 @@
+import 'package:unimusic/services/api/local/android/api.dart';
 import 'package:unimusic/services/api/local/api.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 
@@ -8,10 +9,7 @@ class LocalMusicProvider extends MusicProvider {
 
   @override
   Stream<Song> getLibrarySongs() async* {
-    final list = await api.getAllSongs().toList();
-    for (final item in list) {
-      yield item;
-    }
+    yield* api.getAllSongs();
   }
 
   @override

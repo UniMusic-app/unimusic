@@ -14,7 +14,7 @@ class HomeView extends StatelessWidget {
             floating: true,
             stretch: true,
             snap: true,
-            title: Text("Homer"),
+            title: Text("Home"),
           ),
         ];
       },
