@@ -35,20 +35,11 @@ class LocalSharedApi extends LocalApi {
       if (home != null) {
         directories.addAll([path.join(home, 'Music'), path.join(home, 'Documents', 'Music')]);
       }
-      debugPrint("Home: $directories");
     } else if (Platform.isLinux) {
       final home = Platform.environment['HOME'];
       if (home != null) {
         directories.addAll([path.join(home, 'Music'), path.join(home, 'Documents', 'Music')]);
       }
-    } else if (Platform.isAndroid) {
-      // Android external storage music directories
-      directories.addAll([
-        '/storage/emulated/0/Music',
-        '/storage/emulated/0/Download',
-        '/sdcard/Music',
-        '/sdcard/Download',
-      ]);
     } else if (Platform.isIOS) {
       final directory = (await getApplicationDocumentsDirectory()).path;
       directories.add(directory);
