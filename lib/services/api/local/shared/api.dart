@@ -3,7 +3,8 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
-import 'package:unimusic/services/api/local/desktop/items.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:unimusic/services/api/local/shared/items.dart';
 import 'package:unimusic/services/database/database.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/services/database/cache.dart';
@@ -11,14 +12,14 @@ import 'package:image/image.dart' as img;
 import 'package:image_size_getter/image_size_getter.dart';
 import "package:unimusic/services/api/local/api.dart";
 
-const providerId = "local_test";
+const providerId = "local";
 
-class LocalDesktopApi extends LocalApi {
+class LocalSharedApi extends LocalApi {
   final List<String> musicDirectories;
 
-  LocalDesktopApi({required this.musicDirectories});
+  LocalSharedApi({required this.musicDirectories});
 
-  static List<String> getDefaultMusicDirectories() {
+  static Future<List<String>> getDefaultMusicDirectories() async {
     final List<String> directories = [];
 
     if (Platform.isWindows) {
@@ -32,19 +33,13 @@ class LocalDesktopApi extends LocalApi {
     } else if (Platform.isMacOS) {
       final home = Platform.environment['HOME'];
       if (home != null) {
-        directories.addAll([
-          path.join(home, 'Music'),
-          path.join(home, 'Documents', 'Music'),
-        ]);
+        directories.addAll([path.join(home, 'Music'), path.join(home, 'Documents', 'Music')]);
       }
       debugPrint("Home: $directories");
     } else if (Platform.isLinux) {
       final home = Platform.environment['HOME'];
       if (home != null) {
-        directories.addAll([
-          path.join(home, 'Music'),
-          path.join(home, 'Documents', 'Music'),
-        ]);
+        directories.addAll([path.join(home, 'Music'), path.join(home, 'Documents', 'Music')]);
       }
     } else if (Platform.isAndroid) {
       // Android external storage music directories
@@ -55,23 +50,19 @@ class LocalDesktopApi extends LocalApi {
         '/sdcard/Download',
       ]);
     } else if (Platform.isIOS) {
-      // iOS documents directory will be set by the app
-      // This is handled differently in iOS due to sandboxing
-      directories.add('Documents/Music');
+      final directory = (await getApplicationDocumentsDirectory()).path;
+      directories.add(directory);
+
+      // We need to create a file in that directory for it to show up for the user
+      // That file cannot be hidden
+      final file = File('$directory/README.txt');
+      await file.writeAsString("Put your Music files here");
     }
 
     return directories.where((dir) => Directory(dir).existsSync()).toList();
   }
 
-  static const supportedExtensions = {
-    '.mp3',
-    '.flac',
-    '.m4a',
-    '.aac',
-    '.ogg',
-    '.wav',
-    '.wma',
-  };
+  static const supportedExtensions = {'.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav', '.wma'};
 
   Stream<FileSystemEntity> _scanDirectory(String directoryPath) async* {
     try {
@@ -83,10 +74,7 @@ class LocalDesktopApi extends LocalApi {
         return;
       }
 
-      await for (final entity in directory.list(
-        recursive: true,
-        followLinks: false,
-      )) {
+      await for (final entity in directory.list(recursive: true, followLinks: false)) {
         debugPrint("Got entity ${entity.path}");
 
         if (entity is File) {
@@ -133,27 +121,16 @@ class LocalDesktopApi extends LocalApi {
       final fileName = path.basenameWithoutExtension(file.path);
       final songId = _generateSongId(file.path);
 
-      final title = tags?.title?.trim().isNotEmpty == true
-          ? tags!.title!
-          : fileName;
-      final albumName = tags?.album?.trim().isNotEmpty == true
-          ? tags!.album!
-          : 'Unknown Album';
-      final artistName = tags?.artist?.trim().isNotEmpty == true
-          ? tags!.artist!
-          : 'Unknown Artist';
+      final title = tags?.title?.trim().isNotEmpty == true ? tags!.title! : fileName;
+      final albumName = tags?.album?.trim().isNotEmpty == true ? tags!.album! : 'Unknown Album';
+      final artistName = tags?.artist?.trim().isNotEmpty == true ? tags!.artist! : 'Unknown Artist';
 
       // Create or get artist
       final artistId = _generateId('artist:$artistName');
       LocalArtist artist;
       final existingArtistData = await DatabaseHelper.getArtist(artistId);
       if (existingArtistData == null) {
-        artist = LocalArtist(
-          api: this,
-          id: artistId,
-          name: artistName,
-          artwork: null,
-        );
+        artist = LocalArtist(api: this, id: artistId, name: artistName, artwork: null);
         await DatabaseHelper.insertArtist(artist);
       } else {
         artist = (await _getArtistFromDatabase(artistId))!;
@@ -180,9 +157,7 @@ class LocalDesktopApi extends LocalApi {
       LocalArtwork? artwork;
       if (tags?.pictures.isNotEmpty == true) {
         final picture = tags!.pictures.first;
-        final pictureSizeResult = ImageSizeGetter.getSizeResult(
-          MemoryInput(picture.bytes),
-        );
+        final pictureSizeResult = ImageSizeGetter.getSizeResult(MemoryInput(picture.bytes));
 
         // Cache artwork in the different sizes
         for (final size in ArtworkSize.values) {
@@ -351,9 +326,7 @@ class LocalDesktopApi extends LocalApi {
       await for (final song in getAllSongs()) {
         if (song.name.toLowerCase().contains(lowercaseQuery) ||
             song.album?.toLowerCase().contains(lowercaseQuery) == true ||
-            song.artists.any(
-              (artist) => artist.name.toLowerCase().contains(lowercaseQuery),
-            )) {
+            song.artists.any((artist) => artist.name.toLowerCase().contains(lowercaseQuery))) {
           yield song;
         }
       }
@@ -362,9 +335,7 @@ class LocalDesktopApi extends LocalApi {
     if (itemTypes.contains(LibraryItemType.albums)) {
       await for (final album in getAllAlbums()) {
         if (album.name.toLowerCase().contains(lowercaseQuery) ||
-            album.artists.any(
-              (artist) => artist.name.toLowerCase().contains(lowercaseQuery),
-            )) {
+            album.artists.any((artist) => artist.name.toLowerCase().contains(lowercaseQuery))) {
           yield album;
         }
       }
@@ -388,8 +359,7 @@ class LocalDesktopApi extends LocalApi {
 
     if (itemTypes.contains(LibraryItemType.songs)) {
       await for (final song in getAllSongs()) {
-        if (song.name.toLowerCase().contains(lowercaseQuery) &&
-            !seenTitles.contains(song.name)) {
+        if (song.name.toLowerCase().contains(lowercaseQuery) && !seenTitles.contains(song.name)) {
           seenTitles.add(song.name);
           yield LocalSearchHint(
             title: song.name,
@@ -402,8 +372,7 @@ class LocalDesktopApi extends LocalApi {
 
     if (itemTypes.contains(LibraryItemType.albums)) {
       await for (final album in getAllAlbums()) {
-        if (album.name.toLowerCase().contains(lowercaseQuery) &&
-            !seenTitles.contains(album.name)) {
+        if (album.name.toLowerCase().contains(lowercaseQuery) && !seenTitles.contains(album.name)) {
           seenTitles.add(album.name);
           yield LocalSearchHint(
             title: album.name,

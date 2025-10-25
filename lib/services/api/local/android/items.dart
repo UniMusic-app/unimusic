@@ -7,7 +7,7 @@ import "package:unimusic/plugins/media_store.dart";
 import "package:unimusic/services/music_providers/music_provider.dart";
 import "package:unimusic/utils/null.dart";
 
-const providerId = "android";
+const providerId = "local";
 
 class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
   final Uri artworkUri;
@@ -19,10 +19,7 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
     return SynchronousFuture(this);
   }
 
-  Future<ui.Codec> _loadAsync(
-    LocalAndroidImage key,
-    ImageDecoderCallback decode,
-  ) async {
+  Future<ui.Codec> _loadAsync(LocalAndroidImage key, ImageDecoderCallback decode) async {
     // TODO: This might not be very efficient
     final bytes = await MediaStorePlugin.readArtwork(artworkUri);
     if (bytes == null) {
@@ -33,10 +30,7 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
   }
 
   @override
-  ImageStreamCompleter loadImage(
-    LocalAndroidImage key,
-    ImageDecoderCallback decode,
-  ) {
+  ImageStreamCompleter loadImage(LocalAndroidImage key, ImageDecoderCallback decode) {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
@@ -46,20 +40,15 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is LocalAndroidImage && other.artworkUri == artworkUri;
+      identical(this, other) || other is LocalAndroidImage && other.artworkUri == artworkUri;
 
   @override
   int get hashCode => artworkUri.hashCode;
 }
 
 class LocalAndroidArtist extends Artist {
-  LocalAndroidArtist({
-    super.artwork,
-    super.favourite,
-    required super.id,
-    required super.name,
-  }) : super(providerId: providerId);
+  LocalAndroidArtist({super.artwork, super.favourite, required super.id, required super.name})
+    : super(providerId: providerId);
 
   factory LocalAndroidArtist.fromMediaStore(MediaStoreArtist artist) {
     return LocalAndroidArtist(id: artist.id.toString(), name: artist.name);
@@ -75,8 +64,7 @@ class LocalAndroidArtist extends Artist {
 class LocalAndroidArtwork extends Artwork {
   final Uri uri;
 
-  const LocalAndroidArtwork({required super.id, required this.uri})
-    : super(providerId: providerId);
+  const LocalAndroidArtwork({required super.id, required this.uri}) : super(providerId: providerId);
 
   factory LocalAndroidArtwork.fromMediaStore(Uri artworkUri) {
     // TODO: AlbumId might be better suited to be used as artwork id
@@ -151,9 +139,7 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
   factory LocalAndroidSong.fromMediaStore(MediaStoreSong song) {
     final artwork = song.artwork.let(LocalAndroidArtwork.fromMediaStore);
     final artist = song.artist.let(LocalAndroidArtist.fromMediaStore);
-    final albumArtist = song.album?.artist.let(
-      LocalAndroidArtist.fromMediaStore,
-    );
+    final albumArtist = song.album?.artist.let(LocalAndroidArtist.fromMediaStore);
 
     final List<LocalAndroidArtist> artists = [
       if (albumArtist != null && albumArtist.name != artist?.name) albumArtist,
