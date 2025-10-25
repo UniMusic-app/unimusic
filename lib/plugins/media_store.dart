@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:unimusic/utils/null.dart';
 
@@ -39,10 +38,7 @@ class MediaStorePlugin {
 
   static Stream<MediaStoreSong> getAlbumSongs(String albumId) async* {
     try {
-      final List result = await _channel.invokeMethod('getAlbumSongs', {
-        "albumId": albumId,
-      });
-
+      final List result = await _channel.invokeMethod('getAlbumSongs', {"albumId": albumId});
       for (final value in result) {
         final map = Map<String, dynamic>.from(value);
         final song = MediaStoreSong.fromMap(map);
@@ -182,12 +178,7 @@ class MediaStoreAlbum {
   final Uri? artwork;
   final MediaStoreArtist? artist;
 
-  MediaStoreAlbum({
-    required this.id,
-    required this.name,
-    this.artist,
-    this.artwork,
-  });
+  MediaStoreAlbum({required this.id, required this.name, this.artist, this.artwork});
 
   factory MediaStoreAlbum.fromMap(Map<String, dynamic> map) {
     return MediaStoreAlbum(
