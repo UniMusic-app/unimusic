@@ -82,51 +82,57 @@ class LocalArtist extends Artist<LocalArtwork> {
 
   LocalArtist({
     required this.api,
+
     required super.id,
     required super.name,
+    required super.favourite,
     super.artwork,
-    super.favourite,
   }) : super(providerId: providerId);
 
   @override
   Future<bool> isFavourite() async {
-    // For local files, we could implement favorites using a local database or file
-    // For now, return the cached value or false
-    return favourite ?? false;
+    final artist = await DatabaseHelper.getArtist(id);
+    return artist?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    super.toggleFavourite(value);
-    // TODO: Persist favorite status to local storage/database
+    await DatabaseHelper.setFavourite("artist_items", id, value);
   }
 
-  static LocalArtist? fromDatabase(LocalSharedApi api, ArtistDatabaseItem artist) {
+  static LocalArtist fromDatabase(LocalSharedApi api, ArtistDatabaseItem artist) {
     LocalArtwork? artwork;
     if (artist.artworkId != null) {
       artwork = LocalArtwork(id: artist.artworkId!);
     }
-    return LocalArtist(api: api, id: artist.id, name: artist.name, artwork: artwork);
+    return LocalArtist(
+      api: api,
+      id: artist.id,
+      name: artist.name,
+      favourite: artist.favourite,
+      artwork: artwork,
+    );
   }
 }
 
 class LocalSong extends Song<LocalArtist, LocalArtwork> {
   final LocalSharedApi api;
-  final String filePath;
 
   LocalSong({
     required this.api,
+
     required super.id,
     required super.name,
+    required super.favourite,
     required super.artists,
-    required super.album,
     required super.duration,
-    required this.filePath,
+    required super.filePath,
+    super.album,
     super.artwork,
-    super.favourite,
-  }) : super(providerId: providerId);
+  }) : assert(filePath != null, "LocalSong requires filePath to always be a String"),
+       super(providerId: providerId);
 
-  static Future<LocalSong?> fromDatabase(LocalSharedApi api, SongDatabaseItem song) async {
+  static Future<LocalSong> fromDatabase(LocalSharedApi api, SongDatabaseItem song) async {
     final databaseArtists = await DatabaseHelper.getSongArtists(song.id);
     final artists = (databaseArtists)
         .map((artist) => LocalArtist.fromDatabase(api, artist))
@@ -138,17 +144,15 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
       artwork = LocalArtwork(id: song.artworkId!);
     }
 
-    // In song the filePath is its id
-    final filePath = song.id;
-
     return LocalSong(
       api: api,
       id: song.id,
       name: song.name,
+      favourite: song.favourite,
       artists: artists,
       album: song.album,
       duration: Duration(milliseconds: song.duration),
-      filePath: filePath,
+      filePath: song.filePath,
       artwork: artwork,
     );
   }
@@ -156,7 +160,7 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
   @override
   Future<AudioSource> getAudioSource() async {
     return AudioSource.file(
-      filePath,
+      filePath!,
       tag: MediaItem(
         id: id,
         title: name,
@@ -170,15 +174,13 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
 
   @override
   Future<bool> isFavourite() async {
-    // For local files, we could implement favorites using a local database or file
-    // For now, return the cached value or false
-    return favourite ?? false;
+    final song = await DatabaseHelper.getSong(id);
+    return song?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    super.toggleFavourite(value);
-    // TODO: Persist favorite status to local storage/database
+    await DatabaseHelper.setFavourite("song_items", id, value);
   }
 }
 
@@ -187,14 +189,15 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
 
   LocalAlbum({
     required this.api,
+
     required super.id,
     required super.name,
+    required super.favourite,
     required super.artists,
     super.artwork,
-    super.favourite,
   }) : super(providerId: providerId);
 
-  static Future<LocalAlbum?> fromDatabase(LocalSharedApi api, AlbumDatabaseItem album) async {
+  static Future<LocalAlbum> fromDatabase(LocalSharedApi api, AlbumDatabaseItem album) async {
     final databaseArtists = await DatabaseHelper.getAlbumArtists(album.id);
     final artists = (databaseArtists)
         .map((artist) => LocalArtist.fromDatabase(api, artist))
@@ -206,7 +209,14 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
       artwork = LocalArtwork(id: album.artworkId!);
     }
 
-    return LocalAlbum(api: api, id: album.id, name: album.name, artists: artists, artwork: artwork);
+    return LocalAlbum(
+      api: api,
+      id: album.id,
+      name: album.name,
+      favourite: album.favourite,
+      artists: artists,
+      artwork: artwork,
+    );
   }
 
   @override
@@ -216,15 +226,13 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
 
   @override
   Future<bool> isFavourite() async {
-    // For local files, we could implement favorites using a local database or file
-    // For now, return the cached value or false
-    return favourite ?? false;
+    final album = await DatabaseHelper.getAlbum(id);
+    return album?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    super.toggleFavourite(value);
-    // TODO: Persist favorite status to local storage/database
+    await DatabaseHelper.setFavourite("album_items", id, value);
   }
 }
 

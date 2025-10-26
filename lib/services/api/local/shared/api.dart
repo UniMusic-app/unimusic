@@ -30,12 +30,7 @@ class LocalSharedApi extends LocalApi {
           path.join(userProfile, 'Documents', 'Music'),
         ]);
       }
-    } else if (Platform.isMacOS) {
-      final home = Platform.environment['HOME'];
-      if (home != null) {
-        directories.addAll([path.join(home, 'Music'), path.join(home, 'Documents', 'Music')]);
-      }
-    } else if (Platform.isLinux) {
+    } else if (Platform.isMacOS || Platform.isLinux) {
       final home = Platform.environment['HOME'];
       if (home != null) {
         directories.addAll([path.join(home, 'Music'), path.join(home, 'Documents', 'Music')]);
@@ -60,20 +55,19 @@ class LocalSharedApi extends LocalApi {
       debugPrint("Scanning directory $directoryPath");
 
       final directory = Directory(directoryPath);
-      if (!directory.existsSync()) {
+      if (!await directory.exists()) {
         debugPrint("Directory doesn't exist");
         return;
       }
 
       await for (final entity in directory.list(recursive: true, followLinks: false)) {
-        debugPrint("Got entity ${entity.path}");
+        if (entity is! File) {
+          continue;
+        }
 
-        if (entity is File) {
-          final extension = path.extension(entity.path).toLowerCase();
-          if (supportedExtensions.contains(extension)) {
-            debugPrint("Got ${entity.path}");
-            yield entity;
-          }
+        final extension = path.extension(entity.path).toLowerCase();
+        if (supportedExtensions.contains(extension)) {
+          yield entity;
         }
       }
     } catch (error) {
@@ -81,79 +75,103 @@ class LocalSharedApi extends LocalApi {
     }
   }
 
-  Future<AudioMetadata?> _getAudioTags(String filePath) async {
+  Future<AudioMetadata?> _getAudioTags(File file) async {
     try {
-      final file = File(filePath);
       return readMetadata(file, getImage: true);
     } catch (error) {
-      debugPrint('Error reading tags for $filePath: $error');
+      debugPrint('Error reading tags for ${file.path}: $error');
       return null;
     }
   }
 
-  String _generateSongId(String filePath) {
-    return filePath;
-  }
-
-  String _generateId(String id) {
-    final hash = sha256.convert(id.codeUnits).toString();
+  String _generateId(String type, String id) {
+    final hash = sha256.convert("$type-$id".codeUnits).toString();
     return hash;
   }
 
-  Future<LocalArtist?> _getArtistFromDatabase(String id) async {
-    final artistData = await DatabaseHelper.getArtist(id);
-    if (artistData == null) return null;
-    return LocalArtist.fromDatabase(this, artistData);
-  }
-
-  Future<LocalSong?> _createSongFromFile(File file) async {
+  Future<LocalSong?> _songFromFile(File file) async {
     try {
-      final tags = await _getAudioTags(file.path);
+      final tags = await _getAudioTags(file);
+
+      final songId = _generateId("song", file.path);
+
+      final songData = await DatabaseHelper.getSong(songId);
+      if (songData != null) {
+        return await LocalSong.fromDatabase(this, songData);
+      }
+
       final fileName = path.basenameWithoutExtension(file.path);
-      final songId = _generateSongId(file.path);
 
-      final title = tags?.title?.trim().isNotEmpty == true ? tags!.title! : fileName;
-      final albumName = tags?.album?.trim().isNotEmpty == true ? tags!.album! : 'Unknown Album';
-      final artistName = tags?.artist?.trim().isNotEmpty == true ? tags!.artist! : 'Unknown Artist';
+      if (tags == null) {
+        final song = LocalSong(
+          api: this,
+          id: songId,
+          name: fileName,
+          favourite: false,
+          artists: [],
+          duration: Duration.zero,
+          filePath: file.path,
+        );
+        await DatabaseHelper.insertSong(song);
+        return song;
+      }
 
-      // Create or get artist
-      final artistId = _generateId('artist:$artistName');
-      LocalArtist artist;
-      final existingArtistData = await DatabaseHelper.getArtist(artistId);
-      if (existingArtistData == null) {
-        artist = LocalArtist(api: this, id: artistId, name: artistName, artwork: null);
-        await DatabaseHelper.insertArtist(artist);
-      } else {
-        artist = (await _getArtistFromDatabase(artistId))!;
+      final title = tags.title ?? fileName;
+
+      // Create or get artists
+      final artistNames = [if (tags.artist != null) tags.artist!, ...tags.performers];
+      final artists = <LocalArtist>[];
+      for (final artistName in artistNames) {
+        final artistId = _generateId("artist", artistName);
+
+        final existingArtistData = await DatabaseHelper.getArtist(artistId);
+
+        final LocalArtist artist;
+        if (existingArtistData == null) {
+          artist = LocalArtist(api: this, id: artistId, name: artistName, favourite: false);
+          await DatabaseHelper.insertArtist(artist);
+        } else {
+          artist = LocalArtist.fromDatabase(this, existingArtistData);
+        }
+        artists.add(artist);
       }
 
       // Create or get album
-      final albumId = _generateId('album:$albumName:$artistName');
-      final existingAlbumData = await DatabaseHelper.getAlbum(albumId);
-      if (existingAlbumData == null) {
-        final album = LocalAlbum(
-          api: this,
-          id: albumId,
-          name: albumName,
-          artists: [artist],
-          artwork: null,
-        );
-        await DatabaseHelper.insertAlbum(album);
+      final albumName = tags.album;
+      LocalAlbum? album;
+      if (albumName != null) {
+        final albumId = _generateId("album", albumName);
+
+        final existingAlbumData = await DatabaseHelper.getAlbum(albumId);
+        if (existingAlbumData == null) {
+          album = LocalAlbum(
+            api: this,
+            id: albumId,
+            name: albumName,
+            favourite: false,
+            artists: artists,
+          );
+          await DatabaseHelper.insertAlbum(album);
+        } else {
+          album = await LocalAlbum.fromDatabase(this, existingAlbumData);
+        }
       }
 
       // Get duration from file stats or tags
-      final duration = tags?.duration ?? Duration.zero;
+      // TODO: In case duration isn't extracted support setting it during initial playback?
+      final duration = tags.duration ?? Duration.zero;
 
       // Create artwork from embedded album art
       LocalArtwork? artwork;
-      if (tags?.pictures.isNotEmpty == true) {
-        final picture = tags!.pictures.first;
+      final picture = tags.pictures.firstOrNull;
+      if (picture != null) {
         final pictureSizeResult = ImageSizeGetter.getSizeResult(MemoryInput(picture.bytes));
 
         // Cache artwork in the different sizes
         for (final size in ArtworkSize.values) {
           String mimeType = picture.mimetype;
           Uint8List bytes = picture.bytes;
+
           if (pictureSizeResult.size.width > size.width) {
             try {
               final command = img.Command()
@@ -197,8 +215,9 @@ class LocalSharedApi extends LocalApi {
         api: this,
         id: songId,
         name: title,
-        artists: [artist],
-        album: albumName,
+        favourite: false,
+        artists: artists,
+        album: album?.name,
         duration: duration,
         filePath: file.path,
         artwork: artwork,
@@ -208,7 +227,9 @@ class LocalSharedApi extends LocalApi {
       await DatabaseHelper.insertSong(song);
 
       // Insert album-song relationship
-      await DatabaseHelper.insertAlbumSong(albumId, songId);
+      if (album != null) {
+        await DatabaseHelper.insertAlbumSong(album.id, songId);
+      }
 
       return song;
     } catch (error) {
@@ -218,6 +239,7 @@ class LocalSharedApi extends LocalApi {
     }
   }
 
+  @override
   Stream<LocalSong> getAllSongs() async* {
     // First check if we have cached songs in database
     final cachedSongs = await DatabaseHelper.getSongsByProvider(providerId);
@@ -225,16 +247,13 @@ class LocalSharedApi extends LocalApi {
 
     for (final songData in cachedSongs) {
       final song = await LocalSong.fromDatabase(this, songData);
-      if (song == null) {
-        // TODO: Remove stale data
-        continue;
-      }
-      processedFiles.add(song.filePath);
+      processedFiles.add(song.filePath!);
       yield song;
     }
 
     debugPrint("Scanning for files in $musicDirectories");
 
+    // TODO: Remove stale data
     // Scan for new files
     for (final directory in musicDirectories) {
       await for (final entity in _scanDirectory(directory)) {
@@ -242,7 +261,7 @@ class LocalSharedApi extends LocalApi {
           continue;
         }
 
-        final song = await _createSongFromFile(entity);
+        final song = await _songFromFile(entity);
         if (song != null) {
           yield song;
         }
@@ -250,37 +269,18 @@ class LocalSharedApi extends LocalApi {
     }
   }
 
+  @override
   Stream<LocalAlbum> getAllAlbums() async* {
-    // TODO: Add check for recent scans
-    // First, scan all songs to populate albums
-    await for (final _ in getAllSongs()) {
-      // Songs are stored in database during scanning
-    }
-
-    // Get all albums from database
     final albumsData = await DatabaseHelper.getAlbumsByProvider(providerId);
-    final seenAlbums = <String>{};
 
     for (final albumData in albumsData) {
-      if (seenAlbums.contains(albumData.id)) {
-        continue;
-      }
-
       final album = await LocalAlbum.fromDatabase(this, albumData);
-      if (album != null) {
-        seenAlbums.add(albumData.id);
-        yield album;
-      }
+      yield album;
     }
   }
 
+  @override
   Stream<LocalArtist> getAllArtists() async* {
-    // First, scan all songs to populate artists
-    await for (final _ in getAllSongs()) {
-      // Artists are stored in database during scanning
-    }
-
-    // Get all artists from database
     final artistsData = await DatabaseHelper.getArtistsByProvider(providerId);
     final seenArtists = <String>{};
 
@@ -290,10 +290,8 @@ class LocalSharedApi extends LocalApi {
       }
 
       final artist = LocalArtist.fromDatabase(this, artistData);
-      if (artist != null) {
-        seenArtists.add(artistData.id);
-        yield artist;
-      }
+      seenArtists.add(artistData.id);
+      yield artist;
     }
   }
 
@@ -301,12 +299,11 @@ class LocalSharedApi extends LocalApi {
     final songData = await DatabaseHelper.getSongsByAlbumId(albumId);
     for (final song in songData) {
       final localSong = await LocalSong.fromDatabase(this, song);
-      if (localSong != null) {
-        yield localSong;
-      }
+      yield localSong;
     }
   }
 
+  @override
   Stream<MusicItem> search({
     required String query,
     required Set<LibraryItemType> itemTypes,
@@ -341,6 +338,7 @@ class LocalSharedApi extends LocalApi {
     }
   }
 
+  @override
   Stream<SearchHint> getSearchHints({
     required String query,
     required Set<LibraryItemType> itemTypes,

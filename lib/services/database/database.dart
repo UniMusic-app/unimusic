@@ -56,6 +56,7 @@ class DatabaseHelper {
             provider_id TEXT NOT NULL,
             name TEXT NOT NULL,
             artwork_id TEXT,
+            favourite INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY(artwork_id) REFERENCES artwork_items(id) ON DELETE SET NULL
           )
         """);
@@ -66,6 +67,7 @@ class DatabaseHelper {
             provider_id TEXT NOT NULL,
             name TEXT NOT NULL,
             artwork_id TEXT,
+            favourite INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY(artwork_id) REFERENCES artwork_items(id) ON DELETE SET NULL
           )
         """);
@@ -78,6 +80,8 @@ class DatabaseHelper {
             duration INTEGER NOT NULL,
             album TEXT,
             artwork_id TEXT,
+            file_path TEXT,
+            favourite INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY(artwork_id) REFERENCES artwork_items(id) ON DELETE SET NULL
           )
         """);
@@ -115,6 +119,11 @@ class DatabaseHelper {
     );
 
     _instance = DatabaseHelper._internal();
+  }
+
+  // FAVOURITE METHODS
+  static Future<void> setFavourite(String table, String id, bool favourite) async {
+    await db.update(table, {'favourite': favourite ? 1 : 0}, where: "id = ?", whereArgs: [id]);
   }
 
   // ARTWORK METHODS
@@ -385,6 +394,7 @@ class DatabaseHelper {
         "duration": song.duration.inMilliseconds,
         "album": song.album,
         "artwork_id": song.artwork?.id,
+        "file_path": song.filePath,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
 
       // Insert song-artist relationships

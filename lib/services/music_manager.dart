@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:async/async.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:unimusic/services/api/jellyfin/api.dart';
 import 'package:unimusic/services/api/local/android/api.dart';
 import 'package:unimusic/services/api/local/api.dart';
 import 'package:unimusic/services/api/local/shared/api.dart';
+import 'package:unimusic/services/music_providers/jellyfin_provider.dart';
 import 'package:unimusic/services/music_providers/local_provider.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:just_audio/just_audio.dart';

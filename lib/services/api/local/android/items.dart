@@ -47,17 +47,26 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
 }
 
 class LocalAndroidArtist extends Artist {
-  LocalAndroidArtist({super.artwork, super.favourite, required super.id, required super.name})
-    : super(providerId: providerId);
+  LocalAndroidArtist({
+    super.artwork,
+    required super.id,
+    required super.name,
+    required super.favourite,
+  }) : super(providerId: providerId);
 
   factory LocalAndroidArtist.fromMediaStore(MediaStoreArtist artist) {
-    return LocalAndroidArtist(id: artist.id.toString(), name: artist.name);
+    return LocalAndroidArtist(id: artist.id.toString(), name: artist.name, favourite: false);
   }
 
   @override
   Future<bool> isFavourite() async {
-    // TODO: implement isFavourite
     return false;
+  }
+
+  @override
+  Future<void> toggleFavourite(bool value) {
+    // TODO: implement toggleFavourite
+    throw UnimplementedError();
   }
 }
 
@@ -87,8 +96,8 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
     required super.id,
     required super.name,
     required super.artists,
+    required super.favourite,
     super.artwork,
-    super.favourite,
   }) : super(providerId: providerId);
 
   factory LocalAndroidAlbum.fromMediaStore(MediaStoreAlbum album) {
@@ -100,6 +109,7 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
       name: album.name,
       artists: artists,
       artwork: album.artwork.let(LocalAndroidArtwork.fromMediaStore),
+      favourite: false,
     );
   }
 
@@ -121,6 +131,12 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
     // TODO: implement isFavourite
     return false;
   }
+
+  @override
+  Future<void> toggleFavourite(bool value) {
+    // TODO: implement toggleFavourite
+    throw UnimplementedError();
+  }
 }
 
 class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
@@ -131,6 +147,7 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
     required this.uri,
     required super.id,
     required super.name,
+    required super.favourite,
     required super.artists,
     required super.album,
     required super.duration,
@@ -149,6 +166,7 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
     return LocalAndroidSong(
       id: song.id.toString(),
       name: song.name,
+      favourite: false,
       album: song.album?.name,
       artwork: artwork,
       duration: song.duration,
@@ -168,5 +186,11 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
   @override
   Future<bool> isFavourite() async {
     return false;
+  }
+
+  @override
+  Future<void> toggleFavourite(bool value) {
+    // TODO: implement toggleFavourite
+    throw UnimplementedError();
   }
 }
