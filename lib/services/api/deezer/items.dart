@@ -9,15 +9,21 @@ import 'package:just_audio_background/just_audio_background.dart';
 
 mixin DeezerFavouriteItem on MusicItem {
   DeezerApi get api;
+  bool clientChanged = false;
 
   @override
   Future<bool> isFavourite() async {
-    return favourite ?? api.isFavourite(this);
+    if (clientChanged) {
+      return favourite;
+    }
+
+    // TODO: Try to get favourite some better way?
+    favourite = await api.isFavourite(this);
+    return favourite;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    super.toggleFavourite(value);
     if (value) {
       await api.addFavorites([id]);
       favourite = true;
@@ -25,6 +31,7 @@ mixin DeezerFavouriteItem on MusicItem {
       await api.removeFavorites([id]);
       favourite = false;
     }
+    clientChanged = true;
   }
 }
 
@@ -89,15 +96,16 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
 
   DeezerSong({
     required this.api,
+    this.trackToken,
+    this.trackTokenExpire,
+
     required super.id,
     required super.name,
     required super.artists,
     required super.album,
     required super.duration,
+    required super.favourite,
     super.artwork,
-    super.favourite,
-    this.trackToken,
-    this.trackTokenExpire,
   }) : super(providerId: providerId);
 
   DeezerSong.fromTrack({required DeezerApi api, required DeezerTrack track, bool? favourite})
@@ -105,6 +113,7 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
         api: api,
         id: track.id!,
         name: track.title!,
+        favourite: false,
         artists: track.artists!,
         album: track.album!,
         duration: track.duration!,
@@ -118,6 +127,7 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
         api: api,
         id: json["id"].toString(),
         name: json["title"],
+        favourite: false,
         album: json["album"]["title"],
         artists: [DeezerArtist.fromDeezerJson(api, json["artist"])],
         duration: Duration(seconds: json["duration"]),
@@ -188,8 +198,8 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
     required this.api,
     required super.id,
     required super.name,
+    required super.favourite,
     super.artwork,
-    super.favourite,
   }) : super(providerId: providerId);
 
   factory DeezerArtist.fromDeezerJson(DeezerApi api, Map<String, dynamic> json) {
@@ -198,6 +208,7 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
         api: api,
         id: json["id"].toString(),
         name: json["name"],
+        favourite: false,
         artwork: switch (json["md5_image"]) {
           String id => DeezerArtwork.withType(id: id, imageType: "artist"),
           _ => null,
@@ -209,6 +220,7 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
       api: api,
       id: json["ART_ID"],
       name: json["ART_NAME"],
+      favourite: false,
       artwork: DeezerArtwork.withType(id: json["ART_PICTURE"], imageType: "artist"),
     );
   }
@@ -223,8 +235,8 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
     required super.id,
     required super.name,
     required super.artists,
+    required super.favourite,
     super.artwork,
-    super.favourite,
   }) : super(providerId: providerId);
 
   factory DeezerAlbum.fromDeezerJson(DeezerApi api, Map<String, dynamic> json) {
@@ -233,6 +245,7 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
         api: api,
         id: json["id"].toString(),
         name: json["title"],
+        favourite: false,
         artwork: DeezerArtwork.withType(id: json["md5_image"], imageType: "cover"),
         artists: [DeezerArtist.fromDeezerJson(api, json["artist"])],
       );
@@ -242,8 +255,11 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
       api: api,
       id: json["ALB_ID"],
       name: json["ALB_TITLE"],
+      favourite: false,
       artwork: DeezerArtwork.withType(id: json["ALB_PICTURE"], imageType: "cover"),
-      artists: [DeezerArtist(api: api, id: json["ART_ID"], name: json["ART_NAME"])],
+      artists: [
+        DeezerArtist(api: api, id: json["ART_ID"], name: json["ART_NAME"], favourite: false),
+      ],
     );
   }
 

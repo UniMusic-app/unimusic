@@ -6,7 +6,6 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:flutter/material.dart';
 import 'package:unimusic/services/api/deezer/items.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/utils/stream.dart';
@@ -147,7 +146,6 @@ class DeezerApi {
     final dio = getDio(arl: arl);
     final response = await callGwMethod(dio: dio, method: "deezer.getUserData");
     final userData = DeezerUserData.fromDeezerJson(response.data);
-
     return DeezerApi.withDio(dio: dio, arl: arl, userData: userData);
   }
 
@@ -393,17 +391,14 @@ class DeezerApi {
     );
 
     final data = searchResponse.data["data"];
-    for (final itemJson in data) {
-      debugPrint("ITEM: ${itemJson["type"]} $itemJson");
 
+    for (final itemJson in data) {
       final item = switch (itemJson["type"]) {
         "track" => DeezerSong.fromDeezerJson(this, itemJson),
         "album" => DeezerAlbum.fromDeezerJson(this, itemJson),
         "artist" => DeezerArtist.fromDeezerJson(this, itemJson),
         _ => throw UnimplementedError(),
       };
-
-      debugPrint("Item: $item");
 
       yield item;
     }

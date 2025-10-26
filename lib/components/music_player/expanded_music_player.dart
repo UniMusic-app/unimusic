@@ -146,7 +146,6 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                               return IconButton(
                                 color: Colors.pinkAccent,
                                 onPressed: () async {
-                                  debugPrint("Data: ${snapshot.data!}");
                                   await currentItem?.toggleFavourite(!snapshot.data!);
                                   setState(() {});
                                 },

@@ -29,6 +29,8 @@ class SongDatabaseItem extends DatabaseArtworkItem {
   final String name;
   final int duration;
   final String? album;
+  final bool favourite;
+  final String filePath;
 
   const SongDatabaseItem({
     required super.id,
@@ -37,6 +39,8 @@ class SongDatabaseItem extends DatabaseArtworkItem {
     required this.name,
     required this.duration,
     required this.album,
+    required this.filePath,
+    required this.favourite,
   });
 
   factory SongDatabaseItem.fromMap(Map<String, dynamic> map) => SongDatabaseItem(
@@ -46,6 +50,8 @@ class SongDatabaseItem extends DatabaseArtworkItem {
     duration: map["duration"],
     album: map["album"],
     artworkId: map["artwork_id"],
+    filePath: map["file_path"],
+    favourite: map["favourite"] == 1,
   );
 
   Future<List<ArtistDatabaseItem>> getSongArtists() async {
@@ -77,12 +83,14 @@ class ArtworkDatabaseItem extends DatabaseItem {
 
 class ArtistDatabaseItem extends DatabaseArtworkItem {
   final String name;
+  final bool favourite;
 
   const ArtistDatabaseItem({
     required super.id,
     required super.providerId,
     required super.artworkId,
     required this.name,
+    required this.favourite,
   });
 
   factory ArtistDatabaseItem.fromMap(Map<String, dynamic> map) => ArtistDatabaseItem(
@@ -90,17 +98,20 @@ class ArtistDatabaseItem extends DatabaseArtworkItem {
     providerId: map["provider_id"],
     name: map["name"],
     artworkId: map["artwork_id"],
+    favourite: map["favourite"] == 1,
   );
 }
 
 class AlbumDatabaseItem extends DatabaseArtworkItem {
   final String name;
+  final bool favourite;
 
   const AlbumDatabaseItem({
     required super.id,
     required super.providerId,
     required super.artworkId,
     required this.name,
+    required this.favourite,
   });
 
   factory AlbumDatabaseItem.fromMap(Map<String, dynamic> map) => AlbumDatabaseItem(
@@ -108,6 +119,7 @@ class AlbumDatabaseItem extends DatabaseArtworkItem {
     providerId: map["provider_id"],
     name: map["name"],
     artworkId: map["artwork_id"],
+    favourite: map["favourite"] == 1,
   );
 }
 

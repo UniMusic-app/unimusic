@@ -6,13 +6,17 @@ abstract class MusicItem {
   final String providerId;
   final String id;
   final String type;
-  bool? favourite;
-  MusicItem({required this.providerId, required this.id, required this.type, this.favourite});
+  bool favourite;
+
+  MusicItem({
+    required this.providerId,
+    required this.id,
+    required this.type,
+    required this.favourite,
+  });
 
   Future<bool> isFavourite();
-  FutureOr<void> toggleFavourite(bool value) {
-    favourite = value;
-  }
+  Future<void> toggleFavourite(bool value);
 }
 
 enum ArtworkSize {
@@ -54,9 +58,9 @@ abstract class Artist<ArtworkType extends Artwork> extends MusicItem {
   Artist({
     required super.providerId,
     required super.id,
+    required super.favourite,
     required this.name,
     this.artwork,
-    super.favourite,
   }) : super(type: "Artist");
 }
 
@@ -65,6 +69,7 @@ extension FormatArtists on Iterable<Artist> {
 }
 
 abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork> extends MusicItem {
+  final String? filePath;
   final String name;
   final Duration duration;
   final String? album;
@@ -74,10 +79,11 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork> exte
   Song({
     required super.providerId,
     required super.id,
+    required super.favourite,
     required this.name,
     required this.artists,
     required this.duration,
-    super.favourite,
+    this.filePath,
     this.album,
     this.artwork,
   }) : super(type: "Song");
@@ -93,10 +99,10 @@ abstract class Album<ArtistType extends Artist, ArtworkType extends Artwork> ext
   Album({
     required super.providerId,
     required super.id,
+    required super.favourite,
     required this.name,
     required this.artists,
     this.artwork,
-    super.favourite,
   }) : super(type: "Album");
 
   Stream<Song> getSongs();

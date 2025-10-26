@@ -11,30 +11,33 @@ class MusicItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (item) {
-      Song(name: final name, artists: final artists, artwork: final artwork) => GenericItemTile(
+      Song song => GenericItemTile(
         onTap: onTap,
         borderRadius: BorderRadiusGeometry.circular(LibraryItemType.songs.borderRadius),
         type: "Song",
-        title: name,
-        subtitle: artists.formatted,
-        artwork: artwork,
+        title: song.name,
+        subtitle: song.artists.formatted,
+        favourite: song.favourite,
+        artwork: song.artwork,
         icon: Icon(LibraryItemType.songs.icon),
       ),
-      Album(name: final name, artists: final artists, artwork: final artwork) => GenericItemTile(
+      Album album => GenericItemTile(
         onTap: onTap,
         borderRadius: BorderRadiusGeometry.circular(LibraryItemType.albums.borderRadius),
         type: "Album",
-        title: name,
-        subtitle: artists.formatted,
-        artwork: artwork,
+        title: album.name,
+        favourite: album.favourite,
+        subtitle: album.artists.formatted,
+        artwork: album.artwork,
         icon: Icon(LibraryItemType.albums.icon),
       ),
-      Artist(name: final name, artwork: final artwork) => GenericItemTile(
+      Artist artist => GenericItemTile(
         onTap: onTap,
         borderRadius: BorderRadiusGeometry.circular(LibraryItemType.artists.borderRadius),
         type: "Artist",
-        title: name,
-        artwork: artwork,
+        title: artist.name,
+        artwork: artist.artwork,
+        favourite: artist.favourite,
         icon: Icon(LibraryItemType.artists.icon),
       ),
       _ => throw UnimplementedError(),
@@ -46,6 +49,7 @@ class GenericItemTile<T> extends StatelessWidget {
   final BorderRadiusGeometry borderRadius;
   final String type;
   final String title;
+  final bool favourite;
   final String? subtitle;
   final Artwork? artwork;
   final Widget icon;
@@ -57,6 +61,7 @@ class GenericItemTile<T> extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.artwork,
+    required this.favourite,
     this.onTap,
     this.subtitle,
     super.key,
@@ -74,6 +79,8 @@ class GenericItemTile<T> extends StatelessWidget {
         borderRadius: borderRadius,
         child: LazyImage(artwork: artwork, icon: icon, width: 48, size: ArtworkSize.small),
       ),
+
+      trailing: favourite ? Icon(Icons.favorite_rounded, color: Colors.pinkAccent, size: 16) : null,
 
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
