@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
@@ -15,11 +17,13 @@ class LibraryView extends StatefulWidget {
 }
 
 class LibraryViewState extends State<LibraryView> with SingleTickerProviderStateMixin {
+  late final TabController tabController;
+  final Map<LibraryItemType, Completer<void>> _refreshCompleters = {};
+
   LibrarySortBy sortBy = LibrarySortBy.name;
   LibrarySortOrder sortOrder = LibrarySortOrder.ascending;
   Map<LibraryItemType, List<MusicItem>> libraryItems = {};
   MusicItem? currentItem;
-  late final TabController tabController;
 
   final sortingAlgorithms = {
     LibrarySortBy.name: (a, b) {
@@ -103,13 +107,16 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
               if (libraryItems.isNotEmpty || snapshot.connectionState != ConnectionState.waiting) {
                 final items = libraryItems[itemType];
 
-                return ListView.builder(
-                  padding: EdgeInsets.only(top: 16, bottom: safeAreaPadding.bottom + 48),
-                  itemCount: items?.length ?? 0,
-                  itemBuilder: (context, index) {
-                    final item = items![index];
-                    return MusicItemTile(onTap: () => _onItemTap(context, item), item: item);
-                  },
+                return RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(top: 16, bottom: safeAreaPadding.bottom + 48),
+                    itemCount: items?.length ?? 0,
+                    itemBuilder: (context, index) {
+                      final item = items![index];
+                      return MusicItemTile(onTap: () => _onItemTap(context, item), item: item);
+                    },
+                  ),
                 );
               }
 
@@ -143,19 +150,33 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
     }
   }
 
+  Future<void> _handleRefresh() async {
+    final itemType = LibraryItemType.values[tabController.index];
+    _refreshCompleters[itemType] = Completer<void>();
+    setState(() {
+      // This will rebuild the StreamBuilder with a new stream.
+    });
+    return _refreshCompleters[itemType]!.future;
+  }
+
   Stream<void> _loadLibraryItems(BuildContext context, LibraryItemType itemType) async* {
-    final musicManager = context.read<MusicManager>();
-    libraryItems[itemType] = [];
+    try {
+      final musicManager = context.read<MusicManager>();
+      libraryItems[itemType] = [];
 
-    final items = musicManager.getLibraryItems(itemType: itemType);
+      final items = musicManager.getLibraryItems(itemType: itemType);
 
-    await for (final item in items) {
-      libraryItems[itemType] ??= [];
-      libraryItems[itemType]!.add(item);
-      libraryItems[itemType]!.sort((a, b) {
-        return sortingAlgorithms[LibrarySortBy.name]!(a, b) * sortOrder.toInt();
-      });
-      yield null;
+      await for (final item in items) {
+        libraryItems[itemType] ??= [];
+        libraryItems[itemType]!.add(item);
+        libraryItems[itemType]!.sort((a, b) {
+          return sortingAlgorithms[LibrarySortBy.name]!(a, b) * sortOrder.toInt();
+        });
+        yield null;
+      }
+    } finally {
+      _refreshCompleters[itemType]?.complete();
+      _refreshCompleters.remove(itemType);
     }
   }
 

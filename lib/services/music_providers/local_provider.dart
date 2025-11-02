@@ -30,4 +30,9 @@ class LocalMusicProvider extends MusicProvider {
   Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
     yield* api.getSearchResults(query: query, itemType: itemType);
   }
+
+  @override
+  Future<void> cleanupGarbage() async {
+    await api.cleanupGarbage();
+  }
 }

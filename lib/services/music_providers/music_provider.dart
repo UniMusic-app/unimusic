@@ -161,4 +161,6 @@ abstract class MusicProvider {
 
   Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType});
   Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType});
+
+  Future<void> cleanupGarbage() async {}
 }

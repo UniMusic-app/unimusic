@@ -375,4 +375,33 @@ class LocalSharedApi extends LocalApi {
       }
     }
   }
+
+  @override
+  Future<void> cleanupGarbage() async {
+    final dbSongs = await DatabaseHelper.getSongsByProvider(providerId);
+    for (final dbSong in dbSongs) {
+      if (dbSong.filePath == null || !await File(dbSong.filePath!).exists()) {
+        await DatabaseHelper.deleteSong(dbSong.id);
+      }
+    }
+
+    final dbAlbums = await DatabaseHelper.getAlbumsByProvider(providerId);
+    for (final dbAlbum in dbAlbums) {
+      final albumSongs = await DatabaseHelper.getSongsByAlbumId(dbAlbum.id);
+      if (albumSongs.isEmpty) {
+        await DatabaseHelper.deleteAlbum(dbAlbum.id);
+      }
+    }
+
+    final dbArtists = await DatabaseHelper.getArtistsByProvider(providerId);
+    for (final dbArtist in dbArtists) {
+      final artistSongs = await DatabaseHelper.getSongsByArtist(dbArtist.id);
+      final artistAlbums = await DatabaseHelper.getAlbumsByArtist(dbArtist.id);
+      if (artistSongs.isEmpty && artistAlbums.isEmpty) {
+        await DatabaseHelper.deleteArtist(dbArtist.id);
+      }
+    }
+
+    await DatabaseHelper.cleanupOrphanedArtworks();
+  }
 }

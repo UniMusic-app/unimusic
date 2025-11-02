@@ -563,6 +563,42 @@ class DatabaseHelper {
   }
 
   // UTILITY METHODS
+  static Future<void> cleanupOrphanedArtworks() async {
+    final allArtworks = await getAllArtwork();
+    if (allArtworks.isEmpty) {
+      return;
+    }
+
+    final referencedArtworkIds = <String>{};
+
+    final songs = await getAllSongs();
+    for (final song in songs) {
+      if (song.artworkId != null) {
+        referencedArtworkIds.add(song.artworkId!);
+      }
+    }
+
+    final albums = await getAllAlbums();
+    for (final album in albums) {
+      if (album.artworkId != null) {
+        referencedArtworkIds.add(album.artworkId!);
+      }
+    }
+
+    final artists = await getAllArtists();
+    for (final artist in artists) {
+      if (artist.artworkId != null) {
+        referencedArtworkIds.add(artist.artworkId!);
+      }
+    }
+
+    for (final artwork in allArtworks) {
+      if (!referencedArtworkIds.contains(artwork.id)) {
+        await deleteArtwork(artwork.id);
+      }
+    }
+  }
+
   static Future<void> clearAllData() async {
     // Clear all cached artwork files before deleting database records
     await CacheHelper.clearArtworkCache();
