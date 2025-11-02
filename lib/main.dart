@@ -72,7 +72,20 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       body: IndexedStack(
         index: _currentView,
-        children: const [HomeView(), SearchView(), LibraryView()],
+        children: [
+          Navigator(
+            onGenerateRoute: (settings) =>
+                MaterialPageRoute(builder: (context) => const HomeView()),
+          ),
+          Navigator(
+            onGenerateRoute: (settings) =>
+                MaterialPageRoute(builder: (context) => const SearchView()),
+          ),
+          Navigator(
+            onGenerateRoute: (settings) =>
+                MaterialPageRoute(builder: (context) => const LibraryView()),
+          ),
+        ],
       ),
 
       bottomNavigationBar: BottomSheetBar(

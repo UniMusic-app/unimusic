@@ -170,20 +170,6 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                     padding: EdgeInsets.only(top: 16),
                     child: ExpandedMusicPlayerSeekbar(),
                   ),
-                  // Row(
-                  //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  //   children: [
-                  //     Text(
-                  //       (_seekBarPosition ?? musicManager.position).formatted,
-                  //       style: Theme.of(context).textTheme.labelSmall,
-                  //     ),
-                  //     Text("FLAC or whatever TODO"),
-                  //     Text(
-                  //       (-(musicManager.duration - musicManager.position)).formatted,
-                  //       style: Theme.of(context).textTheme.labelSmall,
-                  //     ),
-                  //   ],
-                  // ),
                   Padding(
                     padding: const EdgeInsets.only(top: 16),
                     child: Row(
@@ -222,6 +208,10 @@ class ExpandedMusicPlayerSeekbarState extends State<ExpandedMusicPlayerSeekbar> 
     final max = musicManager.duration.inMilliseconds.toDouble();
     final value = min((_seekBarPosition ?? musicManager.position).inMilliseconds.toDouble(), max);
 
+    final textTimeStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.apply(fontFeatures: [FontFeature.tabularFigures()]);
+
     return Column(
       children: [
         Slider(
@@ -243,14 +233,11 @@ class ExpandedMusicPlayerSeekbarState extends State<ExpandedMusicPlayerSeekbar> 
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              (_seekBarPosition ?? musicManager.position).formatted,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
+            Text((_seekBarPosition ?? musicManager.position).formatted, style: textTimeStyle),
             Text("FLAC or whatever TODO"),
             Text(
               (-(musicManager.duration - musicManager.position)).formatted,
-              style: Theme.of(context).textTheme.labelSmall,
+              style: textTimeStyle,
             ),
           ],
         ),

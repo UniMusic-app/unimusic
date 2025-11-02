@@ -98,6 +98,7 @@ class LocalArtist extends Artist<LocalArtwork> {
   @override
   Future<void> toggleFavourite(bool value) async {
     await DatabaseHelper.setFavourite("artist_items", id, value);
+    favourite = value;
   }
 
   static LocalArtist fromDatabase(LocalSharedApi api, ArtistDatabaseItem artist) {
@@ -181,6 +182,7 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
   @override
   Future<void> toggleFavourite(bool value) async {
     await DatabaseHelper.setFavourite("song_items", id, value);
+    favourite = value;
   }
 }
 
@@ -233,6 +235,7 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
   @override
   Future<void> toggleFavourite(bool value) async {
     await DatabaseHelper.setFavourite("album_items", id, value);
+    favourite = value;
   }
 }
 

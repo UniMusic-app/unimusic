@@ -230,14 +230,14 @@ class JellyfinApi {
 
   Stream<SearchHint> searchHints({
     required String searchTerm,
-    required Set<JellyfinItemType> includeItemTypes,
+    Set<JellyfinItemType>? includeItemTypes,
     String? parentId,
   }) async* {
     final response = await fetch(
       pathSegments: ["Search", "Hints"],
       queryParameters: {
         "searchTerm": searchTerm,
-        "includeItemTypes": includeItemTypes.join(","),
+        if (includeItemTypes != null) "includeItemTypes": includeItemTypes.join(","),
         if (parentId != null) "parentId": parentId,
       },
     );

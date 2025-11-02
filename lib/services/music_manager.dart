@@ -58,6 +58,11 @@ class MusicManager extends ChangeNotifier {
   List<Song> queue = [];
   Duration duration = Duration.zero;
 
+  Future<void> clearQueue() async {
+    await player.clearAudioSources();
+    queue.clear();
+  }
+
   Future<void> queueSongStream(Stream<Song> songs, {int? position}) async {
     await for (final song in songs) {
       final audioSource = await song.getAudioSource();
@@ -164,39 +169,25 @@ class MusicManager extends ChangeNotifier {
     await player.seek(to);
   }
 
-  Stream<MusicItem> getLibraryItems({required Set<LibraryItemType> itemTypes}) async* {
+  Stream<MusicItem> getLibraryItems({LibraryItemType? itemType}) async* {
     final pendingMusicItems = providers.map(
-      (provider) => provider.getLibraryItems(itemTypes: itemTypes),
+      (provider) => provider.getLibraryItems(itemType: itemType),
     );
     final mergedStream = StreamGroup.merge(pendingMusicItems);
     yield* mergedStream;
   }
 
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    Set<LibraryItemType> itemTypes = const {
-      LibraryItemType.songs,
-      LibraryItemType.albums,
-      LibraryItemType.artists,
-    },
-  }) async* {
+  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
     final pendingSearchHints = providers.map(
-      (provider) => provider.getSearchHints(query: query, itemTypes: itemTypes),
+      (provider) => provider.getSearchHints(query: query, itemType: itemType),
     );
     final mergedStream = StreamGroup.merge(pendingSearchHints);
     yield* mergedStream;
   }
 
-  Stream<MusicItem> getSearchResults({
-    required String query,
-    Set<LibraryItemType> itemTypes = const {
-      LibraryItemType.songs,
-      LibraryItemType.albums,
-      LibraryItemType.artists,
-    },
-  }) async* {
+  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
     final pendingSearchResults = providers.map(
-      (provider) => provider.getSearchResults(query: query, itemTypes: itemTypes),
+      (provider) => provider.getSearchResults(query: query, itemType: itemType),
     );
     final mergedStream = StreamGroup.merge(pendingSearchResults);
     yield* mergedStream;
