@@ -23,14 +23,8 @@ class LocalAndroidApi extends LocalApi {
   }
 
   @override
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {}
+  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {}
 
   @override
-  Stream<MusicItem> search({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {}
+  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {}
 }

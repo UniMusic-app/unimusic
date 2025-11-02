@@ -5,12 +5,6 @@ abstract class LocalApi {
   Stream<Album> getAllAlbums();
   Stream<Artist> getAllArtists();
 
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  });
-  Stream<MusicItem> search({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  });
+  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType});
+  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType});
 }

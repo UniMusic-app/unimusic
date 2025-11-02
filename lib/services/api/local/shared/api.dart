@@ -304,13 +304,10 @@ class LocalSharedApi extends LocalApi {
   }
 
   @override
-  Stream<MusicItem> search({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {
+  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
     final lowercaseQuery = query.toLowerCase();
 
-    if (itemTypes.contains(LibraryItemType.songs)) {
+    if (itemType == null || itemType == LibraryItemType.songs) {
       await for (final song in getAllSongs()) {
         if (song.name.toLowerCase().contains(lowercaseQuery) ||
             song.album?.toLowerCase().contains(lowercaseQuery) == true ||
@@ -320,7 +317,7 @@ class LocalSharedApi extends LocalApi {
       }
     }
 
-    if (itemTypes.contains(LibraryItemType.albums)) {
+    if (itemType == null || itemType == LibraryItemType.albums) {
       await for (final album in getAllAlbums()) {
         if (album.name.toLowerCase().contains(lowercaseQuery) ||
             album.artists.any((artist) => artist.name.toLowerCase().contains(lowercaseQuery))) {
@@ -329,7 +326,7 @@ class LocalSharedApi extends LocalApi {
       }
     }
 
-    if (itemTypes.contains(LibraryItemType.artists)) {
+    if (itemType == null || itemType == LibraryItemType.artists) {
       await for (final artist in getAllArtists()) {
         if (artist.name.toLowerCase().contains(lowercaseQuery)) {
           yield artist;
@@ -339,17 +336,12 @@ class LocalSharedApi extends LocalApi {
   }
 
   @override
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {
+  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
     final lowercaseQuery = query.toLowerCase();
-    final seenTitles = <String>{};
 
-    if (itemTypes.contains(LibraryItemType.songs)) {
+    if (itemType == null || itemType == LibraryItemType.songs) {
       await for (final song in getAllSongs()) {
-        if (song.name.toLowerCase().contains(lowercaseQuery) && !seenTitles.contains(song.name)) {
-          seenTitles.add(song.name);
+        if (song.name.toLowerCase().contains(lowercaseQuery)) {
           yield LocalSearchHint(
             title: song.name,
             type: LibraryItemType.songs,
@@ -359,10 +351,9 @@ class LocalSharedApi extends LocalApi {
       }
     }
 
-    if (itemTypes.contains(LibraryItemType.albums)) {
+    if (itemType == null || itemType == LibraryItemType.albums) {
       await for (final album in getAllAlbums()) {
-        if (album.name.toLowerCase().contains(lowercaseQuery) && !seenTitles.contains(album.name)) {
-          seenTitles.add(album.name);
+        if (album.name.toLowerCase().contains(lowercaseQuery)) {
           yield LocalSearchHint(
             title: album.name,
             type: LibraryItemType.albums,
@@ -372,11 +363,9 @@ class LocalSharedApi extends LocalApi {
       }
     }
 
-    if (itemTypes.contains(LibraryItemType.artists)) {
+    if (itemType == null || itemType == LibraryItemType.artists) {
       await for (final artist in getAllArtists()) {
-        if (artist.name.toLowerCase().contains(lowercaseQuery) &&
-            !seenTitles.contains(artist.name)) {
-          seenTitles.add(artist.name);
+        if (artist.name.toLowerCase().contains(lowercaseQuery)) {
           yield LocalSearchHint(
             title: artist.name,
             type: LibraryItemType.artists,

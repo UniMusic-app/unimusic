@@ -318,10 +318,12 @@ class DeezerApi {
       data: {"user_id": userData.userId, "tab": "artists"},
     );
 
+    favoriteIds["Artist"] = {};
     final artists = profileResponse.data["results"]["TAB"]["artists"]["data"];
 
     for (final artistJson in artists) {
-      final artist = DeezerArtist.fromDeezerJson(this, artistJson);
+      final artist = DeezerArtist.fromDeezerJson(api: this, json: artistJson, favourite: true);
+      favoriteIds["Artist"]!.add(artist.id);
       yield artist;
     }
   }
@@ -332,10 +334,12 @@ class DeezerApi {
       data: {"user_id": userData.userId, "tab": "albums"},
     );
 
+    favoriteIds["Album"] = {};
     final albums = profileResponse.data["results"]["TAB"]["albums"]["data"];
 
     for (final albumJson in albums) {
-      final album = DeezerAlbum.fromDeezerJson(this, albumJson);
+      final album = DeezerAlbum.fromDeezerJson(api: this, json: albumJson, favourite: true);
+      favoriteIds["Album"]!.add(album.id);
       yield album;
     }
   }
@@ -355,10 +359,7 @@ class DeezerApi {
     }
   }
 
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {
+  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
     final autocompleteResponse = await dio.get(
       "$searchUrl/autocomplete",
       queryParameters: {"q": query, "limit": 10, "order": "RANKING"},
@@ -366,37 +367,49 @@ class DeezerApi {
 
     final data = autocompleteResponse.data;
 
-    const options = [
-      (LibraryItemType.songs, "tracks"),
-      (LibraryItemType.albums, "albums"),
-      (LibraryItemType.artists, "artists"),
+    final keys = [
+      if (itemType == null || itemType == LibraryItemType.songs) "tracks",
+      if (itemType == null || itemType == LibraryItemType.albums) "albums",
+      if (itemType == null || itemType == LibraryItemType.artists) "artists",
     ];
 
-    for (final (itemType, key) in options) {
-      if (!itemTypes.contains(itemType) || data[key] == null) continue;
+    for (final key in keys) {
+      if (data[key] == null) continue;
 
       for (final track in data[key]["data"]) {
-        yield DeezerSearchHint.fromDeezerJson(track);
+        final searchHint = DeezerSearchHint.fromDeezerJson(track);
+        if (searchHint != null) {
+          yield searchHint;
+        }
       }
     }
   }
 
-  Stream<MusicItem> getSearchResults({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {
-    final searchResponse = await dio.get(
-      searchUrl,
-      queryParameters: {"q": query, "order": "RANKING"},
-    );
+  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
+    var searchUri = Uri.parse(searchUrl);
 
+    if (itemType != null) {
+      final segment = switch (itemType) {
+        LibraryItemType.songs => "track",
+        LibraryItemType.albums => "album",
+        LibraryItemType.artists => "artist",
+      };
+      searchUri = searchUri.replace(pathSegments: [...searchUri.pathSegments, segment]);
+    }
+    searchUri = searchUri.replace(queryParameters: {"q": query, "order": "RANKING"});
+
+    final searchResponse = await dio.getUri(searchUri);
     final data = searchResponse.data["data"];
 
     for (final itemJson in data) {
+      if (itemJson["nb_album"] == 0) {
+        continue;
+      }
+
       final item = switch (itemJson["type"]) {
-        "track" => DeezerSong.fromDeezerJson(this, itemJson),
-        "album" => DeezerAlbum.fromDeezerJson(this, itemJson),
-        "artist" => DeezerArtist.fromDeezerJson(this, itemJson),
+        "track" => DeezerSong.fromDeezerJson(api: this, json: itemJson),
+        "album" => DeezerAlbum.fromDeezerJson(api: this, json: itemJson),
+        "artist" => DeezerArtist.fromDeezerJson(api: this, json: itemJson),
         _ => throw UnimplementedError(),
       };
 
@@ -404,12 +417,15 @@ class DeezerApi {
     }
   }
 
-  Future<void> removeFavorites(List<String> ids) async {
-    await callMethod("song.removeFavorites", data: {"IDS": ids.join(",")});
+  Future<void> removeFavorite(MusicItem item) async {
+    await callMethod("song.removeFavorites", data: {"IDS": item.id});
+    favoriteIds[item.type]?.remove(item.id);
   }
 
-  Future<void> addFavorites(List<String> ids) async {
-    await callMethod("song.addFavorites", data: {"IDS": ids.join(",")});
+  Future<void> addFavorite(MusicItem item) async {
+    await callMethod("song.addFavorites", data: {"IDS": item.id});
+    favoriteIds[item.type] ??= {};
+    favoriteIds[item.type]!.add(item.id);
   }
 
   Future<bool> isFavourite(MusicItem item) async {
@@ -417,10 +433,12 @@ class DeezerApi {
       case final Set ids when ids.isNotEmpty:
         return ids.contains(item.id);
       default:
-        await for (final song in getFavoriteSongs()) {
-          if (song.id == item.id) return true;
-        }
-        return false;
+        return switch (item.type) {
+          "Song" => getFavoriteSongs().any((song) => song.id == item.id),
+          "Artist" => getFavoriteArtists().any((artist) => artist.id == item.id),
+          "Album" => getFavoriteAlbums().any((artist) => artist.id == item.id),
+          final type => throw UnimplementedError(type),
+        };
     }
   }
 }

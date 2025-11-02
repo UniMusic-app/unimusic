@@ -80,8 +80,6 @@ class GenericItemTile<T> extends StatelessWidget {
         child: LazyImage(artwork: artwork, icon: icon, width: 48, size: ArtworkSize.small),
       ),
 
-      trailing: favourite ? Icon(Icons.favorite_rounded, color: Colors.pinkAccent, size: 16) : null,
-
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         subtitle == null ? type : "$type · $subtitle",

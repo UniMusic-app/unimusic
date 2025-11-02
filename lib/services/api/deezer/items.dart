@@ -25,10 +25,10 @@ mixin DeezerFavouriteItem on MusicItem {
   @override
   Future<void> toggleFavourite(bool value) async {
     if (value) {
-      await api.addFavorites([id]);
+      await api.addFavorite(this);
       favourite = true;
     } else {
-      await api.removeFavorites([id]);
+      await api.removeFavorite(this);
       favourite = false;
     }
     clientChanged = true;
@@ -58,17 +58,17 @@ class DeezerTrack {
 
   List<DeezerArtist>? get artists => switch (trackInfo["ARTISTS"]) {
     List<dynamic> artists =>
-      artists.map((artist) => DeezerArtist.fromDeezerJson(api, artist)).toList(),
+      artists.map((artist) => DeezerArtist.fromDeezerJson(api: api, json: artist)).toList(),
     _ => null,
   };
 
   DeezerArtwork? get artistArtwork => switch (trackInfo["ART_PICTURE"]) {
-    String id => DeezerArtwork.withType(id: id, imageType: "artist"),
+    String id => DeezerArtwork.withType(id: id, type: "artist"),
     _ => null,
   };
 
   DeezerArtwork? get albumArtwork => switch (trackInfo["ALB_PICTURE"]) {
-    String id => DeezerArtwork.withType(id: id, imageType: "cover"),
+    String id => DeezerArtwork.withType(id: id, type: "cover"),
     _ => null,
   };
 
@@ -104,16 +104,19 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
     required super.artists,
     required super.album,
     required super.duration,
-    required super.favourite,
     super.artwork,
-  }) : super(providerId: providerId);
+
+    bool? favourite,
+  }) : super(
+         providerId: providerId,
+         favourite: favourite ?? api.favoriteIds["Song"]?.contains(id) ?? false,
+       );
 
   DeezerSong.fromTrack({required DeezerApi api, required DeezerTrack track, bool? favourite})
     : this(
         api: api,
         id: track.id!,
         name: track.title!,
-        favourite: false,
         artists: track.artists!,
         album: track.album!,
         duration: track.duration!,
@@ -122,17 +125,20 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
         artwork: track.albumArtwork,
       );
 
-  DeezerSong.fromDeezerJson(DeezerApi api, Map<String, dynamic> json)
-    : this(
-        api: api,
-        id: json["id"].toString(),
-        name: json["title"],
-        favourite: false,
-        album: json["album"]["title"],
-        artists: [DeezerArtist.fromDeezerJson(api, json["artist"])],
-        duration: Duration(seconds: json["duration"]),
-        artwork: DeezerArtwork.withType(id: json["md5_image"], imageType: "cover"),
-      );
+  DeezerSong.fromDeezerJson({
+    required DeezerApi api,
+    required Map<String, dynamic> json,
+    bool? favourite,
+  }) : this(
+         api: api,
+         id: json["id"].toString(),
+         name: json["title"],
+         album: json["album"]["title"],
+         favourite: favourite,
+         artists: [DeezerArtist.fromDeezerJson(api: api, json: json["artist"])],
+         duration: Duration(seconds: json["duration"]),
+         artwork: DeezerArtwork.withType(id: json["md5_image"], type: "cover"),
+       );
 
   Future<(Response<ResponseBody>, Stream<List<int>>)> stream({
     required DeezerSoundFormat soundFormat,
@@ -175,8 +181,14 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
 
 class DeezerArtwork extends CachedArtwork {
   const DeezerArtwork({required super.id}) : super(providerId: providerId);
-  const DeezerArtwork.withType({required String id, required String imageType})
-    : this(id: "$imageType/$id");
+
+  const DeezerArtwork.withType({required String id, required String type}) : this(id: "$type/$id");
+
+  factory DeezerArtwork.fromPictureUrl(String url) {
+    final uri = Uri.parse(url);
+    final parts = uri.pathSegments; // ["images", type, id, ...]
+    return DeezerArtwork.withType(type: parts[1], id: parts[2]);
+  }
 
   @override
   String getMimeType() => 'image/jpeg';
@@ -198,21 +210,25 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
     required this.api,
     required super.id,
     required super.name,
-    required super.favourite,
     super.artwork,
-  }) : super(providerId: providerId);
+    bool? favourite,
+  }) : super(
+         providerId: providerId,
+         favourite: favourite ?? api.favoriteIds["Song"]?.contains(id) ?? false,
+       );
 
-  factory DeezerArtist.fromDeezerJson(DeezerApi api, Map<String, dynamic> json) {
+  factory DeezerArtist.fromDeezerJson({
+    required DeezerApi api,
+    required Map<String, dynamic> json,
+    bool? favourite,
+  }) {
     if (json["id"] != null) {
       return DeezerArtist(
         api: api,
         id: json["id"].toString(),
         name: json["name"],
-        favourite: false,
-        artwork: switch (json["md5_image"]) {
-          String id => DeezerArtwork.withType(id: id, imageType: "artist"),
-          _ => null,
-        },
+        favourite: favourite,
+        artwork: DeezerArtwork.fromPictureUrl(json["picture_xl"]),
       );
     }
 
@@ -220,8 +236,7 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
       api: api,
       id: json["ART_ID"],
       name: json["ART_NAME"],
-      favourite: false,
-      artwork: DeezerArtwork.withType(id: json["ART_PICTURE"], imageType: "artist"),
+      artwork: DeezerArtwork.withType(id: json["ART_PICTURE"], type: "artist"),
     );
   }
 }
@@ -235,19 +250,26 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
     required super.id,
     required super.name,
     required super.artists,
-    required super.favourite,
     super.artwork,
-  }) : super(providerId: providerId);
+    bool? favourite,
+  }) : super(
+         providerId: providerId,
+         favourite: favourite ?? api.favoriteIds["Song"]?.contains(id) ?? false,
+       );
 
-  factory DeezerAlbum.fromDeezerJson(DeezerApi api, Map<String, dynamic> json) {
+  factory DeezerAlbum.fromDeezerJson({
+    required DeezerApi api,
+    required Map<String, dynamic> json,
+    bool? favourite,
+  }) {
     if (json["id"] != null) {
       return DeezerAlbum(
         api: api,
         id: json["id"].toString(),
         name: json["title"],
-        favourite: false,
-        artwork: DeezerArtwork.withType(id: json["md5_image"], imageType: "cover"),
-        artists: [DeezerArtist.fromDeezerJson(api, json["artist"])],
+        favourite: favourite,
+        artwork: DeezerArtwork.withType(id: json["md5_image"], type: "cover"),
+        artists: [DeezerArtist.fromDeezerJson(api: api, json: json["artist"])],
       );
     }
 
@@ -255,11 +277,9 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
       api: api,
       id: json["ALB_ID"],
       name: json["ALB_TITLE"],
-      favourite: false,
-      artwork: DeezerArtwork.withType(id: json["ALB_PICTURE"], imageType: "cover"),
-      artists: [
-        DeezerArtist(api: api, id: json["ART_ID"], name: json["ART_NAME"], favourite: false),
-      ],
+      favourite: favourite,
+      artwork: DeezerArtwork.withType(id: json["ALB_PICTURE"], type: "cover"),
+      artists: [DeezerArtist(api: api, id: json["ART_ID"], name: json["ART_NAME"])],
     );
   }
 
@@ -272,18 +292,41 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
 class DeezerSearchHint extends SearchHint {
   const DeezerSearchHint({required super.title, super.artwork, super.type});
 
-  DeezerSearchHint.fromDeezerJson(Map<String, dynamic> json)
+  static DeezerSearchHint? fromDeezerJson(Map<String, dynamic> json) {
+    switch (json["type"]) {
+      case "artist":
+        if (json["nb_album"] == "0") {
+          return null;
+        }
+        return DeezerSearchHint.fromArtistDeezerJson(json);
+      case "album":
+        return DeezerSearchHint.fromAlbumDeezerJson(json);
+      case "track":
+        return DeezerSearchHint.fromTrackDeezerJson(json);
+      default:
+        debugPrint("Unknown deezer search hint type ${json['type']}");
+        return null;
+    }
+  }
+
+  DeezerSearchHint.fromArtistDeezerJson(Map<String, dynamic> json)
+    : this(
+        title: json["name"],
+        type: LibraryItemType.artists,
+        artwork: DeezerArtwork.fromPictureUrl(json["picture_xl"]),
+      );
+
+  DeezerSearchHint.fromAlbumDeezerJson(Map<String, dynamic> json)
     : this(
         title: json["title"],
-        type: switch (json["type"]) {
-          "track" => LibraryItemType.songs,
-          "artist" => LibraryItemType.artists,
-          "album" => LibraryItemType.albums,
-          _ => throw UnimplementedError(),
-        },
-        artwork: DeezerArtwork.withType(
-          id: json["md5_image"],
-          imageType: json["type"] == "artist" ? "artist" : "cover",
-        ),
+        type: LibraryItemType.albums,
+        artwork: DeezerArtwork.withType(id: json["md5_image"], type: "cover"),
+      );
+
+  DeezerSearchHint.fromTrackDeezerJson(Map<String, dynamic> json)
+    : this(
+        title: json["title"],
+        type: LibraryItemType.songs,
+        artwork: DeezerArtwork.withType(id: json["md5_image"], type: "cover"),
       );
 }

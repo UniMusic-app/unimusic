@@ -99,10 +99,10 @@ abstract class CachedArtwork extends Artwork {
       return filePath;
     } catch (error) {
       debugPrint("Failed to download artwork $id: $error");
+      completer.complete(null);
       return null;
     } finally {
       _downloadingArtworks.remove(cacheKey);
-      completer.complete(null);
     }
   }
 }

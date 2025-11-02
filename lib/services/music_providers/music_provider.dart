@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -149,22 +150,15 @@ abstract class MusicProvider {
   Stream<Song> getLibrarySongs();
   Stream<Album> getLibraryAlbums();
   Stream<Artist> getLibraryArtists();
-  Stream<MusicItem> getLibraryItems({required Set<LibraryItemType> itemTypes}) async* {
-    for (final itemType in itemTypes) {
-      yield* switch (itemType) {
-        LibraryItemType.songs => getLibrarySongs(),
-        LibraryItemType.albums => getLibraryAlbums(),
-        LibraryItemType.artists => getLibraryArtists(),
-      };
-    }
+  Stream<MusicItem> getLibraryItems({LibraryItemType? itemType}) async* {
+    yield* switch (itemType) {
+      LibraryItemType.songs => getLibrarySongs(),
+      LibraryItemType.albums => getLibraryAlbums(),
+      LibraryItemType.artists => getLibraryArtists(),
+      null => StreamGroup.merge([getLibrarySongs(), getLibraryAlbums(), getLibraryArtists()]),
+    };
   }
 
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  });
-  Stream<MusicItem> getSearchResults({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  });
+  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType});
+  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType});
 }

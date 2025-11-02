@@ -21,25 +21,25 @@ class JellyfinMusicProvider extends MusicProvider {
   }
 
   @override
-  Stream<MusicItem> getSearchResults({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {
+  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
     yield* api.items(
       searchTerm: query,
       recursive: true,
-      includeItemTypes: itemTypes.map(JellyfinItemType.fromLibraryItemType).toSet(),
+      includeItemTypes: switch (itemType) {
+        LibraryItemType itemType => {JellyfinItemType.fromLibraryItemType(itemType)},
+        null => null,
+      },
     );
   }
 
   @override
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    required Set<LibraryItemType> itemTypes,
-  }) async* {
+  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
     yield* api.searchHints(
       searchTerm: query,
-      includeItemTypes: itemTypes.map(JellyfinItemType.fromLibraryItemType).toSet(),
+      includeItemTypes: switch (itemType) {
+        LibraryItemType itemType => {JellyfinItemType.fromLibraryItemType(itemType)},
+        null => null,
+      },
     );
   }
 }
