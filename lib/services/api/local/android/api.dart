@@ -1,6 +1,7 @@
 import "package:unimusic/plugins/media_store.dart";
 import "package:unimusic/services/api/local/android/items.dart";
 import "package:unimusic/services/api/local/api.dart";
+import "package:unimusic/services/database/database.dart";
 import "package:unimusic/services/music_providers/music_provider.dart";
 
 class LocalAndroidApi extends LocalApi {
@@ -27,4 +28,37 @@ class LocalAndroidApi extends LocalApi {
 
   @override
   Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {}
+
+  @override
+  Future<void> cleanupGarbage() async {
+    await MediaStorePlugin.requestPermission();
+
+    final mediaStoreSongs = await MediaStorePlugin.getSongs().map((s) => s.id.toString()).toSet();
+    final dbSongs = await DatabaseHelper.getSongsByProvider(providerId);
+    for (final dbSong in dbSongs) {
+      if (!mediaStoreSongs.contains(dbSong.id)) {
+        await DatabaseHelper.deleteSong(dbSong.id);
+      }
+    }
+
+    final mediaStoreAlbums = await MediaStorePlugin.getAlbums().map((a) => a.id.toString()).toSet();
+    final dbAlbums = await DatabaseHelper.getAlbumsByProvider(providerId);
+    for (final dbAlbum in dbAlbums) {
+      if (!mediaStoreAlbums.contains(dbAlbum.id)) {
+        await DatabaseHelper.deleteAlbum(dbAlbum.id);
+      }
+    }
+
+    final mediaStoreArtists = await MediaStorePlugin.getArtists()
+        .map((a) => a.id.toString())
+        .toSet();
+    final dbArtists = await DatabaseHelper.getArtistsByProvider(providerId);
+    for (final dbArtist in dbArtists) {
+      if (!mediaStoreArtists.contains(dbArtist.id)) {
+        await DatabaseHelper.deleteArtist(dbArtist.id);
+      }
+    }
+
+    await DatabaseHelper.cleanupOrphanedArtworks();
+  }
 }
