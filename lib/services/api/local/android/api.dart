@@ -7,19 +7,19 @@ class LocalAndroidApi extends LocalApi {
   @override
   Stream<LocalAndroidSong> getAllSongs() async* {
     await MediaStorePlugin.requestPermission();
-    yield* MediaStorePlugin.getSongs().map(LocalAndroidSong.fromMediaStore);
+    yield* MediaStorePlugin.getSongs().asyncMap(LocalAndroidSong.fromMediaStore);
   }
 
   @override
   Stream<LocalAndroidAlbum> getAllAlbums() async* {
     await MediaStorePlugin.requestPermission();
-    yield* MediaStorePlugin.getAlbums().map(LocalAndroidAlbum.fromMediaStore);
+    yield* MediaStorePlugin.getAlbums().asyncMap(LocalAndroidAlbum.fromMediaStore);
   }
 
   @override
   Stream<LocalAndroidArtist> getAllArtists() async* {
     await MediaStorePlugin.requestPermission();
-    yield* MediaStorePlugin.getArtists().map(LocalAndroidArtist.fromMediaStore);
+    yield* MediaStorePlugin.getArtists().asyncMap(LocalAndroidArtist.fromMediaStore);
   }
 
   @override

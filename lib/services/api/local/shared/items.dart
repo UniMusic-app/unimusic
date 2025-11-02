@@ -121,17 +121,16 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
 
   LocalSong({
     required this.api,
+    required String filePath,
 
     required super.id,
     required super.name,
     required super.favourite,
     required super.artists,
     required super.duration,
-    required super.filePath,
     super.album,
     super.artwork,
-  }) : assert(filePath != null, "LocalSong requires filePath to always be a String"),
-       super(providerId: providerId);
+  }) : super(providerId: providerId, filePath: filePath);
 
   static Future<LocalSong> fromDatabase(LocalSharedApi api, SongDatabaseItem song) async {
     final databaseArtists = await DatabaseHelper.getSongArtists(song.id);
@@ -153,7 +152,7 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
       artists: artists,
       album: song.album,
       duration: Duration(milliseconds: song.duration),
-      filePath: song.filePath,
+      filePath: song.filePath!,
       artwork: artwork,
     );
   }

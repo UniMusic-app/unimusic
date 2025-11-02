@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import "package:just_audio/just_audio.dart";
 import "package:just_audio_background/just_audio_background.dart";
 import "package:unimusic/plugins/media_store.dart";
+import "package:unimusic/services/database/database.dart";
 import "package:unimusic/services/music_providers/music_provider.dart";
 import "package:unimusic/utils/null.dart";
 
@@ -54,19 +55,33 @@ class LocalAndroidArtist extends Artist {
     required super.favourite,
   }) : super(providerId: providerId);
 
-  factory LocalAndroidArtist.fromMediaStore(MediaStoreArtist artist) {
-    return LocalAndroidArtist(id: artist.id.toString(), name: artist.name, favourite: false);
+  static Future<LocalAndroidArtist> fromMediaStore(MediaStoreArtist artist) async {
+    final artistId = artist.id.toString();
+    final existingDbArtist = await DatabaseHelper.getArtist(artistId);
+
+    final localArtist = LocalAndroidArtist(
+      id: artistId,
+      name: artist.name,
+      favourite: existingDbArtist?.favourite ?? false,
+    );
+
+    if (existingDbArtist == null) {
+      await DatabaseHelper.insertArtist(localArtist);
+    }
+
+    return localArtist;
   }
 
   @override
   Future<bool> isFavourite() async {
-    return false;
+    final artist = await DatabaseHelper.getArtist(id);
+    return artist?.favourite ?? false;
   }
 
   @override
-  Future<void> toggleFavourite(bool value) {
-    // TODO: implement toggleFavourite
-    throw UnimplementedError();
+  Future<void> toggleFavourite(bool value) async {
+    await DatabaseHelper.setFavourite("artist_items", id, value);
+    favourite = value;
   }
 }
 
@@ -100,42 +115,52 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
     super.artwork,
   }) : super(providerId: providerId);
 
-  factory LocalAndroidAlbum.fromMediaStore(MediaStoreAlbum album) {
-    // TODO: AlbumId might be better suited to be used as artwork id
-    final artist = album.artist.let(LocalAndroidArtist.fromMediaStore);
+  static Future<LocalAndroidAlbum> fromMediaStore(MediaStoreAlbum album) async {
+    final albumId = album.id.toString();
+    final existingDbAlbum = await DatabaseHelper.getAlbum(albumId);
+
+    final artist = await album.artist.let(LocalAndroidArtist.fromMediaStore);
     final artists = [if (artist != null) artist];
-    return LocalAndroidAlbum(
-      id: album.id.toString(),
+
+    final localAlbum = LocalAndroidAlbum(
+      id: albumId,
       name: album.name,
       artists: artists,
       artwork: album.artwork.let(LocalAndroidArtwork.fromMediaStore),
-      favourite: false,
+      favourite: existingDbAlbum?.favourite ?? false,
     );
+
+    if (existingDbAlbum == null) {
+      await DatabaseHelper.insertAlbum(localAlbum);
+    }
+
+    return localAlbum;
   }
 
   @override
   Stream<LocalAndroidSong> getSongs() async* {
     final Set<int> yieldedSongs = {};
 
+    // TODO: Better recognition of songs<->albums, so this bs isn't needed
     await for (final song in MediaStorePlugin.getAlbumSongs(id)) {
       if (yieldedSongs.contains(song.albumHash)) {
         continue;
       }
       yieldedSongs.add(song.albumHash);
-      yield LocalAndroidSong.fromMediaStore(song);
+      yield await LocalAndroidSong.fromMediaStore(song);
     }
   }
 
   @override
   Future<bool> isFavourite() async {
-    // TODO: implement isFavourite
-    return false;
+    final album = await DatabaseHelper.getAlbum(id);
+    return album?.favourite ?? false;
   }
 
   @override
-  Future<void> toggleFavourite(bool value) {
-    // TODO: implement toggleFavourite
-    throw UnimplementedError();
+  Future<void> toggleFavourite(bool value) async {
+    await DatabaseHelper.setFavourite("album_items", id, value);
+    favourite = value;
   }
 }
 
@@ -153,26 +178,39 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
     required super.duration,
   }) : super(providerId: providerId);
 
-  factory LocalAndroidSong.fromMediaStore(MediaStoreSong song) {
+  static Future<LocalAndroidSong> fromMediaStore(MediaStoreSong song) async {
     final artwork = song.artwork.let(LocalAndroidArtwork.fromMediaStore);
-    final artist = song.artist.let(LocalAndroidArtist.fromMediaStore);
-    final albumArtist = song.album?.artist.let(LocalAndroidArtist.fromMediaStore);
+    final artist = await song.artist.let(LocalAndroidArtist.fromMediaStore);
+    final albumArtist = await song.album?.artist.let(LocalAndroidArtist.fromMediaStore);
 
     final List<LocalAndroidArtist> artists = [
       if (albumArtist != null && albumArtist.name != artist?.name) albumArtist,
       if (artist != null) artist,
     ];
 
-    return LocalAndroidSong(
-      id: song.id.toString(),
+    final songId = song.id.toString();
+
+    final existingDbSong = await DatabaseHelper.getSong(songId);
+
+    final localSong = LocalAndroidSong(
+      id: songId,
       name: song.name,
-      favourite: false,
+      favourite: existingDbSong?.favourite ?? false,
       album: song.album?.name,
       artwork: artwork,
       duration: song.duration,
       artists: artists,
       uri: song.path,
     );
+
+    if (existingDbSong == null) {
+      await DatabaseHelper.insertSong(localSong);
+      if (song.album != null) {
+        await DatabaseHelper.insertAlbumSong(song.album!.id.toString(), localSong.id);
+      }
+    }
+
+    return localSong;
   }
 
   @override
@@ -185,12 +223,13 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
 
   @override
   Future<bool> isFavourite() async {
-    return false;
+    final song = await DatabaseHelper.getSong(id);
+    return song?.favourite ?? false;
   }
 
   @override
-  Future<void> toggleFavourite(bool value) {
-    // TODO: implement toggleFavourite
-    throw UnimplementedError();
+  Future<void> toggleFavourite(bool value) async {
+    await DatabaseHelper.setFavourite("song_items", id, value);
+    favourite = value;
   }
 }

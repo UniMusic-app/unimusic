@@ -30,7 +30,7 @@ class SongDatabaseItem extends DatabaseArtworkItem {
   final int duration;
   final String? album;
   final bool favourite;
-  final String filePath;
+  final String? filePath;
 
   const SongDatabaseItem({
     required super.id,
