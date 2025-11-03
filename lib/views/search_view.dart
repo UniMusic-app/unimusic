@@ -78,8 +78,18 @@ class SearchBar extends StatelessWidget {
       PageRouteBuilder(
         pageBuilder: (context, _, __) => SearchPage(hint: hint, onSubmitted: onSubmitted),
         opaque: false,
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
+        transitionDuration: const Duration(milliseconds: 250),
+        reverseTransitionDuration: const Duration(milliseconds: 150),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = 0.925;
+          const end = 1.0;
+          final tween = Tween(begin: begin, end: end);
+          final scaleAnimation = animation.drive(tween);
+
+          return ScaleTransition(
+            scale: scaleAnimation,
+            child: FadeTransition(opacity: animation, child: child),
+          );
         },
       ),
     );
@@ -198,7 +208,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerHigh,
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
       body: SafeArea(
         child: Column(
           children: [
@@ -217,7 +227,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       tag: 'search-hero',
       child: Material(
         borderRadius: BorderRadius.circular(28),
-        color: theme.colorScheme.surfaceContainerHigh,
+        color: theme.colorScheme.surfaceContainerLow,
         child: Container(
           height: 56,
           padding: const EdgeInsets.symmetric(horizontal: 8),
