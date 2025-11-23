@@ -1,12 +1,12 @@
 import 'package:dynamic_system_colors/dynamic_system_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:unimusic/components/music_player.dart';
 import 'package:unimusic/services/database/database.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/views/home_view.dart';
 import 'package:unimusic/views/library_view.dart';
 import 'package:unimusic/views/search_view.dart';
 import 'package:unimusic/components/bottom_sheet_bar.dart';
-import 'package:unimusic/components/music_player/music_player.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 

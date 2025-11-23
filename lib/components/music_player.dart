@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:unimusic/components/music_player/collapsed_music_player.dart';
 import 'package:unimusic/components/music_player/expanded_music_player.dart';
 import 'package:unimusic/components/bottom_sheet_bar.dart';
+import 'package:unimusic/components/music_player/collapsed_music_player.dart';
 
 class MusicPlayer extends StatefulWidget {
   const MusicPlayer({super.key});
@@ -77,7 +77,7 @@ class MusicPlayerState extends State<MusicPlayer> with SingleTickerProviderState
           child: Ink(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),

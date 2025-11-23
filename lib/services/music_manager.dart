@@ -169,6 +169,28 @@ class MusicManager extends ChangeNotifier {
     await player.seek(to);
   }
 
+  Future<void> jumpToQueueItem(int index) async {
+    if (index >= 0 && index < queue.length) {
+      await player.seek(Duration.zero, index: index);
+      if (!player.playing) {
+        await player.play();
+      }
+    }
+  }
+
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    // Adjust needed, removing shifts later indices to the left by one
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    final song = queue.removeAt(oldIndex);
+    queue.insert(newIndex, song);
+    player.moveAudioSource(oldIndex, newIndex);
+
+    notifyListeners();
+  }
+
   Stream<MusicItem> getLibraryItems({LibraryItemType? itemType}) async* {
     final pendingMusicItems = providers.map(
       (provider) => provider.getLibraryItems(itemType: itemType),
