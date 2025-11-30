@@ -18,8 +18,8 @@ class BottomSheetBar extends StatefulWidget {
 }
 
 class BottomSheetBarState extends State<BottomSheetBar> {
-  final GlobalKey sheetKey = GlobalKey();
-  final GlobalKey barKey = GlobalKey();
+  final GlobalKey sheetKey = GlobalKey(debugLabel: "sheet");
+  final GlobalKey barKey = GlobalKey(debugLabel: "bar");
 
   Duration? duration;
   double value = 0;

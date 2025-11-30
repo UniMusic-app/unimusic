@@ -6,7 +6,7 @@ class AlbumSongTile extends StatefulWidget {
   final Song song;
   final void Function()? onTap;
 
-  const AlbumSongTile({super.key, required this.song, this.onTap});
+  const AlbumSongTile(this.song, {super.key, this.onTap});
 
   @override
   State<AlbumSongTile> createState() => _AlbumSongTileState();

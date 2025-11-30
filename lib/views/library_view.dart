@@ -1,13 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:unimusic/components/tiles/music_item_tile.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/utils/string.dart';
-import 'package:unimusic/components/music_item_tile.dart';
 import 'package:provider/provider.dart';
-import 'package:unimusic/views/pages/album_page.dart';
-import 'package:unimusic/views/pages/artist_page.dart';
 
 class LibraryView extends StatefulWidget {
   const LibraryView({super.key});
@@ -114,7 +112,7 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
                     itemCount: items?.length ?? 0,
                     itemBuilder: (context, index) {
                       final item = items![index];
-                      return MusicItemTile(onTap: () => _onItemTap(context, item), item: item);
+                      return MusicItemTile(item);
                     },
                   ),
                 );
@@ -126,28 +124,6 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
         }).toList(),
       ),
     );
-  }
-
-  Future<void> _onItemTap(BuildContext context, MusicItem item) async {
-    final musicManager = context.read<MusicManager>();
-    switch (item) {
-      case Song song:
-        await musicManager.queueItem(song);
-        await musicManager.skipNext();
-        await musicManager.play();
-        break;
-      case Album album:
-        Navigator.push(context, MaterialPageRoute(builder: (context) => AlbumPage(album: album)));
-        break;
-      case Artist artist:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ArtistPage(artist: artist)),
-        );
-        break;
-      default:
-        throw UnimplementedError(item.type);
-    }
   }
 
   Future<void> _handleRefresh() async {
@@ -188,6 +164,7 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
 
   Future<void> _changeSortBy() async {
     await showModalBottomSheet(
+      useRootNavigator: true,
       showDragHandle: true,
       context: context,
       builder: (context) {

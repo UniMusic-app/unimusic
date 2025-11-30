@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:unimusic/components/lazy_image.dart';
-import 'package:unimusic/components/album_song_tile.dart';
+import 'package:unimusic/components/tiles/album_song_tile.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 

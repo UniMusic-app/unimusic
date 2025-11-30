@@ -1,0 +1,53 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:unimusic/components/adaptive_context_menu.dart';
+import 'package:unimusic/services/music_manager.dart';
+import 'package:unimusic/services/music_providers/music_provider.dart';
+import 'package:unimusic/views/pages/album_page.dart';
+
+import 'generic_item_tile.dart';
+
+class SongTile extends StatelessWidget {
+  final Song song;
+  final TileAction? action;
+  const SongTile(this.song, {super.key, this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return GenericItemTile(
+      type: "Song",
+      icon: Icon(LibraryItemType.songs.icon),
+
+      borderRadius: BorderRadius.circular(LibraryItemType.songs.borderRadius),
+
+      title: song.name,
+      subtitle: song.artists.formatted,
+      favourite: song.favourite,
+      artwork: song.artwork,
+
+      action:
+          action ??
+          TileAction(
+            text: "Play Now",
+            icon: Icons.play_arrow_rounded,
+            onTap: () => _playNow(context),
+          ),
+
+      menuItems: [
+        if (song.artists.isNotEmpty)
+          MenuAction(
+            title: "Go to Artist",
+            icon: Icons.person_rounded,
+            onTap: () => _goToArtist(context),
+          ),
+      ],
+    );
+  }
+
+  _playNow(BuildContext context) async {
+    final musicManager = context.read<MusicManager>();
+    await musicManager.playNow(song);
+  }
+
+  _goToArtist(BuildContext context) async {}
+}

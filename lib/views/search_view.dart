@@ -2,12 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:unimusic/components/music_item_tile.dart';
-import 'package:unimusic/components/search_hint_tile.dart';
+import 'package:unimusic/components/tiles/music_item_tile.dart';
+import 'package:unimusic/components/tiles/search_hint_tile.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/views/pages/album_page.dart';
-import 'package:unimusic/views/pages/artist_page.dart';
 
 class SearchView extends StatelessWidget {
   const SearchView({super.key});
@@ -182,27 +180,6 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
     });
   }
 
-  Future<void> _onItemTap(MusicItem item) async {
-    switch (item) {
-      case Song song:
-        await _musicManager.queueItem(song);
-        await _musicManager.skipNext();
-        await _musicManager.play();
-        break;
-      case Album album:
-        Navigator.push(context, MaterialPageRoute(builder: (context) => AlbumPage(album: album)));
-        break;
-      case Artist artist:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ArtistPage(artist: artist)),
-        );
-        break;
-      default:
-        break;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -274,9 +251,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       return TabBarView(
         controller: _tabController,
         children: [
-          SearchResultsTab(query: _searchQuery!, itemType: null, onItemTap: _onItemTap),
+          SearchResultsTab(query: _searchQuery!, itemType: null),
           ...LibraryItemType.values.map(
-            (type) => SearchResultsTab(query: _searchQuery!, itemType: type, onItemTap: _onItemTap),
+            (type) => SearchResultsTab(query: _searchQuery!, itemType: type),
           ),
         ],
       );
@@ -290,6 +267,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           searchHint: hint,
           onTap: () {
             _controller.text = hint.title;
+            if (hint.type != null) {
+              _tabController.animateTo(LibraryItemType.values.indexOf(hint.type!) + 1);
+            }
             _submitSearch(hint.title);
           },
         );
@@ -301,14 +281,8 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
 class SearchResultsTab extends StatefulWidget {
   final String query;
   final LibraryItemType? itemType;
-  final ValueChanged<MusicItem> onItemTap;
 
-  const SearchResultsTab({
-    super.key,
-    required this.query,
-    required this.itemType,
-    required this.onItemTap,
-  });
+  const SearchResultsTab({super.key, required this.query, required this.itemType});
 
   @override
   State<SearchResultsTab> createState() => _SearchResultsTabState();
@@ -370,7 +344,7 @@ class _SearchResultsTabState extends State<SearchResultsTab> with AutomaticKeepA
       itemCount: _results.length,
       itemBuilder: (context, index) {
         final item = _results[index];
-        return MusicItemTile(item: item, onTap: () => widget.onItemTap(item));
+        return MusicItemTile(item);
       },
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:unimusic/components/music_item_tile.dart';
+import 'package:unimusic/components/tiles/generic_item_tile.dart';
+import 'package:unimusic/components/tiles/music_item_tile.dart';
 import 'package:unimusic/services/music_manager.dart';
 
 class MusicQueueView extends StatelessWidget {
@@ -39,12 +40,16 @@ class MusicQueueView extends StatelessWidget {
                         : Theme.of(context).colorScheme.surfaceContainerHigh;
 
                     return Material(
-                      key: ValueKey(song.id),
+                      key: ValueKey(index),
                       color: color,
                       child: InkWell(
                         child: MusicItemTile(
-                          item: song,
-                          onTap: () => musicManager.jumpToQueueItem(index),
+                          song,
+                          action: TileAction(
+                            text: "Select track",
+                            icon: Icons.queue_play_next,
+                            onTap: () => musicManager.jumpToQueueItem(index),
+                          ),
                         ),
                       ),
                     );
