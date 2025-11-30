@@ -1,3 +1,4 @@
+import 'package:async/async.dart';
 import 'package:unimusic/services/api/jellyfin/api.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 
@@ -22,13 +23,25 @@ class JellyfinMusicProvider extends MusicProvider {
 
   @override
   Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
+    if (itemType == null) {
+      final mergedStream = StreamGroup.merge([
+        api.artists(searchTerm: query, recursive: true),
+        api.items(searchTerm: query, recursive: true),
+      ]);
+
+      yield* mergedStream;
+      return;
+    }
+
+    if (itemType == LibraryItemType.artists) {
+      yield* api.artists(searchTerm: query, recursive: true);
+      return;
+    }
+
     yield* api.items(
       searchTerm: query,
       recursive: true,
-      includeItemTypes: switch (itemType) {
-        LibraryItemType itemType => {JellyfinItemType.fromLibraryItemType(itemType)},
-        null => null,
-      },
+      includeItemTypes: {JellyfinItemType.fromLibraryItemType(itemType)},
     );
   }
 

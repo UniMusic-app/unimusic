@@ -40,6 +40,9 @@ class JellyfinApi {
     Set<JellyfinSortBy> sortBy = const {},
     JellyfinSortOrder sortOrder = JellyfinSortOrder.ascending,
     bool recursive = true,
+    String? searchTerm,
+    int? limit,
+    int? startIndex,
   }) async* {
     final response = await fetch(
       pathSegments: ["Artists"],
@@ -47,6 +50,9 @@ class JellyfinApi {
         "recursive": recursive.toString(),
         "sortBy": sortBy.map((sortType) => sortType.toJson()).join(","),
         "sortOrder": sortOrder.toJson(),
+        if (searchTerm != null) "searchTerm": searchTerm,
+        if (limit != null) "limit": limit.toString(),
+        if (startIndex != null) "startIndex": startIndex.toString(),
       },
     );
 
@@ -186,23 +192,22 @@ class JellyfinApi {
 
     bool? isFavourite,
   }) async* {
-    final response = await fetch(
-      pathSegments: ["Items"],
-      queryParameters: {
-        "recursive": recursive.toString(),
-        "sortOrder": sortOrder.toJson(),
-        if (includeItemTypes != null)
-          "includeItemTypes": includeItemTypes.map((itemType) => itemType.toJson()).join(","),
-        if (sortBy != null) "sortBy": sortBy.map((sortType) => sortType.toJson()).join(","),
-        if (searchTerm != null) "searchTerm": searchTerm,
-        if (limit != null) "limit": limit.toString(),
-        if (startIndex != null) "startIndex": startIndex.toString(),
-        if (albumIds != null) "albumIds": albumIds.join(","),
-        if (ids != null) "ids": ids.join(","),
-        if (artistIds != null) "artistIds": artistIds.join(","),
-        if (isFavourite != null) "isFavorite": isFavourite.toString(),
-      },
-    );
+    final queryParameters = {
+      "recursive": recursive.toString(),
+      "sortOrder": sortOrder.toJson(),
+      if (includeItemTypes != null)
+        "includeItemTypes": includeItemTypes.map((itemType) => itemType.toJson()).join(","),
+      if (sortBy != null) "sortBy": sortBy.map((sortType) => sortType.toJson()).join(","),
+      if (searchTerm != null) "searchTerm": searchTerm,
+      if (limit != null) "limit": limit.toString(),
+      if (startIndex != null) "startIndex": startIndex.toString(),
+      if (albumIds != null) "albumIds": albumIds.join(","),
+      if (ids != null) "ids": ids.join(","),
+      if (artistIds != null) "artistIds": artistIds.join(","),
+      if (isFavourite != null) "isFavorite": isFavourite.toString(),
+    };
+
+    final response = await fetch(pathSegments: ["Items"], queryParameters: queryParameters);
 
     final data = response.data;
     if (data is! Map) {
@@ -219,7 +224,7 @@ class JellyfinApi {
         case JellyfinItemType.musicArtist:
           yield JellyfinArtist.fromJellyfinJson(this, item);
         default:
-          throw UnimplementedError();
+          throw Exception("Unsupported item type: ${item["type"]}");
       }
     }
   }

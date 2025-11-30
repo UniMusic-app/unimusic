@@ -6,6 +6,7 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/material.dart';
 import 'package:unimusic/services/api/deezer/items.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/utils/stream.dart';
@@ -291,7 +292,7 @@ class DeezerApi {
 
   Future<DeezerSong> getSong(String songId) async {
     final track = await getTrack(songId);
-    final song = DeezerSong.fromTrack(api: this, track: track);
+    final song = DeezerSong.fromTrack(track);
     return song;
   }
 
@@ -306,7 +307,7 @@ class DeezerApi {
 
     for (final trackJson in songTracks) {
       final track = DeezerTrack(api: this, trackInfo: trackJson);
-      final song = DeezerSong.fromTrack(api: this, track: track, favourite: true);
+      final song = DeezerSong.fromTrack(track, favourite: true);
       favoriteIds["Song"]!.add(song.id);
       yield song;
     }
@@ -344,19 +345,28 @@ class DeezerApi {
     }
   }
 
-  Stream<DeezerSong> getAlbumSongs(String albumId) async* {
+  Future<DeezerAlbum> getAlbum(String albumId) async {
     final pageResponse = await callMethod(
       "deezer.pageAlbum",
       data: {"alb_id": albumId, "lang": "en"},
     );
 
-    final songTracks = pageResponse.data["results"]["SONGS"]["data"];
+    final results = pageResponse.data["results"];
 
-    for (final trackJson in songTracks) {
+    final album = DeezerAlbum.fromDeezerJson(api: this, json: results["DATA"]);
+    final songs = (results["SONGS"]["data"] as List).map((trackJson) {
       final track = DeezerTrack(api: this, trackInfo: trackJson);
-      final song = DeezerSong.fromTrack(api: this, track: track);
-      yield song;
-    }
+      return DeezerSong.fromTrack(track);
+    }).toList();
+
+    album.songs = songs;
+
+    return album;
+  }
+
+  Future<List<DeezerSong>> getAlbumSongs(String albumId) async {
+    final album = await getAlbum(albumId);
+    return album.songs!;
   }
 
   Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
@@ -402,6 +412,8 @@ class DeezerApi {
     final data = searchResponse.data["data"];
 
     for (final itemJson in data) {
+      // Skip artists that have no albums, most of them seem to be automatically
+      // generated collaborations, and noone searchers for those
       if (itemJson["nb_album"] == 0) {
         continue;
       }
@@ -410,7 +422,7 @@ class DeezerApi {
         "track" => DeezerSong.fromDeezerJson(api: this, json: itemJson),
         "album" => DeezerAlbum.fromDeezerJson(api: this, json: itemJson),
         "artist" => DeezerArtist.fromDeezerJson(api: this, json: itemJson),
-        _ => throw UnimplementedError(),
+        final type => throw Exception("Unimplemented item type $type"),
       };
 
       yield item;

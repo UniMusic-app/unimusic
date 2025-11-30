@@ -90,6 +90,7 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork> exte
   }) : super(type: "Song");
 
   Future<AudioSource> getAudioSource();
+  Future<Album?> getAlbum();
 }
 
 abstract class Album<ArtistType extends Artist, ArtworkType extends Artwork> extends MusicItem {

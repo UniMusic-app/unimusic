@@ -73,11 +73,15 @@ class JellyfinArtist extends Artist<JellyfinArtwork> with JellyfinItemWithFavour
 
 // FIXME: Inherit albums artwork in case song is missing one
 class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> with JellyfinItemWithFavourite {
+  final String? albumId;
+
   @override
   final JellyfinApi api;
 
   JellyfinSong({
     required this.api,
+    required this.albumId,
+
     required super.id,
     required super.name,
     required super.artists,
@@ -106,6 +110,7 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> with JellyfinIt
               )
             : null,
         album: json["Album"],
+        albumId: json["AlbumId"],
         duration: Duration(
           microseconds: ((json["RunTimeTicks"] as int) / ticksInMicroseconds).toInt(),
         ),
@@ -114,6 +119,16 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> with JellyfinIt
   @override
   Future<AudioSource> getAudioSource() async {
     return api.audio(song: this);
+  }
+
+  @override
+  Future<Album?> getAlbum() async {
+    if (albumId == null) {
+      return null;
+    }
+
+    final album = await api.item(albumId!) as Album;
+    return album;
   }
 }
 
@@ -161,14 +176,24 @@ class JellyfinSearchHint extends SearchHint {
   const JellyfinSearchHint({required super.title, required super.type, super.artwork});
 
   static JellyfinSearchHint? fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json) {
+    final LibraryItemType type;
+    switch (json["Type"]) {
+      case "Audio":
+        type = LibraryItemType.songs;
+        break;
+      case "MusicAlbum":
+        type = LibraryItemType.albums;
+        break;
+      case "MusicArtist":
+        type = LibraryItemType.artists;
+        break;
+      default:
+        return null;
+    }
+
     return JellyfinSearchHint(
       title: json["Name"],
-      type: switch (json["Type"]) {
-        "Audio" => LibraryItemType.songs,
-        "MusicAlbum" => LibraryItemType.albums,
-        "MusicArtist" => LibraryItemType.artists,
-        final type => throw UnimplementedError("$type"),
-      },
+      type: type,
       artwork: json["PrimaryImageTag"] != null
           ? JellyfinArtwork(
               api: api,

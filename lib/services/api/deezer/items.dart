@@ -54,6 +54,7 @@ class DeezerTrack {
   String? get id => trackInfo["SNG_ID"];
   String? get title => trackInfo["SNG_TITLE"];
   String? get album => trackInfo["ALB_TITLE"];
+  String? get albumId => trackInfo["ALB_ID"];
   String? get trackToken => trackInfo["TRACK_TOKEN"];
 
   List<DeezerArtist>? get artists => switch (trackInfo["ARTISTS"]) {
@@ -91,11 +92,14 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
   @override
   final DeezerApi api;
 
+  String? albumId;
+
   String? trackToken;
   DateTime? trackTokenExpire;
 
   DeezerSong({
     required this.api,
+    this.albumId,
     this.trackToken,
     this.trackTokenExpire,
 
@@ -112,13 +116,14 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
          favourite: favourite ?? api.favoriteIds["Song"]?.contains(id) ?? false,
        );
 
-  DeezerSong.fromTrack({required DeezerApi api, required DeezerTrack track, bool? favourite})
+  DeezerSong.fromTrack(DeezerTrack track, {bool? favourite})
     : this(
-        api: api,
+        api: track.api,
         id: track.id!,
         name: track.title!,
         artists: track.artists!,
         album: track.album!,
+        albumId: track.albumId,
         duration: track.duration!,
         trackToken: track.trackToken,
         trackTokenExpire: track.trackTokenExpire,
@@ -148,7 +153,7 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
     if (trackTokenExpire == null || DateTime.now().toUtc().isAfter(trackTokenExpire!)) {
       debugPrint("Refresh track token!");
       final track = await api.getTrack(id);
-      trackToken = track.id!;
+      trackToken = track.trackToken!;
       trackTokenExpire = track.trackTokenExpire!;
     }
 
@@ -176,6 +181,16 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
         duration: duration,
       ),
     );
+  }
+
+  @override
+  Future<Album?> getAlbum() async {
+    if (albumId == null) {
+      return null;
+    }
+
+    final album = await api.getAlbum(albumId!);
+    return album;
   }
 }
 
@@ -244,12 +259,14 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
 class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavouriteItem {
   @override
   final DeezerApi api;
+  List<DeezerSong>? songs;
 
   DeezerAlbum({
     required this.api,
     required super.id,
     required super.name,
     required super.artists,
+    this.songs,
     super.artwork,
     bool? favourite,
   }) : super(
@@ -285,7 +302,14 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
 
   @override
   Stream<Song> getSongs() async* {
-    yield* api.getAlbumSongs(id);
+    if (this.songs != null) {
+      yield* Stream.fromIterable(this.songs!);
+      return;
+    }
+
+    final songs = await api.getAlbumSongs(id);
+    this.songs = songs;
+    yield* Stream.fromIterable(songs);
   }
 }
 

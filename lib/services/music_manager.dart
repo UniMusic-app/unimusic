@@ -106,12 +106,12 @@ class MusicManager extends ChangeNotifier {
     await queueSongStream(songs, position: position);
   }
 
-  Future<void> queueItem(MusicItem item) async {
+  Future<void> queueItem(MusicItem item, {int? position}) async {
     switch (item) {
       case Song song:
-        await queueSong(song);
+        await queueSong(song, position: position);
       case Album album:
-        await queueAlbum(album);
+        await queueAlbum(album, position: position);
       default:
         throw UnimplementedError();
     }
@@ -128,6 +128,16 @@ class MusicManager extends ChangeNotifier {
 
     await player.seek(Duration.zero, index: queuePosition);
     player.play();
+  }
+
+  Future<void> playNow(MusicItem item) async {
+    if (queue.isNotEmpty) {
+      final targetPosition = queuePosition + 1;
+      await queueItem(item, position: targetPosition);
+      await jumpToQueueItem(targetPosition);
+    } else {
+      await queueItem(item);
+    }
   }
 
   Future<void> pause() async {

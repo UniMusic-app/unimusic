@@ -173,6 +173,12 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
   }
 
   @override
+  Future<Album> getAlbum() {
+    // TODO: implement getAlbum
+    throw UnimplementedError();
+  }
+
+  @override
   Future<bool> isFavourite() async {
     final song = await DatabaseHelper.getSong(id);
     return song?.favourite ?? false;

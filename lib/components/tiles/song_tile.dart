@@ -34,6 +34,13 @@ class SongTile extends StatelessWidget {
           ),
 
       menuItems: [
+        if (song.album != null)
+          MenuAction(
+            title: "Go to Album",
+            icon: Icons.album_rounded,
+            onTap: () => _goToAlbum(context),
+          ),
+
         if (song.artists.isNotEmpty)
           MenuAction(
             title: "Go to Artist",
@@ -47,6 +54,10 @@ class SongTile extends StatelessWidget {
   _playNow(BuildContext context) async {
     final musicManager = context.read<MusicManager>();
     await musicManager.playNow(song);
+  }
+
+  _goToAlbum(BuildContext context) async {
+    AlbumPage.openAsync(context, song.getAlbum());
   }
 
   _goToArtist(BuildContext context) async {}
