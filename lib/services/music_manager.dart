@@ -2,33 +2,33 @@ import 'dart:io';
 
 import 'package:async/async.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:unimusic/services/api/deezer/api.dart';
 import 'package:unimusic/services/api/jellyfin/api.dart';
 import 'package:unimusic/services/api/local/android/api.dart';
-import 'package:unimusic/services/api/local/api.dart';
+import 'package:unimusic/services/api/local/api.dart' show LocalApi;
 import 'package:unimusic/services/api/local/shared/api.dart';
+import 'package:unimusic/services/credentials_service.dart';
+import 'package:unimusic/services/music_providers/deezer_provider.dart';
 import 'package:unimusic/services/music_providers/jellyfin_provider.dart';
 import 'package:unimusic/services/music_providers/local_provider.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:just_audio/just_audio.dart';
 
 class MusicManager extends ChangeNotifier {
-  final player = AudioPlayer(useLazyPreparation: true, useProxyForRequestHeaders: false);
+  final player = AudioPlayer(
+    useLazyPreparation: true,
+    useProxyForRequestHeaders: false,
+  );
   final Set<MusicProvider> providers = {};
+  final Set<ServiceCredentials> _credentials = {};
+  final Map<ServiceCredentials, MusicProvider> _credentialProviders = {};
 
   MusicManager() {
     _init();
   }
 
   _init() async {
-    final LocalApi localApi;
-    if (Platform.isAndroid) {
-      localApi = LocalAndroidApi();
-    } else {
-      final musicDirectories = await LocalSharedApi.getDefaultMusicDirectories();
-      localApi = LocalSharedApi(musicDirectories: musicDirectories);
-    }
-    final localProvider = LocalMusicProvider(api: localApi);
-    providers.add(localProvider);
+    await _loadServicesFromCredentials();
 
     player.currentIndexStream.listen((currentIndex) {
       queuePosition = currentIndex ?? 0;
@@ -54,6 +54,68 @@ class MusicManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Loads all services from stored credentials.
+  Future<void> _loadServicesFromCredentials() async {
+    final credentials = await CredentialsService.instance.getCredentials();
+    for (final credential in credentials) {
+      try {
+        await addServiceFromCredentials(credential);
+      } catch (e) {
+        debugPrint('Failed to load service $credential: $e');
+      }
+    }
+  }
+
+  Future<void> addServiceFromCredentials(ServiceCredentials credentials) async {
+    removeService(credentials);
+
+    final MusicProvider provider;
+    switch (credentials) {
+      case LocalCredentials credentials:
+        final LocalApi api;
+        if (Platform.isAndroid) {
+          // Android always uses MediaStore
+          api = LocalAndroidApi();
+        } else if (credentials.useDefaultDirectories) {
+          final musicDirectories =
+              await LocalSharedApi.getDefaultMusicDirectories();
+          api = LocalSharedApi(musicDirectories: musicDirectories);
+        } else if (credentials.customDirectory != null) {
+          api = LocalSharedApi(
+            musicDirectories: [credentials.customDirectory!],
+          );
+        } else {
+          throw Exception('Invalid local credentials: no directory specified');
+        }
+        provider = LocalMusicProvider(api: api);
+      case JellyfinCredentials credentials:
+        final api = await JellyfinApi.authenticateByName(
+          serverUri: Uri.parse(credentials.serverUri),
+          username: credentials.username,
+          password: credentials.password,
+        );
+        provider = JellyfinMusicProvider(api: api);
+      case DeezerCredentials credentials:
+        final api = await DeezerApi.create(arl: credentials.arl);
+        provider = DeezerMusicProvider(api: api);
+    }
+
+    providers.add(provider);
+    _credentials.add(credentials);
+    _credentialProviders[credentials] = provider;
+    notifyListeners();
+  }
+
+  /// Removes a service provider by its credentials.
+  void removeService(ServiceCredentials credentials) {
+    final provider = _credentialProviders.remove(credentials);
+    if (provider != null) {
+      providers.remove(provider);
+      _credentials.remove(credentials);
+      notifyListeners();
+    }
+  }
+
   int queuePosition = 0;
   List<Song> queue = [];
   Duration duration = Duration.zero;
@@ -61,6 +123,13 @@ class MusicManager extends ChangeNotifier {
   Future<void> clearQueue() async {
     await player.clearAudioSources();
     queue.clear();
+    notifyListeners();
+  }
+
+  Future<void> removeFromQueue(int position) async {
+    await player.removeAudioSourceAt(position);
+    queue.removeAt(position);
+    notifyListeners();
   }
 
   Future<void> queueSongStream(Stream<Song> songs, {int? position}) async {
@@ -209,7 +278,10 @@ class MusicManager extends ChangeNotifier {
     yield* mergedStream;
   }
 
-  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
+  Stream<SearchHint> getSearchHints({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     final pendingSearchHints = providers.map(
       (provider) => provider.getSearchHints(query: query, itemType: itemType),
     );
@@ -217,7 +289,10 @@ class MusicManager extends ChangeNotifier {
     yield* mergedStream;
   }
 
-  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
+  Stream<MusicItem> getSearchResults({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     final pendingSearchResults = providers.map(
       (provider) => provider.getSearchResults(query: query, itemType: itemType),
     );
