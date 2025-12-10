@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:unimusic/components/adaptive_context_menu.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/views/pages/album_page.dart';
 
@@ -7,7 +8,8 @@ import 'generic_item_tile.dart';
 class AlbumTile extends StatelessWidget {
   final Album album;
   final TileAction? action;
-  const AlbumTile(this.album, {super.key, this.action});
+  final List<AdaptiveMenuItem>? menuItems;
+  const AlbumTile(this.album, {super.key, this.action, this.menuItems});
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +31,8 @@ class AlbumTile extends StatelessWidget {
             icon: Icons.album_rounded,
             onTap: () => _openAlbumPage(context),
           ),
+
+      menuItems: menuItems,
     );
   }
 

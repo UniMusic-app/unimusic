@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:unimusic/components/adaptive_context_menu.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/views/pages/artist_page.dart';
 
@@ -7,7 +8,8 @@ import 'generic_item_tile.dart';
 class ArtistTile extends StatelessWidget {
   final Artist artist;
   final TileAction? action;
-  const ArtistTile(this.artist, {super.key, this.action});
+  final List<AdaptiveMenuItem>? menuItems;
+  const ArtistTile(this.artist, {super.key, this.action, this.menuItems});
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +30,8 @@ class ArtistTile extends StatelessWidget {
             icon: Icons.person_rounded,
             onTap: () => _openArtistPage(context),
           ),
+
+      menuItems: menuItems,
     );
   }
 

@@ -10,7 +10,8 @@ import 'generic_item_tile.dart';
 class SongTile extends StatelessWidget {
   final Song song;
   final TileAction? action;
-  const SongTile(this.song, {super.key, this.action});
+  final List<AdaptiveMenuItem>? menuItems;
+  const SongTile(this.song, {super.key, this.action, this.menuItems});
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +48,8 @@ class SongTile extends StatelessWidget {
             icon: Icons.person_rounded,
             onTap: () => _goToArtist(context),
           ),
+
+        if (menuItems != null) ...menuItems!,
       ],
     );
   }
