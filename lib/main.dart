@@ -22,7 +22,12 @@ Future<void> main() async {
 
   await DatabaseHelper.instantiate();
 
-  runApp(ChangeNotifierProvider(create: (context) => MusicManager(), child: const UniMusicApp()));
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => MusicManager(),
+      child: const UniMusicApp(),
+    ),
+  );
 }
 
 class UniMusicApp extends StatelessWidget {
@@ -39,14 +44,21 @@ class UniMusicApp extends StatelessWidget {
           theme: ThemeData(
             visualDensity: VisualDensity.standard,
             useMaterial3: true,
-            colorScheme: lightScheme ?? ColorScheme.fromSeed(seedColor: Colors.lightBlue),
+            sliderTheme: const SliderThemeData(year2023: false),
+            colorScheme:
+                lightScheme ??
+                ColorScheme.fromSeed(seedColor: Colors.lightBlue),
           ),
           darkTheme: ThemeData(
             visualDensity: VisualDensity.standard,
             useMaterial3: true,
+            sliderTheme: const SliderThemeData(year2023: false),
             colorScheme:
                 darkScheme ??
-                ColorScheme.fromSeed(brightness: Brightness.dark, seedColor: Colors.lightBlue),
+                ColorScheme.fromSeed(
+                  brightness: Brightness.dark,
+                  seedColor: Colors.lightBlue,
+                ),
           ),
           themeMode: ThemeMode.system,
 
@@ -94,7 +106,10 @@ class _MainPageState extends State<MainPage> {
           destinations: const [
             NavigationDestination(icon: Icon(Icons.home), label: "Home"),
             NavigationDestination(icon: Icon(Icons.search), label: "Search"),
-            NavigationDestination(icon: Icon(Icons.library_music), label: "Library"),
+            NavigationDestination(
+              icon: Icon(Icons.library_music),
+              label: "Library",
+            ),
           ],
 
           selectedIndex: _currentView,

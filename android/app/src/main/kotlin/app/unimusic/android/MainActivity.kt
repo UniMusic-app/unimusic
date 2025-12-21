@@ -8,5 +8,6 @@ class MainActivity : AudioServiceActivity() {
   override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine)
     flutterEngine.plugins.add(MediaStorePlugin())
+    flutterEngine.plugins.add(AudioRoutingPlugin())
   }
 }

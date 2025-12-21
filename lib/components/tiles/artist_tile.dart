@@ -35,7 +35,10 @@ class ArtistTile extends StatelessWidget {
     );
   }
 
-  _openArtistPage(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => ArtistPage(artist: artist)));
+  void _openArtistPage(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ArtistPage(artist: artist)),
+    );
   }
 }

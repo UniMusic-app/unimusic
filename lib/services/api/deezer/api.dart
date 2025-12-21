@@ -6,7 +6,6 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:flutter/material.dart';
 import 'package:unimusic/services/api/deezer/items.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/utils/stream.dart';
@@ -77,8 +76,13 @@ class DeezerApi {
   final DeezerUserData userData;
   final Map<String, Set<String>> favoriteIds = {};
 
-  DeezerApi({required this.arl, required this.userData}) : dio = getDio(arl: arl);
-  DeezerApi.withDio({required this.arl, required this.userData, required this.dio});
+  DeezerApi({required this.arl, required this.userData})
+    : dio = getDio(arl: arl);
+  DeezerApi.withDio({
+    required this.arl,
+    required this.userData,
+    required this.dio,
+  });
 
   static Dio getDio({required String arl}) {
     return Dio(
@@ -157,7 +161,11 @@ class DeezerApi {
 
     List<int> blowfishKey = [];
     for (int i = 0; i < 16; ++i) {
-      blowfishKey.add(songIdMd5.codeUnitAt(i) ^ songIdMd5.codeUnitAt(i + 16) ^ key.codeUnitAt(i));
+      blowfishKey.add(
+        songIdMd5.codeUnitAt(i) ^
+            songIdMd5.codeUnitAt(i + 16) ^
+            key.codeUnitAt(i),
+      );
     }
     return blowfishKey;
   }
@@ -252,7 +260,10 @@ class DeezerApi {
       ),
     );
 
-    return (response, decryptStream(stream: response.data!.stream, blowfishKey: blowfishKey));
+    return (
+      response,
+      decryptStream(stream: response.data!.stream, blowfishKey: blowfishKey),
+    );
   }
 
   Future<File> downloadSong({
@@ -270,7 +281,10 @@ class DeezerApi {
     File file = File(fileDestination);
     await file.create(recursive: true);
 
-    final response = await dio.get(url, options: Options(responseType: ResponseType.stream));
+    final response = await dio.get(
+      url,
+      options: Options(responseType: ResponseType.stream),
+    );
 
     final blowfishKey = calculateBlowfishKey(songId);
 
@@ -298,9 +312,14 @@ class DeezerApi {
 
   Stream<DeezerSong> getFavoriteSongs() async* {
     final songIdResponse = await callMethod("song.getFavoriteIds");
-    final songIds = songIdResponse.data["results"]["data"].map((item) => item["SNG_ID"]).toList();
+    final songIds = songIdResponse.data["results"]["data"]
+        .map((item) => item["SNG_ID"])
+        .toList();
 
-    final songTracksResponse = await callMethod("song.getListData", data: {"sng_ids": songIds});
+    final songTracksResponse = await callMethod(
+      "song.getListData",
+      data: {"sng_ids": songIds},
+    );
     final songTracks = songTracksResponse.data["results"]["data"];
 
     favoriteIds["Song"] = {};
@@ -323,7 +342,11 @@ class DeezerApi {
     final artists = profileResponse.data["results"]["TAB"]["artists"]["data"];
 
     for (final artistJson in artists) {
-      final artist = DeezerArtist.fromDeezerJson(api: this, json: artistJson, favourite: true);
+      final artist = DeezerArtist.fromDeezerJson(
+        api: this,
+        json: artistJson,
+        favourite: true,
+      );
       favoriteIds["Artist"]!.add(artist.id);
       yield artist;
     }
@@ -339,7 +362,11 @@ class DeezerApi {
     final albums = profileResponse.data["results"]["TAB"]["albums"]["data"];
 
     for (final albumJson in albums) {
-      final album = DeezerAlbum.fromDeezerJson(api: this, json: albumJson, favourite: true);
+      final album = DeezerAlbum.fromDeezerJson(
+        api: this,
+        json: albumJson,
+        favourite: true,
+      );
       favoriteIds["Album"]!.add(album.id);
       yield album;
     }
@@ -369,7 +396,10 @@ class DeezerApi {
     return album.songs!;
   }
 
-  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
+  Stream<SearchHint> getSearchHints({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     final autocompleteResponse = await dio.get(
       "$searchUrl/autocomplete",
       queryParameters: {"q": query, "limit": 10, "order": "RANKING"},
@@ -395,7 +425,10 @@ class DeezerApi {
     }
   }
 
-  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
+  Stream<MusicItem> getSearchResults({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     var searchUri = Uri.parse(searchUrl);
 
     if (itemType != null) {
@@ -404,9 +437,13 @@ class DeezerApi {
         LibraryItemType.albums => "album",
         LibraryItemType.artists => "artist",
       };
-      searchUri = searchUri.replace(pathSegments: [...searchUri.pathSegments, segment]);
+      searchUri = searchUri.replace(
+        pathSegments: [...searchUri.pathSegments, segment],
+      );
     }
-    searchUri = searchUri.replace(queryParameters: {"q": query, "order": "RANKING"});
+    searchUri = searchUri.replace(
+      queryParameters: {"q": query, "order": "RANKING"},
+    );
 
     final searchResponse = await dio.getUri(searchUri);
     final data = searchResponse.data["data"];
@@ -447,7 +484,9 @@ class DeezerApi {
       default:
         return switch (item.type) {
           "Song" => getFavoriteSongs().any((song) => song.id == item.id),
-          "Artist" => getFavoriteArtists().any((artist) => artist.id == item.id),
+          "Artist" => getFavoriteArtists().any(
+            (artist) => artist.id == item.id,
+          ),
           "Album" => getFavoriteAlbums().any((artist) => artist.id == item.id),
           final type => throw UnimplementedError(type),
         };

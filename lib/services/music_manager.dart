@@ -1,12 +1,13 @@
-import 'dart:io';
-
 import 'package:async/async.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:audio_session/audio_session.dart';
+import 'package:flutter/services.dart';
 import 'package:unimusic/services/api/deezer/api.dart';
 import 'package:unimusic/services/api/jellyfin/api.dart';
 import 'package:unimusic/services/api/local/android/api.dart';
 import 'package:unimusic/services/api/local/api.dart' show LocalApi;
 import 'package:unimusic/services/api/local/shared/api.dart';
+import 'package:unimusic/services/audio_routing_service.dart';
 import 'package:unimusic/services/credentials_service.dart';
 import 'package:unimusic/services/music_providers/deezer_provider.dart';
 import 'package:unimusic/services/music_providers/jellyfin_provider.dart';
@@ -19,16 +20,46 @@ class MusicManager extends ChangeNotifier {
     useLazyPreparation: true,
     useProxyForRequestHeaders: false,
   );
+
+  final AudioRoutingService _audioRouting = AudioRoutingService();
+  AudioRoutingCapabilities audioRoutingCapabilities =
+      AudioRoutingCapabilities.unsupported;
+  AudioRouteKind currentRouteKind = AudioRouteKind.unknown;
+
   final Set<MusicProvider> providers = {};
   final Set<ServiceCredentials> _credentials = {};
   final Map<ServiceCredentials, MusicProvider> _credentialProviders = {};
+
+  double volume = 1.0;
 
   MusicManager() {
     _init();
   }
 
-  _init() async {
+  Future<void> _init() async {
     await _loadServicesFromCredentials();
+
+    // Configure an audio session suitable for music playback.
+    // Using audio_session keeps this maintainable and compatible across iOS/Android.
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(AudioSessionConfiguration.music());
+
+      // Best-effort route refresh when devices change (e.g. headphones unplugged).
+      session.devicesChangedEventStream.listen((_) async {
+        currentRouteKind = await _audioRouting.getCurrentRouteKind();
+        notifyListeners();
+      });
+    } on MissingPluginException {
+      // audio_session may not be available on some desktop targets.
+    } catch (e) {
+      debugPrint('Audio session init failed: $e');
+    }
+
+    audioRoutingCapabilities = await _audioRouting.getCapabilities(
+      forceRefresh: true,
+    );
+    currentRouteKind = await _audioRouting.getCurrentRouteKind();
 
     player.currentIndexStream.listen((currentIndex) {
       queuePosition = currentIndex ?? 0;
@@ -51,6 +82,24 @@ class MusicManager extends ChangeNotifier {
       notifyListeners();
     });
 
+    volume = player.volume;
+    player.volumeStream.listen((volume) {
+      this.volume = volume;
+      notifyListeners();
+    });
+
+    notifyListeners();
+  }
+
+  Future<void> refreshAudioRoute() async {
+    currentRouteKind = await _audioRouting.getCurrentRouteKind();
+    notifyListeners();
+  }
+
+  Future<void> refreshAudioRoutingCapabilities() async {
+    audioRoutingCapabilities = await _audioRouting.getCapabilities(
+      forceRefresh: true,
+    );
     notifyListeners();
   }
 
@@ -73,7 +122,10 @@ class MusicManager extends ChangeNotifier {
     switch (credentials) {
       case LocalCredentials credentials:
         final LocalApi api;
-        if (Platform.isAndroid) {
+        final isAndroid =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+        if (isAndroid) {
           // Android always uses MediaStore
           api = LocalAndroidApi();
         } else if (credentials.useDefaultDirectories) {
@@ -119,6 +171,20 @@ class MusicManager extends ChangeNotifier {
   int queuePosition = 0;
   List<Song> queue = [];
   Duration duration = Duration.zero;
+
+  Future<void> setVolume(double volume) async {
+    this.volume = volume.clamp(0.0, 1.0);
+    await player.setVolume(this.volume);
+    notifyListeners();
+  }
+
+  Future<void> openSystemOutputChooser() async {
+    if (!audioRoutingCapabilities.canOpenSystemChooser) return;
+    await refreshAudioRoutingCapabilities();
+    await refreshAudioRoute();
+    final _ = await _audioRouting.openSystemOutputChooser();
+    await refreshAudioRoute();
+  }
 
   Future<void> clearQueue() async {
     await player.clearAudioSources();

@@ -27,7 +27,12 @@ class MusicQueueView extends StatelessWidget {
                   return const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+                    colors: [
+                      Colors.transparent,
+                      Colors.white,
+                      Colors.white,
+                      Colors.transparent,
+                    ],
                     stops: [0.0, 0.05, 0.95, 1.0],
                   ).createShader(bounds);
                 },

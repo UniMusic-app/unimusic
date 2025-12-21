@@ -11,12 +11,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 
     <application
-        android:label="unimusic"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
-        >
-
+      android:label="unimusic"
+      android:name="${applicationName}"
+      android:icon="@mipmap/ic_launcher"
+      android:usesCleartextTraffic="true"
+    >
         <!-- JustAudio Service -->
         <service android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"

@@ -163,7 +163,6 @@ class ExpandedMusicPlayerSeekbarState extends State<ExpandedMusicPlayerSeekbar> 
           value: value,
           max: max,
           padding: EdgeInsets.zero,
-          year2023: false,
           onChanged: (value) {
             setState(() {
               _seekBarPosition = Duration(milliseconds: value.toInt());

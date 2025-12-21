@@ -54,14 +54,14 @@ class SongTile extends StatelessWidget {
     );
   }
 
-  _playNow(BuildContext context) async {
+  Future<void> _playNow(BuildContext context) async {
     final musicManager = context.read<MusicManager>();
     await musicManager.playNow(song);
   }
 
-  _goToAlbum(BuildContext context) async {
+  void _goToAlbum(BuildContext context) {
     AlbumPage.openAsync(context, song.getAlbum());
   }
 
-  _goToArtist(BuildContext context) async {}
+  Future<void> _goToArtist(BuildContext context) async {}
 }

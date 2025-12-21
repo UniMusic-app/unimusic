@@ -7,11 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
-import androidx.core.database.getLongOrNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -20,8 +16,6 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import app.unimusic.android.MediaStoreType
-import kotlin.reflect.KProperty1
-import java.io.ByteArrayOutputStream
 
 enum class MediaStoreType {
   Int,
@@ -34,7 +28,10 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var channel: MethodChannel
   private var activity: Activity? = null
   private var pendingResult: Result? = null
-  private var permissionLauncher: ActivityResultLauncher<String>? = null
+
+  private companion object {
+    const val PERMISSION_REQUEST_CODE = 1001
+  }
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "media_store")
@@ -105,6 +102,11 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       return
     }
 
+    if (pendingResult != null) {
+      result.error("ALREADY_PENDING", "A permission request is already in progress", null)
+      return
+    }
+
     pendingResult = result
 
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -116,21 +118,31 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
     }
 
-    androidx.core.app.ActivityCompat.requestPermissions(currentActivity, permissions, 1001)
+    try {
+      androidx.core.app.ActivityCompat.requestPermissions(currentActivity, permissions, PERMISSION_REQUEST_CODE)
+    } catch (t: Throwable) {
+      pendingResult?.error("ERROR", "Failed to request permissions: ${t.message}", null)
+      pendingResult = null
+    }
   }
 
-  override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+  private fun attachToActivity(binding: ActivityPluginBinding) {
     activity = binding.activity
 
-    binding.addRequestPermissionsResultListener { _, _, grantResults ->
-      if (pendingResult == null) return@addRequestPermissionsResultListener false
+    binding.addRequestPermissionsResultListener { requestCode, _, grantResults ->
+      if (requestCode != PERMISSION_REQUEST_CODE) return@addRequestPermissionsResultListener false
 
+      val pr = pendingResult ?: return@addRequestPermissionsResultListener false
       val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
 
-      pendingResult?.success(granted)
+      pr.success(granted)
       pendingResult = null
       true
     }
+  }
+
+  override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+    attachToActivity(binding)
   }
 
   private fun query(
@@ -316,14 +328,17 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
   override fun onDetachedFromActivityForConfigChanges() {
     activity = null
+    pendingResult?.error("ACTIVITY_DETACHED", "Activity detached before permission result returned", null)
+    pendingResult = null
   }
 
   override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-    activity = binding.activity
+    attachToActivity(binding)
   }
 
   override fun onDetachedFromActivity() {
     activity = null
-    permissionLauncher = null
+    pendingResult?.error("ACTIVITY_DETACHED", "Activity detached before permission result returned", null)
+    pendingResult = null
   }
 }

@@ -36,7 +36,7 @@ class AlbumTile extends StatelessWidget {
     );
   }
 
-  _openAlbumPage(BuildContext context) {
+  void _openAlbumPage(BuildContext context) {
     AlbumPage.open(context, album);
   }
 }

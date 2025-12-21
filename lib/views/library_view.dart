@@ -118,7 +118,7 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
                 );
               }
 
-              return const Center(child: CircularProgressIndicator(year2023: false));
+              return const Center(child: CircularProgressIndicator());
             },
           );
         }).toList(),

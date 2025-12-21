@@ -46,7 +46,7 @@ sealed class ServiceCredentials {
 class CredentialsService {
   static const _storageKey = 'unimusic_service_credentials';
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
     mOptions: MacOsOptions(),
     lOptions: LinuxOptions(),

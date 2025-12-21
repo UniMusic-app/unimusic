@@ -10,11 +10,14 @@ class AlbumPage extends StatefulWidget {
 
   const AlbumPage(this.album, {super.key});
 
-  static open(BuildContext context, Album album) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => AlbumPage(album)));
+  static void open(BuildContext context, Album album) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AlbumPage(album)),
+    );
   }
 
-  static openAsync(BuildContext context, Future<Album?> futureAlbum) {
+  static void openAsync(BuildContext context, Future<Album?> futureAlbum) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -47,7 +50,10 @@ class AlbumPage extends StatefulWidget {
                         children: [
                           const Icon(Icons.error, size: 48, color: Colors.red),
                           const SizedBox(height: 16),
-                          const Text('Album not found.', style: TextStyle(fontSize: 18)),
+                          const Text(
+                            'Album not found.',
+                            style: TextStyle(fontSize: 18),
+                          ),
                         ],
                       ),
                     ),
@@ -178,9 +184,8 @@ class _AlbumPageState extends State<AlbumPage> {
                             widget.album.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           Text(
                             widget.album.artists.formatted,
@@ -219,7 +224,10 @@ class _AlbumPageState extends State<AlbumPage> {
                     children: [
                       const CircularProgressIndicator(),
                       const SizedBox(height: 12),
-                      Text(_loadingMessage, style: const TextStyle(fontSize: 14)),
+                      Text(
+                        _loadingMessage,
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ],
                   ),
                 ),

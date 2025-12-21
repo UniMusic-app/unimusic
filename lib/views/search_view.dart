@@ -59,7 +59,10 @@ class SearchBar extends StatelessWidget {
                   Expanded(
                     child: Text(
                       hint,
-                      style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurfaceVariant),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ],
@@ -74,7 +77,8 @@ class SearchBar extends StatelessWidget {
   void _openSearchPage(BuildContext context) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (context, _, __) => SearchPage(hint: hint, onSubmitted: onSubmitted),
+        pageBuilder: (context, _, _) =>
+            SearchPage(hint: hint, onSubmitted: onSubmitted),
         opaque: false,
         transitionDuration: const Duration(milliseconds: 250),
         reverseTransitionDuration: const Duration(milliseconds: 150),
@@ -104,7 +108,8 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateMixin {
+class _SearchPageState extends State<SearchPage>
+    with SingleTickerProviderStateMixin {
   late final TextEditingController _controller;
   late final TabController _tabController;
   late final MusicManager _musicManager;
@@ -120,7 +125,10 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _controller = TextEditingController()..addListener(_onSearchChanged);
-    _tabController = TabController(length: LibraryItemType.values.length + 1, vsync: this);
+    _tabController = TabController(
+      length: LibraryItemType.values.length + 1,
+      vsync: this,
+    );
     _musicManager = context.read<MusicManager>();
   }
 
@@ -209,7 +217,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           height: 56,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
+            border: Border(
+              bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
           ),
           child: Row(
             children: [
@@ -224,11 +234,17 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
                   controller: _controller,
                   textInputAction: TextInputAction.search,
                   onSubmitted: _submitSearch,
-                  decoration: InputDecoration(hintText: widget.hint, border: InputBorder.none),
+                  decoration: InputDecoration(
+                    hintText: widget.hint,
+                    border: InputBorder.none,
+                  ),
                 ),
               ),
               if (_controller.text.isNotEmpty)
-                IconButton(icon: const Icon(Icons.clear), onPressed: _controller.clear),
+                IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: _controller.clear,
+                ),
             ],
           ),
         ),
@@ -268,7 +284,9 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
           onTap: () {
             _controller.text = hint.title;
             if (hint.type != null) {
-              _tabController.animateTo(LibraryItemType.values.indexOf(hint.type!) + 1);
+              _tabController.animateTo(
+                LibraryItemType.values.indexOf(hint.type!) + 1,
+              );
             }
             _submitSearch(hint.title);
           },
@@ -282,13 +300,18 @@ class SearchResultsTab extends StatefulWidget {
   final String query;
   final LibraryItemType? itemType;
 
-  const SearchResultsTab({super.key, required this.query, required this.itemType});
+  const SearchResultsTab({
+    super.key,
+    required this.query,
+    required this.itemType,
+  });
 
   @override
   State<SearchResultsTab> createState() => _SearchResultsTabState();
 }
 
-class _SearchResultsTabState extends State<SearchResultsTab> with AutomaticKeepAliveClientMixin {
+class _SearchResultsTabState extends State<SearchResultsTab>
+    with AutomaticKeepAliveClientMixin {
   late final MusicManager _musicManager;
   List<MusicItem> _results = [];
   bool _isLoading = false;
