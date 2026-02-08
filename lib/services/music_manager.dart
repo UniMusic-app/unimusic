@@ -31,6 +31,8 @@ class MusicManager extends ChangeNotifier {
   final Map<ServiceCredentials, MusicProvider> _credentialProviders = {};
 
   double volume = 1.0;
+  bool isShuffleEnabled = false;
+  LoopMode loopMode = LoopMode.off;
 
   MusicManager() {
     _init();
@@ -79,6 +81,16 @@ class MusicManager extends ChangeNotifier {
     });
 
     player.playingStream.listen((playing) {
+      notifyListeners();
+    });
+
+    player.shuffleModeEnabledStream.listen((enabled) {
+      isShuffleEnabled = enabled;
+      notifyListeners();
+    });
+
+    player.loopModeStream.listen((mode) {
+      loopMode = mode;
       notifyListeners();
     });
 
@@ -178,12 +190,38 @@ class MusicManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> toggleShuffle() async {
+    if (isShuffleEnabled) {
+      await player.setShuffleModeEnabled(false);
+      return;
+    }
+
+    await _reshuffleIfEnabled(force: true);
+    await player.setShuffleModeEnabled(true);
+  }
+
+  Future<void> cycleLoopMode() async {
+    final nextMode = switch (loopMode) {
+      LoopMode.off => LoopMode.all,
+      LoopMode.all => LoopMode.one,
+      LoopMode.one => LoopMode.off,
+    };
+
+    await player.setLoopMode(nextMode);
+  }
+
   Future<void> openSystemOutputChooser() async {
     if (!audioRoutingCapabilities.canOpenSystemChooser) return;
     await refreshAudioRoutingCapabilities();
     await refreshAudioRoute();
     final _ = await _audioRouting.openSystemOutputChooser();
     await refreshAudioRoute();
+  }
+
+  Future<void> _reshuffleIfEnabled({bool force = false}) async {
+    if (!force && !isShuffleEnabled) return;
+    if (player.sequence.isEmpty) return;
+    await player.shuffle();
   }
 
   Future<void> clearQueue() async {
@@ -199,6 +237,7 @@ class MusicManager extends ChangeNotifier {
   }
 
   Future<void> queueSongStream(Stream<Song> songs, {int? position}) async {
+    var didAdd = false;
     await for (final song in songs) {
       final audioSource = await song.getAudioSource();
 
@@ -211,11 +250,18 @@ class MusicManager extends ChangeNotifier {
         await player.addAudioSource(audioSource);
       }
 
+      didAdd = true;
+
       notifyListeners();
+    }
+
+    if (didAdd) {
+      await _reshuffleIfEnabled();
     }
   }
 
   Future<void> queueSongs(List<Song> songs, {int? position}) async {
+    if (songs.isEmpty) return;
     for (final song in songs) {
       final audioSource = await song.getAudioSource();
 
@@ -230,6 +276,8 @@ class MusicManager extends ChangeNotifier {
 
       notifyListeners();
     }
+
+    await _reshuffleIfEnabled();
   }
 
   Future<void> queueSong(Song song, {int? position}) async {
@@ -272,6 +320,7 @@ class MusicManager extends ChangeNotifier {
       await jumpToQueueItem(targetPosition);
     } else {
       await queueItem(item);
+      await play();
     }
   }
 
@@ -292,19 +341,23 @@ class MusicManager extends ChangeNotifier {
     queuePosition = 0;
   }
 
-  bool get canSkipPrevious => queuePosition > 0;
+  bool get canSkipPrevious => player.hasPrevious;
   Future<void> skipPrevious() async {
     if (canSkipPrevious) {
-      queuePosition -= 1;
-      await play();
+      await player.seekToPrevious();
+      if (!player.playing) {
+        await player.play();
+      }
     }
   }
 
-  bool get canSkipNext => queuePosition < queue.length - 1;
+  bool get canSkipNext => player.hasNext;
   Future<void> skipNext() async {
     if (canSkipNext) {
-      queuePosition += 1;
-      await play();
+      await player.seekToNext();
+      if (!player.playing) {
+        await player.play();
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:unimusic/components/lazy_image.dart';
 import 'package:unimusic/services/music_manager.dart';
@@ -18,15 +19,21 @@ class MusicControlsViewState extends State<MusicControlsView> {
   Widget build(BuildContext context) {
     final musicManager = context.watch<MusicManager>();
     final currentItem = musicManager.currentItem;
+    final isShuffleEnabled = musicManager.isShuffleEnabled;
+    final loopMode = musicManager.loopMode;
 
     final size = MediaQuery.sizeOf(context);
     final double artworkWidth = min(size.width - 48, size.height - 384);
 
     final view = View.of(context);
     final safeAreaPadding = MediaQueryData.fromView(view).padding;
+    final activeColor = Theme.of(context).colorScheme.primary;
+    final inactiveColor = Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24 + safeAreaPadding.horizontal),
+      padding: EdgeInsets.symmetric(
+        horizontal: 24 + safeAreaPadding.horizontal,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,7 +71,32 @@ class MusicControlsViewState extends State<MusicControlsView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(onPressed: () {}, icon: Icon(Icons.shuffle_rounded)),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: musicManager.toggleShuffle,
+                      icon: const Icon(Icons.shuffle_rounded),
+                      color: isShuffleEnabled ? activeColor : inactiveColor,
+                      tooltip: isShuffleEnabled ? 'Shuffle on' : 'Shuffle off',
+                    ),
+                    IconButton(
+                      onPressed: musicManager.cycleLoopMode,
+                      icon: Icon(
+                        loopMode == LoopMode.one
+                            ? Icons.repeat_one_rounded
+                            : Icons.repeat_rounded,
+                      ),
+                      color: loopMode == LoopMode.off
+                          ? inactiveColor
+                          : activeColor,
+                      tooltip: switch (loopMode) {
+                        LoopMode.off => 'Loop off',
+                        LoopMode.all => 'Loop all',
+                        LoopMode.one => 'Loop one',
+                      },
+                    ),
+                  ],
+                ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -73,30 +105,44 @@ class MusicControlsViewState extends State<MusicControlsView> {
                     // Skip to previous
                     IconButton(
                       style: IconButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
                       ),
                       iconSize: 48,
-                      onPressed: musicManager.canSkipPrevious ? musicManager.skipPrevious : null,
+                      onPressed: musicManager.canSkipPrevious
+                          ? musicManager.skipPrevious
+                          : null,
                       icon: const Icon(Icons.skip_previous_rounded),
                     ),
                     // Play/pause
                     IconButton.filled(
                       style: IconButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
                       ),
                       iconSize: 48,
-                      onPressed: musicManager.canPlay ? musicManager.togglePlayPause : null,
+                      onPressed: musicManager.canPlay
+                          ? musicManager.togglePlayPause
+                          : null,
                       icon: Icon(
-                        musicManager.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        musicManager.isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
                       ),
                     ),
                     // Skip to next
                     IconButton(
                       style: IconButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
                       ),
                       iconSize: 48,
-                      onPressed: musicManager.canSkipNext ? musicManager.skipNext : null,
+                      onPressed: musicManager.canSkipNext
+                          ? musicManager.skipNext
+                          : null,
                       icon: const Icon(Icons.skip_next_rounded),
                     ),
                   ],
@@ -113,7 +159,9 @@ class MusicControlsViewState extends State<MusicControlsView> {
                               ? CrossFadeState.showFirst
                               : CrossFadeState.showSecond,
                           firstChild: const Icon(Icons.favorite_rounded),
-                          secondChild: const Icon(Icons.favorite_outline_rounded),
+                          secondChild: const Icon(
+                            Icons.favorite_outline_rounded,
+                          ),
                         ),
                         onPressed: () async {
                           await currentItem?.toggleFavourite(!snapshot.data!);
@@ -122,13 +170,19 @@ class MusicControlsViewState extends State<MusicControlsView> {
                       );
                     }
 
-                    return IconButton(onPressed: null, icon: Icon(Icons.favorite_outline_rounded));
+                    return IconButton(
+                      onPressed: null,
+                      icon: Icon(Icons.favorite_outline_rounded),
+                    );
                   },
                 ),
               ],
             ),
           ),
-          const Padding(padding: EdgeInsets.only(top: 16), child: ExpandedMusicPlayerSeekbar()),
+          const Padding(
+            padding: EdgeInsets.only(top: 16),
+            child: ExpandedMusicPlayerSeekbar(),
+          ),
         ],
       ),
     );
@@ -139,10 +193,12 @@ class ExpandedMusicPlayerSeekbar extends StatefulWidget {
   const ExpandedMusicPlayerSeekbar({super.key});
 
   @override
-  State<ExpandedMusicPlayerSeekbar> createState() => ExpandedMusicPlayerSeekbarState();
+  State<ExpandedMusicPlayerSeekbar> createState() =>
+      ExpandedMusicPlayerSeekbarState();
 }
 
-class ExpandedMusicPlayerSeekbarState extends State<ExpandedMusicPlayerSeekbar> {
+class ExpandedMusicPlayerSeekbarState
+    extends State<ExpandedMusicPlayerSeekbar> {
   Duration? _seekBarPosition;
 
   @override
@@ -150,7 +206,10 @@ class ExpandedMusicPlayerSeekbarState extends State<ExpandedMusicPlayerSeekbar> 
     final musicManager = context.watch<MusicManager>();
 
     final max = musicManager.duration.inMilliseconds.toDouble();
-    final value = min((_seekBarPosition ?? musicManager.position).inMilliseconds.toDouble(), max);
+    final value = min(
+      (_seekBarPosition ?? musicManager.position).inMilliseconds.toDouble(),
+      max,
+    );
 
     final textTimeStyle = Theme.of(
       context,
@@ -176,7 +235,10 @@ class ExpandedMusicPlayerSeekbarState extends State<ExpandedMusicPlayerSeekbar> 
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text((_seekBarPosition ?? musicManager.position).formatted, style: textTimeStyle),
+            Text(
+              (_seekBarPosition ?? musicManager.position).formatted,
+              style: textTimeStyle,
+            ),
             Text("FLAC or whatever TODO"),
             Text(
               (-(musicManager.duration - musicManager.position)).formatted,
