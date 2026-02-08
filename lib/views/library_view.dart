@@ -14,7 +14,8 @@ class LibraryView extends StatefulWidget {
   State<LibraryView> createState() => LibraryViewState();
 }
 
-class LibraryViewState extends State<LibraryView> with SingleTickerProviderStateMixin {
+class LibraryViewState extends State<LibraryView>
+    with SingleTickerProviderStateMixin {
   late final TabController tabController;
   final Map<LibraryItemType, Completer<void>> _refreshCompleters = {};
 
@@ -23,22 +24,18 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
   Map<LibraryItemType, List<MusicItem>> libraryItems = {};
   MusicItem? currentItem;
 
-  final sortingAlgorithms = {
-    LibrarySortBy.name: (a, b) {
-      return switch ((a, b)) {
-        (Song a, Song b) => a.name.compareAlphabetically(b.name),
-        (Album a, Album b) => a.name.compareAlphabetically(b.name),
-        (Artist a, Artist b) => a.name.compareAlphabetically(b.name),
-        (Album _, _) => -1,
-        (Song _, _) => 0,
-        _ => 1,
-      };
-    },
+  final Map<LibrarySortBy, String> _sortLabels = {
+    LibrarySortBy.name: 'Name',
+    LibrarySortBy.album: 'Album',
+    LibrarySortBy.artist: 'Artist',
   };
 
   @override
   void initState() {
-    tabController = TabController(vsync: this, length: LibraryItemType.values.length);
+    tabController = TabController(
+      vsync: this,
+      length: LibraryItemType.values.length,
+    );
     super.initState();
   }
 
@@ -51,7 +48,9 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
   @override
   Widget build(BuildContext context) {
     // Listen for changes in music providers
-    context.select((MusicManager musicManager) => musicManager.providers.length);
+    context.select(
+      (MusicManager musicManager) => musicManager.providers.length,
+    );
 
     final view = View.of(context);
     final safeAreaPadding = MediaQueryData.fromView(view).padding;
@@ -102,13 +101,17 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
           return StreamBuilder(
             stream: _loadLibraryItems(context, itemType).asBroadcastStream(),
             builder: (context, snapshot) {
-              if (libraryItems.isNotEmpty || snapshot.connectionState != ConnectionState.waiting) {
+              if (libraryItems.isNotEmpty ||
+                  snapshot.connectionState != ConnectionState.waiting) {
                 final items = libraryItems[itemType];
 
                 return RefreshIndicator(
                   onRefresh: _handleRefresh,
                   child: ListView.builder(
-                    padding: EdgeInsets.only(top: 16, bottom: safeAreaPadding.bottom + 48),
+                    padding: EdgeInsets.only(
+                      top: 16,
+                      bottom: safeAreaPadding.bottom + 48,
+                    ),
                     itemCount: items?.length ?? 0,
                     itemBuilder: (context, index) {
                       final item = items![index];
@@ -135,7 +138,10 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
     return _refreshCompleters[itemType]!.future;
   }
 
-  Stream<void> _loadLibraryItems(BuildContext context, LibraryItemType itemType) async* {
+  Stream<void> _loadLibraryItems(
+    BuildContext context,
+    LibraryItemType itemType,
+  ) async* {
     try {
       final musicManager = context.read<MusicManager>();
       libraryItems[itemType] = [];
@@ -145,9 +151,7 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
       await for (final item in items) {
         libraryItems[itemType] ??= [];
         libraryItems[itemType]!.add(item);
-        libraryItems[itemType]!.sort((a, b) {
-          return sortingAlgorithms[LibrarySortBy.name]!(a, b) * sortOrder.toInt();
-        });
+        _sortItems(itemType);
         yield null;
       }
     } finally {
@@ -159,32 +163,128 @@ class LibraryViewState extends State<LibraryView> with SingleTickerProviderState
   void _changeSortOrder() {
     setState(() {
       sortOrder = LibrarySortOrder.fromInt(sortOrder.toInt() * -1);
+      for (final itemType in LibraryItemType.values) {
+        _sortItems(itemType);
+      }
     });
   }
 
   Future<void> _changeSortBy() async {
-    await showModalBottomSheet(
+    final itemType = LibraryItemType.values[tabController.index];
+    final availableSorts = _availableSortBy(itemType);
+    final selected = await showModalBottomSheet<LibrarySortBy>(
       useRootNavigator: true,
       showDragHandle: true,
       context: context,
       builder: (context) {
-        return SizedBox(
-          height: 200,
-          child: Center(
+        return SafeArea(
+          child: RadioGroup<LibrarySortBy>(
+            groupValue: _effectiveSortBy(itemType),
+            onChanged: (selected) {
+              Navigator.pop(context, selected);
+            },
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Modal BottomSheet'),
-                ElevatedButton(
-                  child: const Text('Close BottomSheet'),
-                  onPressed: () => Navigator.pop(context),
-                ),
+                const SizedBox(height: 8),
+                Text('Sort by', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                ...availableSorts.map((value) {
+                  return RadioListTile<LibrarySortBy>(
+                    title: Text(_sortLabels[value] ?? value.name.capitalized),
+                    value: value,
+                  );
+                }),
+                const SizedBox(height: 12),
               ],
             ),
           ),
         );
       },
     );
+
+    if (!mounted) return;
+
+    if (selected != null && selected != sortBy) {
+      setState(() {
+        sortBy = selected;
+        for (final type in LibraryItemType.values) {
+          _sortItems(type);
+        }
+      });
+    }
+  }
+
+  void _sortItems(LibraryItemType itemType) {
+    final items = libraryItems[itemType];
+    if (items == null || items.isEmpty) return;
+
+    final activeSortBy = _effectiveSortBy(itemType);
+
+    items.sort((a, b) {
+      final primary = _compareBySort(a, b, activeSortBy);
+      if (primary != 0) {
+        return primary * sortOrder.toInt();
+      }
+      return _nameKey(a).compareAlphabetically(_nameKey(b)) * sortOrder.toInt();
+    });
+  }
+
+  LibrarySortBy _effectiveSortBy(LibraryItemType itemType) {
+    final available = _availableSortBy(itemType);
+    return available.contains(sortBy) ? sortBy : LibrarySortBy.name;
+  }
+
+  List<LibrarySortBy> _availableSortBy(LibraryItemType itemType) {
+    return switch (itemType) {
+      LibraryItemType.songs => [
+        LibrarySortBy.name,
+        LibrarySortBy.album,
+        LibrarySortBy.artist,
+      ],
+      LibraryItemType.albums => [LibrarySortBy.name, LibrarySortBy.artist],
+      LibraryItemType.artists => [LibrarySortBy.name],
+    };
+  }
+
+  int _compareBySort(MusicItem a, MusicItem b, LibrarySortBy sortBy) {
+    final keyA = _sortKey(a, sortBy);
+    final keyB = _sortKey(b, sortBy);
+    return keyA.compareAlphabetically(keyB);
+  }
+
+  String _sortKey(MusicItem item, LibrarySortBy sortBy) {
+    return switch (sortBy) {
+      LibrarySortBy.name => _nameKey(item),
+      LibrarySortBy.album => _albumKey(item),
+      LibrarySortBy.artist => _artistKey(item),
+    };
+  }
+
+  String _nameKey(MusicItem item) {
+    return switch (item) {
+      Song song => song.name,
+      Album album => album.name,
+      Artist artist => artist.name,
+      _ => '',
+    };
+  }
+
+  String _albumKey(MusicItem item) {
+    return switch (item) {
+      Song song => song.album ?? '',
+      Album album => album.name,
+      Artist artist => artist.name,
+      _ => '',
+    };
+  }
+
+  String _artistKey(MusicItem item) {
+    return switch (item) {
+      Song song => song.artists.formatted,
+      Album album => album.artists.formatted,
+      Artist artist => artist.name,
+      _ => '',
+    };
   }
 }
