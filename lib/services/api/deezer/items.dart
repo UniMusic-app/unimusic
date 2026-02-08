@@ -42,7 +42,10 @@ class DeezerTrack {
   const DeezerTrack({required this.api, required this.trackInfo});
 
   static Future<DeezerTrack> fetch(DeezerApi api, String trackId) async {
-    final response = await api.callMethod("deezer.pageTrack", data: {"SNG_ID": trackId});
+    final response = await api.callMethod(
+      "deezer.pageTrack",
+      data: {"SNG_ID": trackId},
+    );
 
     if (response.data['results']['DATA']['MD5_ORIGIN'] == null) {
       throw Exception("TOKEN EXPIRED");
@@ -59,7 +62,9 @@ class DeezerTrack {
 
   List<DeezerArtist>? get artists => switch (trackInfo["ARTISTS"]) {
     List<dynamic> artists =>
-      artists.map((artist) => DeezerArtist.fromDeezerJson(api: api, json: artist)).toList(),
+      artists
+          .map((artist) => DeezerArtist.fromDeezerJson(api: api, json: artist))
+          .toList(),
     _ => null,
   };
 
@@ -77,7 +82,9 @@ class DeezerTrack {
     if (trackInfo["TRACK_TOKEN_EXPIRE"] == null) {
       return null;
     }
-    return DateTime.fromMillisecondsSinceEpoch(trackInfo["TRACK_TOKEN_EXPIRE"] * 1000);
+    return DateTime.fromMillisecondsSinceEpoch(
+      trackInfo["TRACK_TOKEN_EXPIRE"] * 1000,
+    );
   }
 
   Duration? get duration {
@@ -88,11 +95,14 @@ class DeezerTrack {
   }
 }
 
-class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteItem {
+class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
+    with DeezerFavouriteItem {
   @override
   final DeezerApi api;
 
   String? albumId;
+
+  final DeezerSoundFormat soundFormat;
 
   String? trackToken;
   DateTime? trackTokenExpire;
@@ -102,6 +112,7 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
     this.albumId,
     this.trackToken,
     this.trackTokenExpire,
+    this.soundFormat = DeezerSoundFormat.mp3_128kb,
 
     required super.id,
     required super.name,
@@ -150,7 +161,8 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
     int? start,
     int? end,
   }) async {
-    if (trackTokenExpire == null || DateTime.now().toUtc().isAfter(trackTokenExpire!)) {
+    if (trackTokenExpire == null ||
+        DateTime.now().toUtc().isAfter(trackTokenExpire!)) {
       debugPrint("Refresh track token!");
       final track = await api.getTrack(id);
       trackToken = track.trackToken!;
@@ -171,7 +183,7 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
   Future<AudioSource> getAudioSource() async {
     return DeezerAudioSource(
       song: this,
-      soundFormat: DeezerSoundFormat.mp3_128kb,
+      soundFormat: soundFormat,
       tag: MediaItem(
         id: id,
         title: name,
@@ -197,7 +209,8 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork> with DeezerFavouriteI
 class DeezerArtwork extends CachedArtwork {
   const DeezerArtwork({required super.id}) : super(providerId: providerId);
 
-  const DeezerArtwork.withType({required String id, required String type}) : this(id: "$type/$id");
+  const DeezerArtwork.withType({required String id, required String type})
+    : this(id: "$type/$id");
 
   factory DeezerArtwork.fromPictureUrl(String url) {
     final uri = Uri.parse(url);
@@ -213,7 +226,9 @@ class DeezerArtwork extends CachedArtwork {
     final quality = 80;
     final width = size.width.toInt();
     final height = width;
-    return Uri.parse("$imageCdnUrl/$id/${height}x$width-000000-$quality-0-0.jpg");
+    return Uri.parse(
+      "$imageCdnUrl/$id/${height}x$width-000000-$quality-0-0.jpg",
+    );
   }
 }
 
@@ -256,7 +271,8 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
   }
 }
 
-class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavouriteItem {
+class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork>
+    with DeezerFavouriteItem {
   @override
   final DeezerApi api;
   List<DeezerSong>? songs;
@@ -296,7 +312,9 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork> with DeezerFavourit
       name: json["ALB_TITLE"],
       favourite: favourite,
       artwork: DeezerArtwork.withType(id: json["ALB_PICTURE"], type: "cover"),
-      artists: [DeezerArtist(api: api, id: json["ART_ID"], name: json["ART_NAME"])],
+      artists: [
+        DeezerArtist(api: api, id: json["ART_ID"], name: json["ART_NAME"]),
+      ],
     );
   }
 

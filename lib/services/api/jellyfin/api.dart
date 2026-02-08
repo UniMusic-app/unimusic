@@ -30,7 +30,11 @@ class JellyfinApi {
   final JellyfinUser user;
   final String authenticationHeader;
 
-  JellyfinApi({required this.serverUri, required this.user, required this.authenticationHeader});
+  JellyfinApi({
+    required this.serverUri,
+    required this.user,
+    required this.authenticationHeader,
+  });
 
   Future<void> addToFavorites(String itemId) async {
     await fetch(pathSegments: ["UserFavoriteItems", itemId], method: "POST");
@@ -85,9 +89,27 @@ class JellyfinApi {
       ),
       options: ProgressiveAudioSourceOptions(
         // Required to make FLAC files not seek behind the actual position
-        darwinAssetOptions: DarwinAssetOptions(preferPreciseDurationAndTiming: true),
+        darwinAssetOptions: DarwinAssetOptions(
+          preferPreciseDurationAndTiming: true,
+        ),
       ),
     );
+  }
+
+  Future<Map<String, dynamic>?> playbackInfo(String itemId) async {
+    final response = await fetch(
+      pathSegments: ["Items", itemId, "PlaybackInfo"],
+      queryParameters: {"UserId": user.id},
+      method: "POST",
+    );
+
+    final data = response.data;
+    if (data is! Map) {
+      debugPrint("Failed to decode playback info for $itemId");
+      return null;
+    }
+
+    return Map<String, dynamic>.from(data);
   }
 
   Future<Response<dynamic>> fetch({
@@ -96,12 +118,18 @@ class JellyfinApi {
     Map<String, String>? headers,
     String? method,
   }) async {
-    final uri = _uri(pathSegments: pathSegments, queryParameters: queryParameters);
+    final uri = _uri(
+      pathSegments: pathSegments,
+      queryParameters: queryParameters,
+    );
     final response = await dio.requestUri(
       uri,
       options: Options(
         method: method ?? "GET",
-        headers: {HttpHeaders.authorizationHeader: authenticationHeader, ...?headers},
+        headers: {
+          HttpHeaders.authorizationHeader: authenticationHeader,
+          ...?headers,
+        },
       ),
     );
     return response;
@@ -128,7 +156,10 @@ class JellyfinApi {
 
     Uint8List? bytes;
     try {
-      final response = await dio.getUri(uri, options: Options(responseType: ResponseType.bytes));
+      final response = await dio.getUri(
+        uri,
+        options: Options(responseType: ResponseType.bytes),
+      );
 
       bytes = response.data;
     } catch (error) {
@@ -196,8 +227,11 @@ class JellyfinApi {
       "recursive": recursive.toString(),
       "sortOrder": sortOrder.toJson(),
       if (includeItemTypes != null)
-        "includeItemTypes": includeItemTypes.map((itemType) => itemType.toJson()).join(","),
-      if (sortBy != null) "sortBy": sortBy.map((sortType) => sortType.toJson()).join(","),
+        "includeItemTypes": includeItemTypes
+            .map((itemType) => itemType.toJson())
+            .join(","),
+      if (sortBy != null)
+        "sortBy": sortBy.map((sortType) => sortType.toJson()).join(","),
       if (searchTerm != null) "searchTerm": searchTerm,
       if (limit != null) "limit": limit.toString(),
       if (startIndex != null) "startIndex": startIndex.toString(),
@@ -207,7 +241,10 @@ class JellyfinApi {
       if (isFavourite != null) "isFavorite": isFavourite.toString(),
     };
 
-    final response = await fetch(pathSegments: ["Items"], queryParameters: queryParameters);
+    final response = await fetch(
+      pathSegments: ["Items"],
+      queryParameters: queryParameters,
+    );
 
     final data = response.data;
     if (data is! Map) {
@@ -242,7 +279,8 @@ class JellyfinApi {
       pathSegments: ["Search", "Hints"],
       queryParameters: {
         "searchTerm": searchTerm,
-        if (includeItemTypes != null) "includeItemTypes": includeItemTypes.join(","),
+        if (includeItemTypes != null)
+          "includeItemTypes": includeItemTypes.join(","),
         if (parentId != null) "parentId": parentId,
       },
     );
@@ -259,7 +297,10 @@ class JellyfinApi {
     }
   }
 
-  Uri _uri({required List<String> pathSegments, Map<String, String>? queryParameters}) {
+  Uri _uri({
+    required List<String> pathSegments,
+    Map<String, String>? queryParameters,
+  }) {
     return Uri(
       scheme: serverUri.scheme,
       host: serverUri.host,
@@ -285,7 +326,9 @@ class JellyfinApi {
       uri,
       data: {"Username": username, if (password != null) "Pw": password},
       options: Options(
-        headers: {HttpHeaders.authorizationHeader: await generateAuthorizationHeader()},
+        headers: {
+          HttpHeaders.authorizationHeader: await generateAuthorizationHeader(),
+        },
       ),
     );
 
@@ -294,15 +337,22 @@ class JellyfinApi {
     return api;
   }
 
-  static Future<JellyfinApi> authenticateByUser(Uri serverUri, JellyfinUser user) async {
+  static Future<JellyfinApi> authenticateByUser(
+    Uri serverUri,
+    JellyfinUser user,
+  ) async {
     return JellyfinApi(
       serverUri: serverUri,
       user: user,
-      authenticationHeader: await generateAuthorizationHeader(accessToken: user.accessToken),
+      authenticationHeader: await generateAuthorizationHeader(
+        accessToken: user.accessToken,
+      ),
     );
   }
 
-  static Future<String> generateAuthorizationHeader({String? accessToken}) async {
+  static Future<String> generateAuthorizationHeader({
+    String? accessToken,
+  }) async {
     final deviceInfo = DeviceInfoPlugin();
 
     final String device;

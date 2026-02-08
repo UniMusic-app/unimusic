@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,8 @@ class LocalArtwork extends Artwork {
   }
 }
 
-class _LocalArtworkImageProvider extends ImageProvider<_LocalArtworkImageProvider> {
+class _LocalArtworkImageProvider
+    extends ImageProvider<_LocalArtworkImageProvider> {
   final LocalArtwork artwork;
   final String artworkId;
   final ArtworkSize size;
@@ -36,12 +38,17 @@ class _LocalArtworkImageProvider extends ImageProvider<_LocalArtworkImageProvide
   });
 
   @override
-  Future<_LocalArtworkImageProvider> obtainKey(ImageConfiguration configuration) {
+  Future<_LocalArtworkImageProvider> obtainKey(
+    ImageConfiguration configuration,
+  ) {
     return SynchronousFuture(this);
   }
 
   @override
-  ImageStreamCompleter loadImage(_LocalArtworkImageProvider key, ImageDecoderCallback decode) {
+  ImageStreamCompleter loadImage(
+    _LocalArtworkImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
@@ -49,9 +56,15 @@ class _LocalArtworkImageProvider extends ImageProvider<_LocalArtworkImageProvide
     );
   }
 
-  Future<ui.Codec> _loadAsync(_LocalArtworkImageProvider key, ImageDecoderCallback decode) async {
+  Future<ui.Codec> _loadAsync(
+    _LocalArtworkImageProvider key,
+    ImageDecoderCallback decode,
+  ) async {
     try {
-      final artworkInfo = await DatabaseHelper.getArtwork(key.artworkId, size: key.size);
+      final artworkInfo = await DatabaseHelper.getArtwork(
+        key.artworkId,
+        size: key.size,
+      );
 
       if (artworkInfo == null) {
         throw Exception('Artwork ${key.artworkId} does not exist in databse');
@@ -101,7 +114,10 @@ class LocalArtist extends Artist<LocalArtwork> {
     favourite = value;
   }
 
-  static LocalArtist fromDatabase(LocalSharedApi api, ArtistDatabaseItem artist) {
+  static LocalArtist fromDatabase(
+    LocalSharedApi api,
+    ArtistDatabaseItem artist,
+  ) {
     LocalArtwork? artwork;
     if (artist.artworkId != null) {
       artwork = LocalArtwork(id: artist.artworkId!);
@@ -118,10 +134,12 @@ class LocalArtist extends Artist<LocalArtwork> {
 
 class LocalSong extends Song<LocalArtist, LocalArtwork> {
   final LocalSharedApi api;
+  final int? bitrateKbps;
 
   LocalSong({
     required this.api,
     required String filePath,
+    this.bitrateKbps,
 
     required super.id,
     required super.name,
@@ -132,7 +150,14 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
     super.artwork,
   }) : super(providerId: providerId, filePath: filePath);
 
-  static Future<LocalSong> fromDatabase(LocalSharedApi api, SongDatabaseItem song) async {
+  static Future<LocalSong> fromDatabase(
+    LocalSharedApi api,
+    SongDatabaseItem song,
+  ) async {
+    final bitrateKbps = await _bitrateFromFile(
+      song.filePath,
+      Duration(milliseconds: song.duration),
+    );
     final databaseArtists = await DatabaseHelper.getSongArtists(song.id);
     final artists = (databaseArtists)
         .map((artist) => LocalArtist.fromDatabase(api, artist))
@@ -153,6 +178,7 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
       album: song.album,
       duration: Duration(milliseconds: song.duration),
       filePath: song.filePath!,
+      bitrateKbps: bitrateKbps,
       artwork: artwork,
     );
   }
@@ -191,6 +217,28 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
   }
 }
 
+Future<int?> _bitrateFromFile(String? filePath, Duration duration) async {
+  if (filePath == null || filePath.isEmpty) {
+    return null;
+  }
+
+  final seconds = duration.inSeconds;
+  if (seconds <= 0) {
+    return null;
+  }
+
+  try {
+    final file = File(filePath);
+    final sizeBytes = await file.length();
+    if (sizeBytes <= 0) {
+      return null;
+    }
+    return ((sizeBytes * 8) / seconds / 1000).round();
+  } catch (_) {
+    return null;
+  }
+}
+
 class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
   final LocalSharedApi api;
 
@@ -204,7 +252,10 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
     super.artwork,
   }) : super(providerId: providerId);
 
-  static Future<LocalAlbum> fromDatabase(LocalSharedApi api, AlbumDatabaseItem album) async {
+  static Future<LocalAlbum> fromDatabase(
+    LocalSharedApi api,
+    AlbumDatabaseItem album,
+  ) async {
     final databaseArtists = await DatabaseHelper.getAlbumArtists(album.id);
     final artists = (databaseArtists)
         .map((artist) => LocalArtist.fromDatabase(api, artist))
@@ -245,5 +296,9 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
 }
 
 class LocalSearchHint extends SearchHint {
-  const LocalSearchHint({required super.title, required super.type, super.artwork});
+  const LocalSearchHint({
+    required super.title,
+    required super.type,
+    super.artwork,
+  });
 }

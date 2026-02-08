@@ -252,6 +252,8 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       "albumDisc" to (MediaStore.Audio.Media.DISC_NUMBER to MediaStoreType.Int),
       "albumTrack" to (MediaStore.Audio.Media.CD_TRACK_NUMBER to MediaStoreType.Int),
       "mimeType" to (MediaStore.Audio.Media.MIME_TYPE to MediaStoreType.String),
+      "bitrate" to (MediaStore.Audio.Media.BITRATE to MediaStoreType.Int),
+      "size" to (MediaStore.Audio.Media.SIZE to MediaStoreType.Long),
       // "path" added reactively
       // "artwork" added reactively
     );

@@ -5,7 +5,6 @@ import 'package:unimusic/components/music_player/views/audio_source_view.dart';
 import 'package:unimusic/components/music_player/views/controls_view.dart';
 import 'package:unimusic/components/music_player/views/queue_view.dart';
 import 'package:unimusic/services/music_manager.dart';
-import 'package:unimusic/utils/duration.dart';
 import 'package:provider/provider.dart';
 
 class ExpandedMusicPlayer extends StatefulWidget {
@@ -145,68 +144,6 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class ExpandedMusicPlayerSeekbar extends StatefulWidget {
-  const ExpandedMusicPlayerSeekbar({super.key});
-
-  @override
-  State<ExpandedMusicPlayerSeekbar> createState() =>
-      ExpandedMusicPlayerSeekbarState();
-}
-
-class ExpandedMusicPlayerSeekbarState
-    extends State<ExpandedMusicPlayerSeekbar> {
-  Duration? _seekBarPosition;
-
-  @override
-  Widget build(BuildContext context) {
-    final musicManager = context.watch<MusicManager>();
-
-    final max = musicManager.duration.inMilliseconds.toDouble();
-    final value = min(
-      (_seekBarPosition ?? musicManager.position).inMilliseconds.toDouble(),
-      max,
-    );
-
-    final textTimeStyle = Theme.of(
-      context,
-    ).textTheme.labelSmall?.apply(fontFeatures: [FontFeature.tabularFigures()]);
-
-    return Column(
-      children: [
-        Slider(
-          min: 0,
-          value: value,
-          max: max,
-          padding: EdgeInsets.zero,
-          onChanged: (value) {
-            setState(() {
-              _seekBarPosition = Duration(milliseconds: value.toInt());
-            });
-          },
-          onChangeEnd: (value) async {
-            await musicManager.seek(Duration(milliseconds: value.toInt()));
-            _seekBarPosition = null;
-          },
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              (_seekBarPosition ?? musicManager.position).formatted,
-              style: textTimeStyle,
-            ),
-            Text("FLAC or whatever TODO"),
-            Text(
-              (-(musicManager.duration - musicManager.position)).formatted,
-              style: textTimeStyle,
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

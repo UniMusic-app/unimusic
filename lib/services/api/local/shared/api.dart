@@ -33,7 +33,10 @@ class LocalSharedApi extends LocalApi {
     } else if (Platform.isMacOS || Platform.isLinux) {
       final home = Platform.environment['HOME'];
       if (home != null) {
-        directories.addAll([path.join(home, 'Music'), path.join(home, 'Documents', 'Music')]);
+        directories.addAll([
+          path.join(home, 'Music'),
+          path.join(home, 'Documents', 'Music'),
+        ]);
       }
     } else if (Platform.isIOS) {
       final directory = (await getApplicationDocumentsDirectory()).path;
@@ -48,7 +51,15 @@ class LocalSharedApi extends LocalApi {
     return directories.where((dir) => Directory(dir).existsSync()).toList();
   }
 
-  static const supportedExtensions = {'.mp3', '.flac', '.m4a', '.aac', '.ogg', '.wav', '.wma'};
+  static const supportedExtensions = {
+    '.mp3',
+    '.flac',
+    '.m4a',
+    '.aac',
+    '.ogg',
+    '.wav',
+    '.wma',
+  };
 
   Stream<FileSystemEntity> _scanDirectory(String directoryPath) async* {
     try {
@@ -60,7 +71,10 @@ class LocalSharedApi extends LocalApi {
         return;
       }
 
-      await for (final entity in directory.list(recursive: true, followLinks: false)) {
+      await for (final entity in directory.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (entity is! File) {
           continue;
         }
@@ -119,7 +133,10 @@ class LocalSharedApi extends LocalApi {
       final title = tags.title ?? fileName;
 
       // Create or get artists
-      final artistNames = [if (tags.artist != null) tags.artist!, ...tags.performers];
+      final artistNames = [
+        if (tags.artist != null) tags.artist!,
+        ...tags.performers,
+      ];
       final artists = <LocalArtist>[];
       for (final artistName in artistNames) {
         final artistId = _generateId("artist", artistName);
@@ -128,7 +145,12 @@ class LocalSharedApi extends LocalApi {
 
         final LocalArtist artist;
         if (existingArtistData == null) {
-          artist = LocalArtist(api: this, id: artistId, name: artistName, favourite: false);
+          artist = LocalArtist(
+            api: this,
+            id: artistId,
+            name: artistName,
+            favourite: false,
+          );
           await DatabaseHelper.insertArtist(artist);
         } else {
           artist = LocalArtist.fromDatabase(this, existingArtistData);
@@ -161,11 +183,25 @@ class LocalSharedApi extends LocalApi {
       // TODO: In case duration isn't extracted support setting it during initial playback?
       final duration = tags.duration ?? Duration.zero;
 
+      int? bitrateKbps;
+      if (duration.inSeconds > 0) {
+        try {
+          final sizeBytes = await file.length();
+          if (sizeBytes > 0) {
+            bitrateKbps = ((sizeBytes * 8) / duration.inSeconds / 1000).round();
+          }
+        } catch (error) {
+          debugPrint("Failed to read file size for bitrate: $error");
+        }
+      }
+
       // Create artwork from embedded album art
       LocalArtwork? artwork;
       final picture = tags.pictures.firstOrNull;
       if (picture != null) {
-        final pictureSizeResult = ImageSizeGetter.getSizeResult(MemoryInput(picture.bytes));
+        final pictureSizeResult = ImageSizeGetter.getSizeResult(
+          MemoryInput(picture.bytes),
+        );
 
         // Cache artwork in the different sizes
         for (final size in ArtworkSize.values) {
@@ -220,6 +256,7 @@ class LocalSharedApi extends LocalApi {
         album: album?.name,
         duration: duration,
         filePath: file.path,
+        bitrateKbps: bitrateKbps,
         artwork: artwork,
       );
 
@@ -304,14 +341,19 @@ class LocalSharedApi extends LocalApi {
   }
 
   @override
-  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
+  Stream<MusicItem> getSearchResults({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     final lowercaseQuery = query.toLowerCase();
 
     if (itemType == null || itemType == LibraryItemType.songs) {
       await for (final song in getAllSongs()) {
         if (song.name.toLowerCase().contains(lowercaseQuery) ||
             song.album?.toLowerCase().contains(lowercaseQuery) == true ||
-            song.artists.any((artist) => artist.name.toLowerCase().contains(lowercaseQuery))) {
+            song.artists.any(
+              (artist) => artist.name.toLowerCase().contains(lowercaseQuery),
+            )) {
           yield song;
         }
       }
@@ -320,7 +362,9 @@ class LocalSharedApi extends LocalApi {
     if (itemType == null || itemType == LibraryItemType.albums) {
       await for (final album in getAllAlbums()) {
         if (album.name.toLowerCase().contains(lowercaseQuery) ||
-            album.artists.any((artist) => artist.name.toLowerCase().contains(lowercaseQuery))) {
+            album.artists.any(
+              (artist) => artist.name.toLowerCase().contains(lowercaseQuery),
+            )) {
           yield album;
         }
       }
@@ -336,7 +380,10 @@ class LocalSharedApi extends LocalApi {
   }
 
   @override
-  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
+  Stream<SearchHint> getSearchHints({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     final lowercaseQuery = query.toLowerCase();
 
     if (itemType == null || itemType == LibraryItemType.songs) {

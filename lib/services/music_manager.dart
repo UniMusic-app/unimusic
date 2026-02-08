@@ -80,6 +80,11 @@ class MusicManager extends ChangeNotifier {
       notifyListeners();
     });
 
+    player.bufferedPositionStream.listen((position) {
+      bufferedPosition = position;
+      notifyListeners();
+    });
+
     player.playingStream.listen((playing) {
       notifyListeners();
     });
@@ -183,6 +188,7 @@ class MusicManager extends ChangeNotifier {
   int queuePosition = 0;
   List<Song> queue = [];
   Duration duration = Duration.zero;
+  Duration bufferedPosition = Duration.zero;
 
   Future<void> setVolume(double volume) async {
     this.volume = volume.clamp(0.0, 1.0);

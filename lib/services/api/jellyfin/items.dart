@@ -28,19 +28,85 @@ class JellyfinArtwork extends CachedArtwork {
   final String type;
   final String? tag;
 
-  const JellyfinArtwork({required this.api, required this.type, this.tag, required super.id})
-    : super(providerId: providerId);
+  const JellyfinArtwork({
+    required this.api,
+    required this.type,
+    this.tag,
+    required super.id,
+  }) : super(providerId: providerId);
 
   @override
   String getMimeType() => 'image/jpeg';
 
   @override
   Uri getImageUri(ArtworkSize size) {
-    return api.imageUri(itemId: id, type: type, tag: tag, width: size.width.toInt(), quality: 90);
+    return api.imageUri(
+      itemId: id,
+      type: type,
+      tag: tag,
+      width: size.width.toInt(),
+      quality: 90,
+    );
   }
 }
 
-class JellyfinArtist extends Artist<JellyfinArtwork> with JellyfinItemWithFavourite {
+class JellyfinStreamInfo {
+  final String? container;
+  final String? codec;
+  final int? bitRate;
+  final int? sampleRate;
+  final int? channels;
+
+  const JellyfinStreamInfo({
+    this.container,
+    this.codec,
+    this.bitRate,
+    this.sampleRate,
+    this.channels,
+  });
+
+  static JellyfinStreamInfo? fromPlaybackInfo(Map<String, dynamic> data) {
+    final sources = data["MediaSources"];
+    if (sources is! List || sources.isEmpty) {
+      return null;
+    }
+
+    final source = sources.first;
+    if (source is! Map) {
+      return null;
+    }
+
+    Map<String, dynamic>? audioStream;
+    final streams = source["MediaStreams"];
+    if (streams is List) {
+      for (final entry in streams) {
+        if (entry is Map && entry["Type"] == "Audio") {
+          audioStream = Map<String, dynamic>.from(entry);
+          break;
+        }
+      }
+    }
+
+    final container = source["Container"] as String?;
+    final codec = audioStream?["Codec"] as String?;
+
+    final bitRate =
+        _parseInt(audioStream?["BitRate"]) ?? _parseInt(source["BitRate"]);
+    final sampleRate = _parseInt(audioStream?["SampleRate"]);
+    final channels = _parseInt(audioStream?["Channels"]);
+
+    return JellyfinStreamInfo(
+      container: container,
+      codec: codec,
+      bitRate: bitRate,
+      sampleRate: sampleRate,
+      channels: channels,
+    );
+  }
+}
+
+class JellyfinArtist extends Artist<JellyfinArtwork>
+    with JellyfinItemWithFavourite {
   @override
   final JellyfinApi api;
 
@@ -72,8 +138,10 @@ class JellyfinArtist extends Artist<JellyfinArtwork> with JellyfinItemWithFavour
 }
 
 // FIXME: Inherit albums artwork in case song is missing one
-class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> with JellyfinItemWithFavourite {
+class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork>
+    with JellyfinItemWithFavourite {
   final String? albumId;
+  JellyfinStreamInfo? _streamInfo;
 
   @override
   final JellyfinApi api;
@@ -112,13 +180,28 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> with JellyfinIt
         album: json["Album"],
         albumId: json["AlbumId"],
         duration: Duration(
-          microseconds: ((json["RunTimeTicks"] as int) / ticksInMicroseconds).toInt(),
+          microseconds: ((json["RunTimeTicks"] as int) / ticksInMicroseconds)
+              .toInt(),
         ),
       );
 
   @override
   Future<AudioSource> getAudioSource() async {
     return api.audio(song: this);
+  }
+
+  Future<JellyfinStreamInfo?> getStreamInfo() async {
+    if (_streamInfo != null) {
+      return _streamInfo;
+    }
+
+    final info = await api.playbackInfo(id);
+    if (info == null) {
+      return null;
+    }
+
+    _streamInfo = JellyfinStreamInfo.fromPlaybackInfo(info);
+    return _streamInfo;
   }
 
   @override
@@ -132,7 +215,8 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork> with JellyfinIt
   }
 }
 
-class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork> with JellyfinItemWithFavourite {
+class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork>
+    with JellyfinItemWithFavourite {
   @override
   final JellyfinApi api;
 
@@ -145,7 +229,10 @@ class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork> with Jellyfin
     super.artwork,
   }) : super(providerId: providerId);
 
-  factory JellyfinAlbum.fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json) {
+  factory JellyfinAlbum.fromJellyfinJson(
+    JellyfinApi api,
+    Map<String, dynamic> json,
+  ) {
     return JellyfinAlbum(
       api: api,
       id: json["Id"],
@@ -168,14 +255,23 @@ class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork> with Jellyfin
 
   @override
   Stream<Song> getSongs() async* {
-    yield* api.items(includeItemTypes: {JellyfinItemType.audio}, albumIds: {id}).cast();
+    yield* api
+        .items(includeItemTypes: {JellyfinItemType.audio}, albumIds: {id})
+        .cast();
   }
 }
 
 class JellyfinSearchHint extends SearchHint {
-  const JellyfinSearchHint({required super.title, required super.type, super.artwork});
+  const JellyfinSearchHint({
+    required super.title,
+    required super.type,
+    super.artwork,
+  });
 
-  static JellyfinSearchHint? fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json) {
+  static JellyfinSearchHint? fromJellyfinJson(
+    JellyfinApi api,
+    Map<String, dynamic> json,
+  ) {
     final LibraryItemType type;
     switch (json["Type"]) {
       case "Audio":
@@ -204,4 +300,17 @@ class JellyfinSearchHint extends SearchHint {
           : null,
     );
   }
+}
+
+int? _parseInt(dynamic value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is double) {
+    return value.round();
+  }
+  if (value is String) {
+    return int.tryParse(value);
+  }
+  return null;
 }

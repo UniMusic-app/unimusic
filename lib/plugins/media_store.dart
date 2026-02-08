@@ -38,7 +38,9 @@ class MediaStorePlugin {
 
   static Stream<MediaStoreSong> getAlbumSongs(String albumId) async* {
     try {
-      final List result = await _channel.invokeMethod('getAlbumSongs', {"albumId": albumId});
+      final List result = await _channel.invokeMethod('getAlbumSongs', {
+        "albumId": albumId,
+      });
       for (final value in result) {
         final map = Map<String, dynamic>.from(value);
         final song = MediaStoreSong.fromMap(map);
@@ -110,6 +112,8 @@ class MediaStoreSong {
 
   final Uri path;
   final String mimeType;
+  final int? bitrate;
+  final int? size;
 
   final MediaStoreArtist? artist;
 
@@ -128,10 +132,19 @@ class MediaStoreSong {
     required this.albumDisc,
     required this.albumTrack,
     required this.mimeType,
+    required this.bitrate,
+    required this.size,
   });
 
   factory MediaStoreSong.fromMap(Map<String, dynamic> map) {
     final artworkUri = (map['artwork'] as String?).let(Uri.parse);
+
+    final bitrateValue = map['bitrate'];
+    final sizeValue = map['size'];
+    final bitrate = bitrateValue is int && bitrateValue > 0
+        ? bitrateValue
+        : null;
+    final size = sizeValue is int && sizeValue > 0 ? sizeValue : null;
 
     return MediaStoreSong(
       id: map['id'],
@@ -152,6 +165,8 @@ class MediaStoreSong {
       albumTrack: map['albumTrack'],
       albumDisc: map['albumDisc'],
       mimeType: map['mimeType'],
+      bitrate: bitrate,
+      size: size,
       duration: Duration(milliseconds: map['duration']),
       path: Uri.parse(map['path']),
       artwork: artworkUri,
@@ -178,7 +193,12 @@ class MediaStoreAlbum {
   final Uri? artwork;
   final MediaStoreArtist? artist;
 
-  MediaStoreAlbum({required this.id, required this.name, this.artist, this.artwork});
+  MediaStoreAlbum({
+    required this.id,
+    required this.name,
+    this.artist,
+    this.artwork,
+  });
 
   factory MediaStoreAlbum.fromMap(Map<String, dynamic> map) {
     return MediaStoreAlbum(

@@ -20,7 +20,10 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
     return SynchronousFuture(this);
   }
 
-  Future<ui.Codec> _loadAsync(LocalAndroidImage key, ImageDecoderCallback decode) async {
+  Future<ui.Codec> _loadAsync(
+    LocalAndroidImage key,
+    ImageDecoderCallback decode,
+  ) async {
     // TODO: This might not be very efficient
     final bytes = await MediaStorePlugin.readArtwork(artworkUri);
     if (bytes == null) {
@@ -31,7 +34,10 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
   }
 
   @override
-  ImageStreamCompleter loadImage(LocalAndroidImage key, ImageDecoderCallback decode) {
+  ImageStreamCompleter loadImage(
+    LocalAndroidImage key,
+    ImageDecoderCallback decode,
+  ) {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
@@ -41,7 +47,8 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is LocalAndroidImage && other.artworkUri == artworkUri;
+      identical(this, other) ||
+      other is LocalAndroidImage && other.artworkUri == artworkUri;
 
   @override
   int get hashCode => artworkUri.hashCode;
@@ -55,7 +62,9 @@ class LocalAndroidArtist extends Artist {
     required super.favourite,
   }) : super(providerId: providerId);
 
-  static Future<LocalAndroidArtist> fromMediaStore(MediaStoreArtist artist) async {
+  static Future<LocalAndroidArtist> fromMediaStore(
+    MediaStoreArtist artist,
+  ) async {
     final artistId = artist.id.toString();
     final existingDbArtist = await DatabaseHelper.getArtist(artistId);
 
@@ -88,7 +97,8 @@ class LocalAndroidArtist extends Artist {
 class LocalAndroidArtwork extends Artwork {
   final Uri uri;
 
-  const LocalAndroidArtwork({required super.id, required this.uri}) : super(providerId: providerId);
+  const LocalAndroidArtwork({required super.id, required this.uri})
+    : super(providerId: providerId);
 
   factory LocalAndroidArtwork.fromMediaStore(Uri artworkUri) {
     // TODO: AlbumId might be better suited to be used as artwork id
@@ -166,22 +176,30 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
 
 class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
   final Uri uri;
+  final String mimeType;
+  final int? bitrateKbps;
+  final int? sizeBytes;
 
   LocalAndroidSong({
     super.artwork,
     required this.uri,
+    required this.mimeType,
+    required this.bitrateKbps,
+    required this.sizeBytes,
     required super.id,
     required super.name,
     required super.favourite,
     required super.artists,
     required super.album,
     required super.duration,
-  }) : super(providerId: providerId);
+  }) : super(providerId: providerId, filePath: uri.toString());
 
   static Future<LocalAndroidSong> fromMediaStore(MediaStoreSong song) async {
     final artwork = song.artwork.let(LocalAndroidArtwork.fromMediaStore);
     final artist = await song.artist.let(LocalAndroidArtist.fromMediaStore);
-    final albumArtist = await song.album?.artist.let(LocalAndroidArtist.fromMediaStore);
+    final albumArtist = await song.album?.artist.let(
+      LocalAndroidArtist.fromMediaStore,
+    );
 
     final List<LocalAndroidArtist> artists = [
       if (albumArtist != null && albumArtist.name != artist?.name) albumArtist,
@@ -192,6 +210,10 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
 
     final existingDbSong = await DatabaseHelper.getSong(songId);
 
+    final bitrateKbps = song.bitrate != null
+        ? (song.bitrate! / 1000).round()
+        : _bitrateFromSize(song.size, song.duration);
+
     final localSong = LocalAndroidSong(
       id: songId,
       name: song.name,
@@ -201,12 +223,18 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
       duration: song.duration,
       artists: artists,
       uri: song.path,
+      mimeType: song.mimeType,
+      bitrateKbps: bitrateKbps,
+      sizeBytes: song.size,
     );
 
     if (existingDbSong == null) {
       await DatabaseHelper.insertSong(localSong);
       if (song.album != null) {
-        await DatabaseHelper.insertAlbumSong(song.album!.id.toString(), localSong.id);
+        await DatabaseHelper.insertAlbumSong(
+          song.album!.id.toString(),
+          localSong.id,
+        );
       }
     }
 
@@ -238,4 +266,17 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
     await DatabaseHelper.setFavourite("song_items", id, value);
     favourite = value;
   }
+}
+
+int? _bitrateFromSize(int? sizeBytes, Duration duration) {
+  if (sizeBytes == null || sizeBytes <= 0) {
+    return null;
+  }
+
+  final seconds = duration.inSeconds;
+  if (seconds <= 0) {
+    return null;
+  }
+
+  return ((sizeBytes * 8) / seconds / 1000).round();
 }
