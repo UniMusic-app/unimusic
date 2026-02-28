@@ -53,48 +53,78 @@ class MusicControlsViewState extends State<MusicControlsView> {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 16),
-            child: MarqueeText(
-              text: currentItem?.name ?? "Nothing is playing",
-              style: theme.textTheme.headlineSmall,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MarqueeText(
+                        text: currentItem?.name ?? "Nothing is playing",
+                        style: theme.textTheme.headlineSmall,
+                      ),
+                      Text(
+                        currentItem?.artists.formatted ?? "",
+                        style: theme.textTheme.labelLarge,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Center(
+                    child: FutureBuilder(
+                      future: currentItem?.isFavourite(),
+                      builder: (context, snapshot) {
+                        if (snapshot.data != null) {
+                          return IconButton(
+                            color: Colors.pinkAccent,
+                            icon: AnimatedCrossFade(
+                              duration: Duration(milliseconds: 150),
+                              crossFadeState: snapshot.data!
+                                  ? CrossFadeState.showFirst
+                                  : CrossFadeState.showSecond,
+                              firstChild: const Icon(Icons.favorite_rounded),
+                              secondChild: const Icon(
+                                Icons.favorite_outline_rounded,
+                              ),
+                            ),
+                            onPressed: () async {
+                              await currentItem?.toggleFavourite(
+                                !snapshot.data!,
+                              );
+                              setState(() {});
+                            },
+                          );
+                        }
+
+                        return IconButton(
+                          onPressed: null,
+                          icon: Icon(Icons.favorite_outline_rounded),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Text(
-            currentItem?.artists.formatted ?? "",
-            style: theme.textTheme.labelLarge,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: musicManager.toggleShuffle,
-                      icon: const Icon(Icons.shuffle_rounded),
-                      color: isShuffleEnabled ? activeColor : inactiveColor,
-                      tooltip: isShuffleEnabled ? 'Shuffle on' : 'Shuffle off',
-                    ),
-                    IconButton(
-                      onPressed: musicManager.cycleLoopMode,
-                      icon: Icon(
-                        loopMode == LoopMode.one
-                            ? Icons.repeat_one_rounded
-                            : Icons.repeat_rounded,
-                      ),
-                      color: loopMode == LoopMode.off
-                          ? inactiveColor
-                          : activeColor,
-                      tooltip: switch (loopMode) {
-                        LoopMode.off => 'Loop off',
-                        LoopMode.all => 'Loop all',
-                        LoopMode.one => 'Loop one',
-                      },
-                    ),
-                  ],
+                // Shuffle button
+                IconButton(
+                  onPressed: musicManager.toggleShuffle,
+                  icon: const Icon(Icons.shuffle_rounded),
+                  color: isShuffleEnabled ? activeColor : inactiveColor,
+                  tooltip: isShuffleEnabled ? 'Shuffle on' : 'Shuffle off',
                 ),
+                // Play controls
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -145,33 +175,19 @@ class MusicControlsViewState extends State<MusicControlsView> {
                     ),
                   ],
                 ),
-                FutureBuilder(
-                  future: currentItem?.isFavourite(),
-                  builder: (context, snapshot) {
-                    if (snapshot.data != null) {
-                      return IconButton(
-                        color: Colors.pinkAccent,
-                        icon: AnimatedCrossFade(
-                          duration: Duration(milliseconds: 150),
-                          crossFadeState: snapshot.data!
-                              ? CrossFadeState.showFirst
-                              : CrossFadeState.showSecond,
-                          firstChild: const Icon(Icons.favorite_rounded),
-                          secondChild: const Icon(
-                            Icons.favorite_outline_rounded,
-                          ),
-                        ),
-                        onPressed: () async {
-                          await currentItem?.toggleFavourite(!snapshot.data!);
-                          setState(() {});
-                        },
-                      );
-                    }
-
-                    return IconButton(
-                      onPressed: null,
-                      icon: Icon(Icons.favorite_outline_rounded),
-                    );
+                // Loop mode button
+                IconButton(
+                  onPressed: musicManager.cycleLoopMode,
+                  icon: Icon(
+                    loopMode == LoopMode.one
+                        ? Icons.repeat_one_rounded
+                        : Icons.repeat_rounded,
+                  ),
+                  color: loopMode == LoopMode.off ? inactiveColor : activeColor,
+                  tooltip: switch (loopMode) {
+                    LoopMode.off => 'Loop off',
+                    LoopMode.all => 'Loop all',
+                    LoopMode.one => 'Loop one',
                   },
                 ),
               ],
@@ -516,18 +532,34 @@ class _MarqueeTextState extends State<MarqueeText> {
 
         _startScrolling(textPainter.width - maxWidth);
 
-        return ClipRect(
-          child: SizedBox(
-            height: textPainter.height,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              child: Text(
-                widget.text,
-                style: widget.style,
-                maxLines: 1,
-                softWrap: false,
+        return ShaderMask(
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: const [
+                Colors.transparent,
+                Colors.white,
+                Colors.white,
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.05, 0.95, 1.0],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.dstIn,
+          child: ClipRect(
+            child: SizedBox(
+              height: textPainter.height,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Text(
+                  widget.text,
+                  style: widget.style,
+                  maxLines: 1,
+                  softWrap: false,
+                ),
               ),
             ),
           ),

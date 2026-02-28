@@ -59,7 +59,7 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.cleaning_services_outlined),
             title: const Text('Clean up library'),
             subtitle: const Text(
-              'Remove stale songs, albums, and artwork from the database.',
+              'Remove stale songs, albums, and artworks from the database.',
             ),
             trailing: Stack(
               alignment: Alignment.center,
