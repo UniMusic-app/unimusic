@@ -69,6 +69,12 @@ extension FormatArtists on Iterable<Artist> {
   String get formatted => map((artist) => artist.name).join(" & ");
 }
 
+typedef StreamInfoParts = ({
+  String? format,
+  int? bitrateKbps,
+  int? sampleRateHz,
+});
+
 abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
     extends MusicItem {
   final String? filePath;
@@ -92,6 +98,10 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
 
   Future<AudioSource> getAudioSource();
   Future<Album?> getAlbum();
+
+  /// Returns stream info label parts (format, bitrate, sample rate).
+  /// Returns null if info cannot be determined.
+  Future<StreamInfoParts?> getStreamInfoParts();
 }
 
 abstract class Album<ArtistType extends Artist, ArtworkType extends Artwork>

@@ -204,6 +204,27 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
     final album = await api.getAlbum(albumId!);
     return album;
   }
+
+  @override
+  Future<StreamInfoParts?> getStreamInfoParts() async {
+    return switch (soundFormat) {
+      DeezerSoundFormat.flac => (
+        format: "FLAC",
+        bitrateKbps: null,
+        sampleRateHz: null,
+      ),
+      DeezerSoundFormat.mp3_128kb => (
+        format: "MP3",
+        bitrateKbps: 128,
+        sampleRateHz: null,
+      ),
+      DeezerSoundFormat.mp3_320kb => (
+        format: "MP3",
+        bitrateKbps: 320,
+        sampleRateHz: null,
+      ),
+    };
+  }
 }
 
 class DeezerArtwork extends CachedArtwork {

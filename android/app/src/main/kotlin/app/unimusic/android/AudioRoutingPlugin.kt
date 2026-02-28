@@ -54,8 +54,7 @@ class AudioRoutingPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             "canOpenSystemChooser" to (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R),
             "hasNativeAirPlayPicker" to false,
             "hasExternalRoutes" to false,
-            // AudioManager.getDevices() is API 23+.
-            "canDetectRoute" to (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M),
+            "canDetectRoute" to true,
           ),
         )
       }
@@ -73,34 +72,28 @@ class AudioRoutingPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
   }
 
   private fun detectCurrentRouteKind(): String {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-      // AudioManager.getDevices() isn't available, so we can't reliably detect routing.
-      return "builtIn"
-    }
-
     val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
     val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
 
     fun hasAnyOf(types: Set<Int>): Boolean = outputs.any { types.contains(it.type) }
 
-    val wiredTypes = setOf(
+    val wiredTypes = setOfNotNull(
       AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
       AudioDeviceInfo.TYPE_WIRED_HEADSET,
-      AudioDeviceInfo.TYPE_USB_HEADSET,
       AudioDeviceInfo.TYPE_USB_DEVICE,
       AudioDeviceInfo.TYPE_USB_ACCESSORY,
       AudioDeviceInfo.TYPE_LINE_ANALOG,
       AudioDeviceInfo.TYPE_LINE_DIGITAL,
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) AudioDeviceInfo.TYPE_USB_HEADSET else null,
     )
 
-    val bluetoothTypes = setOf(
+    val bluetoothTypes = setOfNotNull(
       AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
       AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-      AudioDeviceInfo.TYPE_HEARING_AID,
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) AudioDeviceInfo.TYPE_HEARING_AID else null,
     )
 
-    // Best-effort signal only. Android doesn't provide a stable, app-agnostic
-    // way to query the *active* media route for third-party players.
     return when {
       hasAnyOf(wiredTypes) -> "wired"
       hasAnyOf(bluetoothTypes) -> "bluetooth"

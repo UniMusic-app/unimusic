@@ -215,6 +215,20 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
     await DatabaseHelper.setFavourite("song_items", id, value);
     favourite = value;
   }
+
+  @override
+  Future<StreamInfoParts?> getStreamInfoParts() async {
+    final format = _fileExtensionFromPath(filePath);
+    return (format: format, bitrateKbps: bitrateKbps, sampleRateHz: null);
+  }
+}
+
+String? _fileExtensionFromPath(String? path) {
+  if (path == null || path.isEmpty) return null;
+  final lastSegment = path.split(RegExp(r'[\\/]')).last;
+  final dotIndex = lastSegment.lastIndexOf('.');
+  if (dotIndex <= 0 || dotIndex == lastSegment.length - 1) return null;
+  return lastSegment.substring(dotIndex + 1).trim().toUpperCase();
 }
 
 Future<int?> _bitrateFromFile(String? filePath, Duration duration) async {

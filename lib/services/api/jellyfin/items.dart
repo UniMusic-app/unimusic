@@ -213,6 +213,25 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork>
     final album = await api.item(albumId!) as Album;
     return album;
   }
+
+  @override
+  Future<StreamInfoParts?> getStreamInfoParts() async {
+    final info = await getStreamInfo();
+    if (info == null) return null;
+
+    final format = (info.codec?.trim().isNotEmpty ?? false)
+        ? info.codec!.toUpperCase()
+        : info.container?.toUpperCase();
+    final bitrateKbps = info.bitRate != null
+        ? (info.bitRate! / 1000).round()
+        : null;
+
+    return (
+      format: format,
+      bitrateKbps: bitrateKbps,
+      sampleRateHz: info.sampleRate,
+    );
+  }
 }
 
 class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork>

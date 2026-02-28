@@ -202,8 +202,8 @@ class MusicManager extends ChangeNotifier {
       return;
     }
 
-    await _reshuffleIfEnabled(force: true);
     await player.setShuffleModeEnabled(true);
+    await player.shuffle();
   }
 
   Future<void> cycleLoopMode() async {

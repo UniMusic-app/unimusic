@@ -150,8 +150,7 @@ class LibraryViewState extends State<LibraryView>
 
       await for (final item in items) {
         libraryItems[itemType] ??= [];
-        libraryItems[itemType]!.add(item);
-        _sortItems(itemType);
+        _insertSorted(itemType, item);
         yield null;
       }
     } finally {
@@ -215,19 +214,43 @@ class LibraryViewState extends State<LibraryView>
     }
   }
 
+  void _insertSorted(LibraryItemType itemType, MusicItem item) {
+    final items = libraryItems[itemType]!;
+    final activeSortBy = _effectiveSortBy(itemType);
+
+    // Binary search to find insertion point
+    int low = 0;
+    int high = items.length;
+
+    while (low < high) {
+      final mid = (low + high) ~/ 2;
+      final comparison = _compareItems(item, items[mid], activeSortBy);
+
+      if (comparison < 0) {
+        high = mid;
+      } else {
+        low = mid + 1;
+      }
+    }
+
+    items.insert(low, item);
+  }
+
+  int _compareItems(MusicItem a, MusicItem b, LibrarySortBy activeSortBy) {
+    final primary = _compareBySort(a, b, activeSortBy);
+    if (primary != 0) {
+      return primary * sortOrder.toInt();
+    }
+    return _nameKey(a).compareAlphabetically(_nameKey(b)) * sortOrder.toInt();
+  }
+
   void _sortItems(LibraryItemType itemType) {
     final items = libraryItems[itemType];
     if (items == null || items.isEmpty) return;
 
     final activeSortBy = _effectiveSortBy(itemType);
 
-    items.sort((a, b) {
-      final primary = _compareBySort(a, b, activeSortBy);
-      if (primary != 0) {
-        return primary * sortOrder.toInt();
-      }
-      return _nameKey(a).compareAlphabetically(_nameKey(b)) * sortOrder.toInt();
-    });
+    items.sort((a, b) => _compareItems(a, b, activeSortBy));
   }
 
   LibrarySortBy _effectiveSortBy(LibraryItemType itemType) {

@@ -266,6 +266,40 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
     await DatabaseHelper.setFavourite("song_items", id, value);
     favourite = value;
   }
+
+  @override
+  Future<StreamInfoParts?> getStreamInfoParts() async {
+    final format =
+        _formatFromMimeType(mimeType) ?? _fileExtensionFromPath(filePath);
+    return (format: format, bitrateKbps: bitrateKbps, sampleRateHz: null);
+  }
+}
+
+String? _formatFromMimeType(String? mimeType) {
+  if (mimeType == null || mimeType.isEmpty) return null;
+  final normalized = mimeType.toLowerCase();
+  return switch (normalized) {
+    "audio/flac" || "application/x-flac" => "FLAC",
+    "audio/mpeg" || "audio/mp3" || "audio/x-mp3" || "audio/x-mpeg" => "MP3",
+    "audio/mp4" || "audio/x-m4a" || "audio/x-m4b" => "M4A",
+    "audio/aac" || "audio/aacp" || "audio/x-aac" => "AAC",
+    "audio/ogg" || "audio/vorbis" || "application/ogg" || "audio/opus" => "OGG",
+    "audio/wav" ||
+    "audio/x-wav" ||
+    "audio/wave" ||
+    "audio/x-wave" ||
+    "audio/vnd.wav" => "WAV",
+    "audio/x-ms-wma" || "audio/x-wma" => "WMA",
+    _ => null,
+  };
+}
+
+String? _fileExtensionFromPath(String? path) {
+  if (path == null || path.isEmpty) return null;
+  final lastSegment = path.split(RegExp(r'[\\/]')).last;
+  final dotIndex = lastSegment.lastIndexOf('.');
+  if (dotIndex <= 0 || dotIndex == lastSegment.length - 1) return null;
+  return lastSegment.substring(dotIndex + 1).trim().toUpperCase();
 }
 
 int? _bitrateFromSize(int? sizeBytes, Duration duration) {

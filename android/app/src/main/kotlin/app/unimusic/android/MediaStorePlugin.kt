@@ -1,6 +1,7 @@
 package app.unimusic.android
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentUris
 import android.content.pm.PackageManager
@@ -15,7 +16,9 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.PluginRegistry
 import app.unimusic.android.MediaStoreType
+import androidx.core.net.toUri
 
 enum class MediaStoreType {
   Int,
@@ -28,6 +31,7 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var channel: MethodChannel
   private var activity: Activity? = null
   private var pendingResult: Result? = null
+  private var permissionResultListener: PluginRegistry.RequestPermissionsResultListener? = null
 
   private companion object {
     const val PERMISSION_REQUEST_CODE = 1001
@@ -58,6 +62,7 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       return
     }
 
+    @SuppressLint("UseKtx")
     val uri = Uri.parse(artworkUri) ?: run {
       result.error("ERROR", "Failed to parse URI $artworkUri", null);
       return;
@@ -129,16 +134,22 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
   private fun attachToActivity(binding: ActivityPluginBinding) {
     activity = binding.activity
 
-    binding.addRequestPermissionsResultListener { requestCode, _, grantResults ->
-      if (requestCode != PERMISSION_REQUEST_CODE) return@addRequestPermissionsResultListener false
+    // Remove existing listener if any
+    permissionResultListener?.let { binding.removeRequestPermissionsResultListener(it) }
 
-      val pr = pendingResult ?: return@addRequestPermissionsResultListener false
+    val listener = PluginRegistry.RequestPermissionsResultListener { requestCode, _, grantResults ->
+      if (requestCode != PERMISSION_REQUEST_CODE) return@RequestPermissionsResultListener false
+
+      val pr = pendingResult ?: return@RequestPermissionsResultListener false
       val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
 
       pr.success(granted)
       pendingResult = null
       true
     }
+    
+    permissionResultListener = listener
+    binding.addRequestPermissionsResultListener(listener)
   }
 
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -224,7 +235,7 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     albums.forEach { album ->
       runCatching {
         val albumArtUri = ContentUris.withAppendedId(
-          Uri.parse("content://media/external/audio/albumart"),
+          "content://media/external/audio/albumart".toUri(),
           album["id"] as Long
         )
         activity.contentResolver.openInputStream(albumArtUri)?.close()
@@ -275,7 +286,7 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         song["path"] = songUri.toString();
 
         val albumArtUri = ContentUris.withAppendedId(
-          Uri.parse("content://media/external/audio/albumart"),
+          "content://media/external/audio/albumart".toUri(),
           song["albumId"] as Long
         )
         activity.contentResolver.openInputStream(albumArtUri)?.close()
@@ -292,7 +303,7 @@ class MediaStorePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       activity,
       sortOrder = "${MediaStore.Audio.Media.DISC_NUMBER} ASC, ${MediaStore.Audio.Media.TRACK} ASC",
       selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.ALBUM_ID} = ?",
-      selectionArgs = arrayOf(albumId.toString())
+      selectionArgs = arrayOf(albumId)
     )
   }
 

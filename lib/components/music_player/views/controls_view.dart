@@ -3,11 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:unimusic/components/lazy_image.dart';
-import 'package:unimusic/services/api/deezer/api.dart';
-import 'package:unimusic/services/api/deezer/items.dart';
-import 'package:unimusic/services/api/jellyfin/items.dart';
-import 'package:unimusic/services/api/local/android/items.dart';
-import 'package:unimusic/services/api/local/shared/items.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/utils/duration.dart';
@@ -276,8 +271,9 @@ class StreamInfoLabel extends StatefulWidget {
 }
 
 class _StreamInfoLabelState extends State<StreamInfoLabel> {
-  Future<String>? _labelFuture;
+  Future<String?>? _labelFuture;
   String? _songKey;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -286,29 +282,53 @@ class _StreamInfoLabelState extends State<StreamInfoLabel> {
   }
 
   @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(covariant StreamInfoLabel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_songKey != _makeSongKey(widget.song)) {
+    final newKey = _makeSongKey(widget.song);
+    if (_songKey != newKey) {
       _updateFuture();
     }
   }
 
   void _updateFuture() {
     _songKey = _makeSongKey(widget.song);
-    _labelFuture = _buildStreamInfoLabel(widget.song);
+    _labelFuture = _buildLabel(widget.song);
+  }
+
+  Future<String?> _buildLabel(Song? song) async {
+    if (song == null) return null;
+
+    final parts = await song.getStreamInfoParts();
+    if (_disposed) return null;
+
+    return _formatLabel(song.providerId, parts);
   }
 
   @override
   Widget build(BuildContext context) {
-    final fallback = _fallbackLabel(widget.song);
-    return FutureBuilder<String>(
+    return FutureBuilder<String?>(
       future: _labelFuture,
       builder: (context, snapshot) {
-        return Text(
-          snapshot.data ?? fallback,
-          style: widget.style,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        final label = snapshot.data;
+        if (label == null || label.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return AnimatedOpacity(
+          opacity: 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: Text(
+            label,
+            style: widget.style,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         );
       },
     );
@@ -316,149 +336,27 @@ class _StreamInfoLabelState extends State<StreamInfoLabel> {
 }
 
 String? _makeSongKey(Song? song) {
-  if (song == null) {
-    return null;
-  }
-
+  if (song == null) return null;
   return "${song.providerId}:${song.id}";
 }
 
-String _fallbackLabel(Song? song) {
-  if (song == null) {
-    return "Unknown";
+String? _formatLabel(String providerId, StreamInfoParts? parts) {
+  final provider = _providerLabel(providerId);
+  if (parts == null) return provider;
+
+  final segments = <String>[];
+  if (parts.format != null && parts.format!.isNotEmpty) {
+    segments.add(parts.format!);
+  }
+  if (parts.bitrateKbps != null && parts.bitrateKbps! > 0) {
+    segments.add("${parts.bitrateKbps} kbps");
+  }
+  if (parts.sampleRateHz != null && parts.sampleRateHz! > 0) {
+    segments.add(_formatSampleRate(parts.sampleRateHz!));
   }
 
-  final provider = _providerLabel(song.providerId);
-  final extension = _fileExtensionFromPath(song.filePath);
-  return _labelFromFormat(provider, extension, null);
-}
-
-Future<String> _buildStreamInfoLabel(Song? song) async {
-  if (song == null) {
-    return "Unknown";
-  }
-
-  final provider = _providerLabel(song.providerId);
-
-  switch (song) {
-    case DeezerSong song:
-      final info = _deezerFormatInfo(song.soundFormat);
-      return _labelFromFormat(provider, info.format, info.bitrateKbps);
-    case JellyfinSong song:
-      final info = await song.getStreamInfo();
-      return _labelFromStreamInfo(provider, info);
-    case LocalSong song:
-      final extension = _fileExtensionFromPath(song.filePath);
-      return _labelFromFormat(provider, extension, song.bitrateKbps);
-    case LocalAndroidSong song:
-      final format =
-          _formatFromMimeType(song.mimeType) ??
-          _fileExtensionFromPath(song.filePath);
-      return _labelFromFormat(provider, format, song.bitrateKbps);
-    default:
-      final extension = _fileExtensionFromPath(song.filePath);
-      return _labelFromFormat(provider, extension, null);
-  }
-}
-
-String _labelFromStreamInfo(String provider, JellyfinStreamInfo? info) {
-  if (info == null) {
-    return provider;
-  }
-
-  final format = _formatFromCodecOrContainer(info.codec, info.container);
-  final bitrateKbps = info.bitRate != null
-      ? (info.bitRate! / 1000).round()
-      : null;
-  return _labelFromFormat(
-    provider,
-    format,
-    bitrateKbps,
-    sampleRateHz: info.sampleRate,
-  );
-}
-
-String _labelFromFormat(
-  String provider,
-  String? format,
-  int? bitrateKbps, {
-  int? sampleRateHz,
-}) {
-  final parts = <String>[];
-  if (format != null && format.isNotEmpty) {
-    parts.add(format);
-  }
-  if (bitrateKbps != null && bitrateKbps > 0) {
-    parts.add("$bitrateKbps kbps");
-  }
-  if (sampleRateHz != null && sampleRateHz > 0) {
-    parts.add(_formatSampleRate(sampleRateHz));
-  }
-
-  if (parts.isEmpty) {
-    return provider;
-  }
-
-  return "$provider - ${parts.join(" ")}";
-}
-
-String _formatSampleRate(int sampleRateHz) {
-  final khz = sampleRateHz / 1000;
-  final rounded = khz.roundToDouble();
-  final label = (khz - rounded).abs() < 0.05
-      ? rounded.toStringAsFixed(0)
-      : khz.toStringAsFixed(1);
-  return "$label kHz";
-}
-
-String? _formatFromMimeType(String? mimeType) {
-  if (mimeType == null || mimeType.isEmpty) {
-    return null;
-  }
-
-  final normalized = mimeType.toLowerCase();
-  if (normalized.contains("flac")) {
-    return "FLAC";
-  }
-  if (normalized.contains("mpeg") || normalized.contains("mp3")) {
-    return "MP3";
-  }
-  if (normalized.contains("aac")) {
-    return "AAC";
-  }
-  if (normalized.contains("mp4") || normalized.contains("m4a")) {
-    return "M4A";
-  }
-  if (normalized.contains("ogg") || normalized.contains("opus")) {
-    return "OGG";
-  }
-  if (normalized.contains("wav")) {
-    return "WAV";
-  }
-  if (normalized.contains("wma")) {
-    return "WMA";
-  }
-
-  return null;
-}
-
-String? _formatFromCodecOrContainer(String? codec, String? container) {
-  final raw = (codec?.trim().isNotEmpty ?? false) ? codec : container;
-  if (raw == null || raw.trim().isEmpty) {
-    return null;
-  }
-
-  return raw.toUpperCase();
-}
-
-({String? format, int? bitrateKbps}) _deezerFormatInfo(
-  DeezerSoundFormat format,
-) {
-  return switch (format) {
-    DeezerSoundFormat.flac => (format: "FLAC", bitrateKbps: null),
-    DeezerSoundFormat.mp3_128kb => (format: "MP3", bitrateKbps: 128),
-    DeezerSoundFormat.mp3_320kb => (format: "MP3", bitrateKbps: 320),
-  };
+  if (segments.isEmpty) return provider;
+  return "$provider - ${segments.join(" ")}";
 }
 
 String _providerLabel(String providerId) {
@@ -473,23 +371,13 @@ String _providerLabel(String providerId) {
   };
 }
 
-String? _fileExtensionFromPath(String? path) {
-  if (path == null || path.isEmpty) {
-    return null;
-  }
-
-  final lastSegment = path.split(RegExp(r'[\\/]')).last;
-  final dotIndex = lastSegment.lastIndexOf('.');
-  if (dotIndex <= 0 || dotIndex == lastSegment.length - 1) {
-    return null;
-  }
-
-  final extension = lastSegment.substring(dotIndex + 1).trim();
-  if (extension.isEmpty) {
-    return null;
-  }
-
-  return extension.toUpperCase();
+String _formatSampleRate(int sampleRateHz) {
+  final khz = sampleRateHz / 1000;
+  final rounded = khz.roundToDouble();
+  final label = (khz - rounded).abs() < 0.05
+      ? rounded.toStringAsFixed(0)
+      : khz.toStringAsFixed(1);
+  return "$label kHz";
 }
 
 class MarqueeText extends StatefulWidget {
