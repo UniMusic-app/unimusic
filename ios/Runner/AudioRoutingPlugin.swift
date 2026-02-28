@@ -51,7 +51,7 @@ public class AudioRoutingPlugin: NSObject, FlutterPlugin {
   private let routeDetector: AVRouteDetector? = {
     if #available(iOS 11.0, *) {
       let detector = AVRouteDetector()
-      detector.routeDetectionEnabled = true
+      detector.isRouteDetectionEnabled = true
       return detector
     }
     return nil
