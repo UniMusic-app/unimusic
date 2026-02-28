@@ -122,8 +122,17 @@ class DatabaseHelper {
   }
 
   // FAVOURITE METHODS
-  static Future<void> setFavourite(String table, String id, bool favourite) async {
-    await db.update(table, {'favourite': favourite ? 1 : 0}, where: "id = ?", whereArgs: [id]);
+  static Future<void> setFavourite(
+    String table,
+    String id,
+    bool favourite,
+  ) async {
+    await db.update(
+      table,
+      {'favourite': favourite ? 1 : 0},
+      where: "id = ?",
+      whereArgs: [id],
+    );
   }
 
   // ARTWORK METHODS
@@ -142,7 +151,10 @@ class DatabaseHelper {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  static Future<ArtworkDatabaseItem?> getArtwork(String id, {ArtworkSize? size}) async {
+  static Future<ArtworkDatabaseItem?> getArtwork(
+    String id, {
+    ArtworkSize? size,
+  }) async {
     if (size != null) {
       // Get specific size
       final results = await db.query(
@@ -183,7 +195,11 @@ class DatabaseHelper {
   }
 
   static Future<List<ArtworkDatabaseItem>> getAllArtworkSizes(String id) async {
-    final results = await db.query("artwork_items", where: "id = ?", whereArgs: [id]);
+    final results = await db.query(
+      "artwork_items",
+      where: "id = ?",
+      whereArgs: [id],
+    );
     return results.map(ArtworkDatabaseItem.fromMap).toList();
   }
 
@@ -257,7 +273,9 @@ class DatabaseHelper {
     return results.map(ArtistDatabaseItem.fromMap).toList();
   }
 
-  static Future<List<ArtistDatabaseItem>> getArtistsByProvider(String providerId) async {
+  static Future<List<ArtistDatabaseItem>> getArtistsByProvider(
+    String providerId,
+  ) async {
     final results = await db.query(
       "artist_items",
       where: "provider_id = ?",
@@ -270,7 +288,11 @@ class DatabaseHelper {
     await db.transaction((txn) async {
       await txn.update(
         "artist_items",
-        {"provider_id": artist.providerId, "name": artist.name, "artwork_id": artist.artwork?.id},
+        {
+          "provider_id": artist.providerId,
+          "name": artist.name,
+          "artwork_id": artist.artwork?.id,
+        },
         where: "id = ?",
         whereArgs: [artist.id],
       );
@@ -320,7 +342,9 @@ class DatabaseHelper {
     return results.map(AlbumDatabaseItem.fromMap).toList();
   }
 
-  static Future<List<AlbumDatabaseItem>> getAlbumsByProvider(String providerId) async {
+  static Future<List<AlbumDatabaseItem>> getAlbumsByProvider(
+    String providerId,
+  ) async {
     final results = await db.query(
       "album_items",
       where: "provider_id = ?",
@@ -329,7 +353,9 @@ class DatabaseHelper {
     return results.map(AlbumDatabaseItem.fromMap).toList();
   }
 
-  static Future<List<AlbumDatabaseItem>> getAlbumsByArtist(String artistId) async {
+  static Future<List<AlbumDatabaseItem>> getAlbumsByArtist(
+    String artistId,
+  ) async {
     final results = await db.rawQuery(
       """
       SELECT a.* FROM album_items a
@@ -341,7 +367,9 @@ class DatabaseHelper {
     return results.map(AlbumDatabaseItem.fromMap).toList();
   }
 
-  static Future<List<ArtistDatabaseItem>> getAlbumArtists(String albumId) async {
+  static Future<List<ArtistDatabaseItem>> getAlbumArtists(
+    String albumId,
+  ) async {
     final results = await db.rawQuery(
       """
       SELECT a.* FROM artist_items a
@@ -357,13 +385,21 @@ class DatabaseHelper {
     await db.transaction((txn) async {
       await txn.update(
         "album_items",
-        {"provider_id": album.providerId, "name": album.name, "artwork_id": album.artwork?.id},
+        {
+          "provider_id": album.providerId,
+          "name": album.name,
+          "artwork_id": album.artwork?.id,
+        },
         where: "id = ?",
         whereArgs: [album.id],
       );
 
       // Delete existing album-artist relationships
-      await txn.delete("album_artists", where: "album_id = ?", whereArgs: [album.id]);
+      await txn.delete(
+        "album_artists",
+        where: "album_id = ?",
+        whereArgs: [album.id],
+      );
 
       // Insert new album-artist relationships
       for (final artist in album.artists) {
@@ -426,12 +462,20 @@ class DatabaseHelper {
     return results.map(SongDatabaseItem.fromMap).toList();
   }
 
-  static Future<List<SongDatabaseItem>> getSongsByProvider(String providerId) async {
-    final results = await db.query("song_items", where: "provider_id = ?", whereArgs: [providerId]);
+  static Future<List<SongDatabaseItem>> getSongsByProvider(
+    String providerId,
+  ) async {
+    final results = await db.query(
+      "song_items",
+      where: "provider_id = ?",
+      whereArgs: [providerId],
+    );
     return results.map(SongDatabaseItem.fromMap).toList();
   }
 
-  static Future<List<SongDatabaseItem>> getSongsByArtist(String artistId) async {
+  static Future<List<SongDatabaseItem>> getSongsByArtist(
+    String artistId,
+  ) async {
     final results = await db.rawQuery(
       """
       SELECT s.* FROM song_items s
@@ -456,11 +500,17 @@ class DatabaseHelper {
   }
 
   static Future<List<SongDatabaseItem>> getSongsByAlbum(String album) async {
-    final results = await db.query("song_items", where: "album = ?", whereArgs: [album]);
+    final results = await db.query(
+      "song_items",
+      where: "album = ?",
+      whereArgs: [album],
+    );
     return results.map(SongDatabaseItem.fromMap).toList();
   }
 
-  static Future<List<SongDatabaseItem>> getSongsByAlbumId(String albumId) async {
+  static Future<List<SongDatabaseItem>> getSongsByAlbumId(
+    String albumId,
+  ) async {
     final results = await db.rawQuery(
       """
       SELECT s.* FROM song_items s
@@ -520,7 +570,11 @@ class DatabaseHelper {
       );
 
       // Delete existing song-artist relationships
-      await txn.delete("song_artists", where: "song_id = ?", whereArgs: [song.id]);
+      await txn.delete(
+        "song_artists",
+        where: "song_id = ?",
+        whereArgs: [song.id],
+      );
 
       // Insert new song-artist relationships
       for (final artist in song.artists) {
@@ -616,11 +670,21 @@ class DatabaseHelper {
   }
 
   static Future<DatabaseStatsDatabaseItem> getDatabaseStats() async {
-    final artworkCount = await db.rawQuery("SELECT COUNT(*) as count FROM artwork_items");
-    final artistCount = await db.rawQuery("SELECT COUNT(*) as count FROM artist_items");
-    final albumCount = await db.rawQuery("SELECT COUNT(*) as count FROM album_items");
-    final songCount = await db.rawQuery("SELECT COUNT(*) as count FROM song_items");
-    final searchCount = await db.rawQuery("SELECT COUNT(*) as count FROM recent_searches");
+    final artworkCount = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM artwork_items",
+    );
+    final artistCount = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM artist_items",
+    );
+    final albumCount = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM album_items",
+    );
+    final songCount = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM song_items",
+    );
+    final searchCount = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM recent_searches",
+    );
 
     return DatabaseStatsDatabaseItem(
       artwork: artworkCount.first['count'] as int,
@@ -656,12 +720,20 @@ class DatabaseHelper {
   }
 
   static Future<List<AlbumDatabaseItem>> searchAlbums(String query) async {
-    final results = await db.query("album_items", where: "name LIKE ?", whereArgs: ["%$query%"]);
+    final results = await db.query(
+      "album_items",
+      where: "name LIKE ?",
+      whereArgs: ["%$query%"],
+    );
     return results.map(AlbumDatabaseItem.fromMap).toList();
   }
 
   static Future<List<ArtistDatabaseItem>> searchArtists(String query) async {
-    final results = await db.query("artist_items", where: "name LIKE ?", whereArgs: ["%$query%"]);
+    final results = await db.query(
+      "artist_items",
+      where: "name LIKE ?",
+      whereArgs: ["%$query%"],
+    );
     return results.map(ArtistDatabaseItem.fromMap).toList();
   }
 
@@ -719,16 +791,34 @@ class DatabaseHelper {
         [providerId],
       );
 
-      await txn.delete('song_items', where: 'provider_id = ?', whereArgs: [providerId]);
-      await txn.delete('album_items', where: 'provider_id = ?', whereArgs: [providerId]);
-      await txn.delete('artist_items', where: 'provider_id = ?', whereArgs: [providerId]);
-      await txn.delete('artwork_items', where: 'provider_id = ?', whereArgs: [providerId]);
+      await txn.delete(
+        'song_items',
+        where: 'provider_id = ?',
+        whereArgs: [providerId],
+      );
+      await txn.delete(
+        'album_items',
+        where: 'provider_id = ?',
+        whereArgs: [providerId],
+      );
+      await txn.delete(
+        'artist_items',
+        where: 'provider_id = ?',
+        whereArgs: [providerId],
+      );
+      await txn.delete(
+        'artwork_items',
+        where: 'provider_id = ?',
+        whereArgs: [providerId],
+      );
     });
 
     debugPrint("Cleared cache for provider: $providerId");
   }
 
-  static Future<ProviderStatsDatabaseItem> getProviderStats(String providerId) async {
+  static Future<ProviderStatsDatabaseItem> getProviderStats(
+    String providerId,
+  ) async {
     final artworkCount = await db.rawQuery(
       "SELECT COUNT(*) as count FROM artwork_items WHERE provider_id = ?",
       [providerId],

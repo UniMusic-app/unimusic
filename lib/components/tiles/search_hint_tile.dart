@@ -6,7 +6,8 @@ class SearchHintTile extends StatelessWidget {
   final SearchHint searchHint;
   final void Function()? onTap;
 
-  const SearchHintTile({required this.searchHint, this.onTap, super.key}) : super();
+  const SearchHintTile({required this.searchHint, this.onTap, super.key})
+    : super();
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +28,16 @@ class SearchHintTile extends StatelessWidget {
         ),
       ),
 
-      title: Text(searchHint.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(searchHint.type?.name ?? "", maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(
+        searchHint.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        searchHint.type?.name ?? "",
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }

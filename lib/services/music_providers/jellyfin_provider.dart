@@ -8,12 +8,16 @@ class JellyfinMusicProvider extends MusicProvider {
 
   @override
   Stream<Song> getLibrarySongs() async* {
-    yield* api.items(recursive: true, includeItemTypes: {JellyfinItemType.audio}).cast();
+    yield* api
+        .items(recursive: true, includeItemTypes: {JellyfinItemType.audio})
+        .cast();
   }
 
   @override
   Stream<Album> getLibraryAlbums() async* {
-    yield* api.items(recursive: true, includeItemTypes: {JellyfinItemType.musicAlbum}).cast();
+    yield* api
+        .items(recursive: true, includeItemTypes: {JellyfinItemType.musicAlbum})
+        .cast();
   }
 
   @override
@@ -22,7 +26,10 @@ class JellyfinMusicProvider extends MusicProvider {
   }
 
   @override
-  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
+  Stream<MusicItem> getSearchResults({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     if (itemType == null) {
       final mergedStream = StreamGroup.merge([
         api.artists(searchTerm: query, recursive: true),
@@ -46,11 +53,16 @@ class JellyfinMusicProvider extends MusicProvider {
   }
 
   @override
-  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
+  Stream<SearchHint> getSearchHints({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     yield* api.searchHints(
       searchTerm: query,
       includeItemTypes: switch (itemType) {
-        LibraryItemType itemType => {JellyfinItemType.fromLibraryItemType(itemType)},
+        LibraryItemType itemType => {
+          JellyfinItemType.fromLibraryItemType(itemType),
+        },
         null => null,
       },
     );

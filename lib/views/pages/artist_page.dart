@@ -79,9 +79,8 @@ class _ArtistPageState extends State<ArtistPage> {
                         children: [
                           Text(
                             widget.artist.name,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -91,7 +90,9 @@ class _ArtistPageState extends State<ArtistPage> {
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: Center(child: Text('TODO: More information here!'))),
+          const SliverToBoxAdapter(
+            child: Center(child: Text('TODO: More information here!')),
+          ),
         ],
       ),
     );

@@ -69,7 +69,8 @@ extension FormatArtists on Iterable<Artist> {
   String get formatted => map((artist) => artist.name).join(" & ");
 }
 
-abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork> extends MusicItem {
+abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
+    extends MusicItem {
   final String? filePath;
   final String name;
   final Duration duration;
@@ -93,7 +94,8 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork> exte
   Future<Album?> getAlbum();
 }
 
-abstract class Album<ArtistType extends Artist, ArtworkType extends Artwork> extends MusicItem {
+abstract class Album<ArtistType extends Artist, ArtworkType extends Artwork>
+    extends MusicItem {
   final String name;
   final ArtworkType? artwork;
   final List<ArtistType> artists;
@@ -156,12 +158,22 @@ abstract class MusicProvider {
       LibraryItemType.songs => getLibrarySongs(),
       LibraryItemType.albums => getLibraryAlbums(),
       LibraryItemType.artists => getLibraryArtists(),
-      null => StreamGroup.merge([getLibrarySongs(), getLibraryAlbums(), getLibraryArtists()]),
+      null => StreamGroup.merge([
+        getLibrarySongs(),
+        getLibraryAlbums(),
+        getLibraryArtists(),
+      ]),
     };
   }
 
-  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType});
-  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType});
+  Stream<SearchHint> getSearchHints({
+    required String query,
+    LibraryItemType? itemType,
+  });
+  Stream<MusicItem> getSearchResults({
+    required String query,
+    LibraryItemType? itemType,
+  });
 
   Future<void> cleanupGarbage() async {}
 }

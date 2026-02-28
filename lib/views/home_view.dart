@@ -22,7 +22,9 @@ class HomeView extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SettingsPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsPage(),
+                    ),
                   );
                 },
               ),

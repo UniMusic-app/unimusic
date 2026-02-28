@@ -3,26 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 enum AudioRouteKind {
-  builtIn(
-    'This device',
-    'Using built-in speakers',
-    Icons.smartphone_rounded,
-  ),
-  wired(
-    'Headphones / wired',
-    'Using a wired output',
-    Icons.headphones_rounded,
-  ),
+  builtIn('This device', 'Using built-in speakers', Icons.smartphone_rounded),
+  wired('Headphones / wired', 'Using a wired output', Icons.headphones_rounded),
   bluetooth(
     'Bluetooth',
     'Using a Bluetooth device',
     Icons.speaker_group_rounded,
   ),
-  airplay(
-    'AirPlay',
-    'Streaming via AirPlay',
-    Icons.airplay_rounded,
-  ),
+  airplay('AirPlay', 'Streaming via AirPlay', Icons.airplay_rounded),
   unknown(
     'System output',
     'Using the current system audio route',

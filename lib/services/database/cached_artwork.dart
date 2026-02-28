@@ -9,7 +9,10 @@ import 'package:dio/dio.dart';
 import 'dart:ui' as ui;
 
 final dio = Dio(
-  BaseOptions(responseType: ResponseType.bytes, headers: {'User-Agent': 'UniMusic/1.0'}),
+  BaseOptions(
+    responseType: ResponseType.bytes,
+    headers: {'User-Agent': 'UniMusic/1.0'},
+  ),
 );
 
 abstract class CachedArtwork extends Artwork {
@@ -107,20 +110,30 @@ abstract class CachedArtwork extends Artwork {
   }
 }
 
-class CachedArtworkImageProvider extends ImageProvider<CachedArtworkImageProvider> {
+class CachedArtworkImageProvider
+    extends ImageProvider<CachedArtworkImageProvider> {
   final CachedArtwork artwork;
   final ArtworkSize size;
   final int? quality;
 
-  const CachedArtworkImageProvider({required this.artwork, required this.size, this.quality});
+  const CachedArtworkImageProvider({
+    required this.artwork,
+    required this.size,
+    this.quality,
+  });
 
   @override
-  Future<CachedArtworkImageProvider> obtainKey(ImageConfiguration configuration) {
+  Future<CachedArtworkImageProvider> obtainKey(
+    ImageConfiguration configuration,
+  ) {
     return SynchronousFuture(this);
   }
 
   @override
-  ImageStreamCompleter loadImage(CachedArtworkImageProvider key, ImageDecoderCallback decode) {
+  ImageStreamCompleter loadImage(
+    CachedArtworkImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
@@ -128,7 +141,10 @@ class CachedArtworkImageProvider extends ImageProvider<CachedArtworkImageProvide
     );
   }
 
-  Future<ui.Codec> _loadAsync(CachedArtworkImageProvider key, ImageDecoderCallback decode) async {
+  Future<ui.Codec> _loadAsync(
+    CachedArtworkImageProvider key,
+    ImageDecoderCallback decode,
+  ) async {
     try {
       final filePath = await key.artwork._downloadAndCache(size);
 
@@ -151,14 +167,19 @@ class CachedArtworkImageProvider extends ImageProvider<CachedArtworkImageProvide
     }
 
     try {
-      debugPrint("Fallback: loading artwork ${key.artwork.id} directly from network");
+      debugPrint(
+        "Fallback: loading artwork ${key.artwork.id} directly from network",
+      );
 
       final uri = key.artwork.getImageUri(size);
 
       final dio = Dio();
       final response = await dio.get<Uint8List>(
         uri.toString(),
-        options: Options(responseType: ResponseType.bytes, headers: {'User-Agent': 'UniMusic/1.0'}),
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'User-Agent': 'UniMusic/1.0'},
+        ),
       );
 
       if (response.data != null && response.data!.isNotEmpty) {

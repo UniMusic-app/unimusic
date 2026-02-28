@@ -5,7 +5,10 @@ class BottomSheetBarNotification extends Notification {
   final double value;
   final Duration duration;
 
-  const BottomSheetBarNotification({required this.value, required this.duration});
+  const BottomSheetBarNotification({
+    required this.value,
+    required this.duration,
+  });
 }
 
 class BottomSheetBar extends StatefulWidget {
@@ -29,7 +32,8 @@ class BottomSheetBarState extends State<BottomSheetBar> {
     return NotificationListener<BottomSheetBarNotification>(
       onNotification: (notification) {
         final phase = SchedulerBinding.instance.schedulerPhase;
-        if (phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks) {
+        if (phase == SchedulerPhase.idle ||
+            phase == SchedulerPhase.postFrameCallbacks) {
           // Safe to immediately set state
           setState(() {
             value = notification.value;
@@ -60,7 +64,11 @@ class BottomSheetBarState extends State<BottomSheetBar> {
               duration: duration ?? Duration.zero,
               curve: Curves.easeOutSine,
               opacity: 1 - value,
-              child: SizedBox(height: value > 0 ? 0 : null, key: barKey, child: widget.bar),
+              child: SizedBox(
+                height: value > 0 ? 0 : null,
+                key: barKey,
+                child: widget.bar,
+              ),
             ),
           ),
         ],

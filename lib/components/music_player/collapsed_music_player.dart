@@ -30,12 +30,20 @@ class CollapsedMusicPlayer extends StatelessWidget {
         spacing: -16,
         children: [
           IconButton(
-            onPressed: musicManager.canSkipPrevious ? musicManager.skipPrevious : null,
+            onPressed: musicManager.canSkipPrevious
+                ? musicManager.skipPrevious
+                : null,
             icon: Icon(Icons.skip_previous_rounded),
           ),
           IconButton(
-            onPressed: musicManager.canPlay ? musicManager.togglePlayPause : null,
-            icon: Icon(musicManager.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+            onPressed: musicManager.canPlay
+                ? musicManager.togglePlayPause
+                : null,
+            icon: Icon(
+              musicManager.isPlaying
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
+            ),
           ),
           IconButton(
             onPressed: musicManager.canSkipNext ? musicManager.skipNext : null,

@@ -37,7 +37,11 @@ class CacheHelper {
     return _artworkCacheDirectory!;
   }
 
-  static String _generateFileName(String id, String mimeType, ArtworkSize size) {
+  static String _generateFileName(
+    String id,
+    String mimeType,
+    ArtworkSize size,
+  ) {
     // Create a safe filename from the ID
     final hash = sha256.convert(id.codeUnits).toString();
     final extension = extensionFromMime(mimeType);
@@ -58,7 +62,11 @@ class CacheHelper {
     return filePath;
   }
 
-  static Future<File?> getArtworkFile(String id, String mimeType, ArtworkSize size) async {
+  static Future<File?> getArtworkFile(
+    String id,
+    String mimeType,
+    ArtworkSize size,
+  ) async {
     final artworkDir = await getArtworkCacheDirectory();
     final fileName = _generateFileName(id, mimeType, size);
     final filePath = path.join(artworkDir, fileName);
@@ -69,12 +77,20 @@ class CacheHelper {
     return null;
   }
 
-  static Future<bool> hasArtwork(String id, String mimeType, ArtworkSize size) async {
+  static Future<bool> hasArtwork(
+    String id,
+    String mimeType,
+    ArtworkSize size,
+  ) async {
     final file = await getArtworkFile(id, mimeType, size);
     return file != null;
   }
 
-  static Future<void> deleteArtwork(String id, String mimeType, ArtworkSize size) async {
+  static Future<void> deleteArtwork(
+    String id,
+    String mimeType,
+    ArtworkSize size,
+  ) async {
     final file = await getArtworkFile(id, mimeType, size);
     if (file != null && await file.exists()) {
       await file.delete();

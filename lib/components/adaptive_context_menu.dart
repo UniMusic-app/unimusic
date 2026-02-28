@@ -23,9 +23,14 @@ class AdaptiveContextMenu extends StatelessWidget {
   final Widget child;
   final List<AdaptiveMenuItem> items;
 
-  const AdaptiveContextMenu({super.key, required this.child, required this.items});
+  const AdaptiveContextMenu({
+    super.key,
+    required this.child,
+    required this.items,
+  });
 
-  bool get isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  bool get isDesktop =>
+      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +58,9 @@ class AdaptiveContextMenu extends StatelessWidget {
               width: 32,
               height: 4,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -61,7 +68,9 @@ class AdaptiveContextMenu extends StatelessWidget {
               child: ListView(
                 shrinkWrap: true,
                 padding: const EdgeInsets.only(top: 12, bottom: 24),
-                children: items.map((item) => _buildMobileItem(context, item)).toList(),
+                children: items
+                    .map((item) => _buildMobileItem(context, item))
+                    .toList(),
               ),
             ),
           ],
@@ -72,9 +81,15 @@ class AdaptiveContextMenu extends StatelessWidget {
 
   Widget _buildMobileItem(BuildContext context, AdaptiveMenuItem item) {
     if (item is MenuHeader) {
-      return Padding(padding: const EdgeInsets.only(left: 16, bottom: 8), child: item.child);
+      return Padding(
+        padding: const EdgeInsets.only(left: 16, bottom: 8),
+        child: item.child,
+      );
     } else if (item is MenuDivider) {
-      return const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Divider());
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Divider(),
+      );
     } else if (item is MenuAction) {
       return ListTile(
         dense: true,
@@ -110,12 +125,17 @@ class AdaptiveContextMenu extends StatelessWidget {
     );
   }
 
-  PopupMenuEntry _buildDesktopItem(BuildContext context, AdaptiveMenuItem item) {
+  PopupMenuEntry _buildDesktopItem(
+    BuildContext context,
+    AdaptiveMenuItem item,
+  ) {
     if (item is MenuHeader) {
       return PopupMenuItem(
         enabled: false,
         height: kMinInteractiveDimension,
-        labelTextStyle: WidgetStateProperty.all(Theme.of(context).textTheme.bodyMedium),
+        labelTextStyle: WidgetStateProperty.all(
+          Theme.of(context).textTheme.bodyMedium,
+        ),
         child: item.child,
       );
     } else if (item is MenuDivider) {

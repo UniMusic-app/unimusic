@@ -22,12 +22,18 @@ class LocalMusicProvider extends MusicProvider {
   }
 
   @override
-  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType}) async* {
+  Stream<SearchHint> getSearchHints({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     yield* api.getSearchHints(query: query, itemType: itemType);
   }
 
   @override
-  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType}) async* {
+  Stream<MusicItem> getSearchResults({
+    required String query,
+    LibraryItemType? itemType,
+  }) async* {
     yield* api.getSearchResults(query: query, itemType: itemType);
   }
 

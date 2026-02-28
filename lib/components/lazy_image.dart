@@ -76,14 +76,21 @@ class LazyImageState extends State<LazyImage> {
           fit: BoxFit.fill,
 
           frameBuilder:
-              (BuildContext context, Widget child, int? frame, bool? wasSynchronouslyLoaded) {
+              (
+                BuildContext context,
+                Widget child,
+                int? frame,
+                bool? wasSynchronouslyLoaded,
+              ) {
                 final visible = frame != null || wasSynchronouslyLoaded == true;
                 return Stack(
                   children: [
                     placeholder,
                     AnimatedOpacity(
                       opacity: visible ? 1 : 0,
-                      duration: widget.animationDuration ?? const Duration(milliseconds: 350),
+                      duration:
+                          widget.animationDuration ??
+                          const Duration(milliseconds: 350),
                       curve: Curves.easeInSine,
                       child: child,
                     ),

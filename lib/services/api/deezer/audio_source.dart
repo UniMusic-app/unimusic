@@ -16,13 +16,18 @@ class DeezerAudioSource extends StreamAudioSource {
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
     if (fullResponse == null || fullStream == null) {
-      final (response, stream) = await song.stream(soundFormat: soundFormat, start: 0);
+      final (response, stream) = await song.stream(
+        soundFormat: soundFormat,
+        start: 0,
+      );
       fullStream = ReplayableStream(stream);
       fullResponse = response;
     }
 
     final contentType = fullResponse!.data!.headers["content-type"]![0];
-    final sourceLength = int.parse(fullResponse!.data!.headers["content-range"]![0].split("/")[1]);
+    final sourceLength = int.parse(
+      fullResponse!.data!.headers["content-range"]![0].split("/")[1],
+    );
 
     if (start == null || end == null) {
       Stream<List<int>> stream = fullStream!.stream();

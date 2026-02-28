@@ -5,8 +5,14 @@ abstract class LocalApi {
   Stream<Album> getAllAlbums();
   Stream<Artist> getAllArtists();
 
-  Stream<SearchHint> getSearchHints({required String query, LibraryItemType? itemType});
-  Stream<MusicItem> getSearchResults({required String query, LibraryItemType? itemType});
+  Stream<SearchHint> getSearchHints({
+    required String query,
+    LibraryItemType? itemType,
+  });
+  Stream<MusicItem> getSearchResults({
+    required String query,
+    LibraryItemType? itemType,
+  });
 
   Future<void> cleanupGarbage();
 }

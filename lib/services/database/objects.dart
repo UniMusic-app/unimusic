@@ -43,16 +43,17 @@ class SongDatabaseItem extends DatabaseArtworkItem {
     required this.favourite,
   });
 
-  factory SongDatabaseItem.fromMap(Map<String, dynamic> map) => SongDatabaseItem(
-    id: map["id"],
-    providerId: map["provider_id"],
-    name: map["name"],
-    duration: map["duration"],
-    album: map["album"],
-    artworkId: map["artwork_id"],
-    filePath: map["file_path"],
-    favourite: map["favourite"] == 1,
-  );
+  factory SongDatabaseItem.fromMap(Map<String, dynamic> map) =>
+      SongDatabaseItem(
+        id: map["id"],
+        providerId: map["provider_id"],
+        name: map["name"],
+        duration: map["duration"],
+        album: map["album"],
+        artworkId: map["artwork_id"],
+        filePath: map["file_path"],
+        favourite: map["favourite"] == 1,
+      );
 
   Future<List<ArtistDatabaseItem>> getSongArtists() async {
     return await DatabaseHelper.getSongArtists(id);
@@ -72,13 +73,14 @@ class ArtworkDatabaseItem extends DatabaseItem {
     required this.filePath,
   });
 
-  factory ArtworkDatabaseItem.fromMap(Map<String, dynamic> map) => ArtworkDatabaseItem(
-    id: map["id"],
-    providerId: map["provider_id"],
-    mimeType: map["mime_type"],
-    size: ArtworkSize.fromString(map["size"]),
-    filePath: map["file_path"],
-  );
+  factory ArtworkDatabaseItem.fromMap(Map<String, dynamic> map) =>
+      ArtworkDatabaseItem(
+        id: map["id"],
+        providerId: map["provider_id"],
+        mimeType: map["mime_type"],
+        size: ArtworkSize.fromString(map["size"]),
+        filePath: map["file_path"],
+      );
 }
 
 class ArtistDatabaseItem extends DatabaseArtworkItem {
@@ -93,13 +95,14 @@ class ArtistDatabaseItem extends DatabaseArtworkItem {
     required this.favourite,
   });
 
-  factory ArtistDatabaseItem.fromMap(Map<String, dynamic> map) => ArtistDatabaseItem(
-    id: map["id"],
-    providerId: map["provider_id"],
-    name: map["name"],
-    artworkId: map["artwork_id"],
-    favourite: map["favourite"] == 1,
-  );
+  factory ArtistDatabaseItem.fromMap(Map<String, dynamic> map) =>
+      ArtistDatabaseItem(
+        id: map["id"],
+        providerId: map["provider_id"],
+        name: map["name"],
+        artworkId: map["artwork_id"],
+        favourite: map["favourite"] == 1,
+      );
 }
 
 class AlbumDatabaseItem extends DatabaseArtworkItem {
@@ -114,13 +117,14 @@ class AlbumDatabaseItem extends DatabaseArtworkItem {
     required this.favourite,
   });
 
-  factory AlbumDatabaseItem.fromMap(Map<String, dynamic> map) => AlbumDatabaseItem(
-    id: map["id"],
-    providerId: map["provider_id"],
-    name: map["name"],
-    artworkId: map["artwork_id"],
-    favourite: map["favourite"] == 1,
-  );
+  factory AlbumDatabaseItem.fromMap(Map<String, dynamic> map) =>
+      AlbumDatabaseItem(
+        id: map["id"],
+        providerId: map["provider_id"],
+        name: map["name"],
+        artworkId: map["artwork_id"],
+        favourite: map["favourite"] == 1,
+      );
 }
 
 class RecentSearchDatabaseItem {
@@ -148,13 +152,14 @@ class DatabaseStatsDatabaseItem {
     required this.recentSearches,
   });
 
-  factory DatabaseStatsDatabaseItem.fromMap(Map<String, int> map) => DatabaseStatsDatabaseItem(
-    artwork: map["artwork"]!,
-    artists: map["artists"]!,
-    albums: map["albums"]!,
-    songs: map["songs"]!,
-    recentSearches: map["recent_searches"]!,
-  );
+  factory DatabaseStatsDatabaseItem.fromMap(Map<String, int> map) =>
+      DatabaseStatsDatabaseItem(
+        artwork: map["artwork"]!,
+        artists: map["artists"]!,
+        albums: map["albums"]!,
+        songs: map["songs"]!,
+        recentSearches: map["recent_searches"]!,
+      );
 }
 
 class CacheStatsDatabaseItem {
@@ -170,12 +175,13 @@ class CacheStatsDatabaseItem {
     required this.cacheDirectory,
   });
 
-  factory CacheStatsDatabaseItem.fromMap(Map<String, dynamic> map) => CacheStatsDatabaseItem(
-    artworkCacheSizeBytes: map["artwork_cache_size_bytes"],
-    artworkCacheFiles: map["artwork_cache_files"],
-    artworkCacheSizeMb: map["artwork_cache_size_mb"],
-    cacheDirectory: map["cache_directory"],
-  );
+  factory CacheStatsDatabaseItem.fromMap(Map<String, dynamic> map) =>
+      CacheStatsDatabaseItem(
+        artworkCacheSizeBytes: map["artwork_cache_size_bytes"],
+        artworkCacheFiles: map["artwork_cache_files"],
+        artworkCacheSizeMb: map["artwork_cache_size_mb"],
+        cacheDirectory: map["cache_directory"],
+      );
 }
 
 class ProviderStatsDatabaseItem {
@@ -191,10 +197,11 @@ class ProviderStatsDatabaseItem {
     required this.songs,
   });
 
-  factory ProviderStatsDatabaseItem.fromMap(Map<String, int> map) => ProviderStatsDatabaseItem(
-    artwork: map["artwork"]!,
-    artists: map["artists"]!,
-    albums: map["albums"]!,
-    songs: map["songs"]!,
-  );
+  factory ProviderStatsDatabaseItem.fromMap(Map<String, int> map) =>
+      ProviderStatsDatabaseItem(
+        artwork: map["artwork"]!,
+        artists: map["artists"]!,
+        albums: map["albums"]!,
+        songs: map["songs"]!,
+      );
 }

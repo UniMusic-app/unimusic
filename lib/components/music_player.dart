@@ -10,7 +10,8 @@ class MusicPlayer extends StatefulWidget {
   State<MusicPlayer> createState() => MusicPlayerState();
 }
 
-class MusicPlayerState extends State<MusicPlayer> with SingleTickerProviderStateMixin {
+class MusicPlayerState extends State<MusicPlayer>
+    with SingleTickerProviderStateMixin {
   static const double _minHeight = 64.0; // dense ListTile height with 2 lines
   late double _maxHeight;
   late AnimationController _animationController;
@@ -50,12 +51,20 @@ class MusicPlayerState extends State<MusicPlayer> with SingleTickerProviderState
   }
 
   void _expand(Duration duration) {
-    _animationController.animateTo(1, duration: duration, curve: Curves.easeOutSine);
+    _animationController.animateTo(
+      1,
+      duration: duration,
+      curve: Curves.easeOutSine,
+    );
     BottomSheetBarNotification(duration: duration, value: 1).dispatch(context);
   }
 
   void _collapse(Duration duration) {
-    _animationController.animateTo(0, duration: duration, curve: Curves.easeOutSine);
+    _animationController.animateTo(
+      0,
+      duration: duration,
+      curve: Curves.easeOutSine,
+    );
     BottomSheetBarNotification(duration: duration, value: 0).dispatch(context);
   }
 
@@ -67,7 +76,8 @@ class MusicPlayerState extends State<MusicPlayer> with SingleTickerProviderState
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
-        final currentHeight = _minHeight + (_maxHeight - _minHeight) * _animationController.value;
+        final currentHeight =
+            _minHeight + (_maxHeight - _minHeight) * _animationController.value;
 
         return GestureDetector(
           onVerticalDragUpdate: _onDragUpdate,
@@ -88,7 +98,10 @@ class MusicPlayerState extends State<MusicPlayer> with SingleTickerProviderState
                 duration: Duration(milliseconds: 350),
                 layoutBuilder: (currentChild, previousChildren) {
                   return Stack(
-                    children: [...previousChildren, if (currentChild != null) currentChild],
+                    children: [
+                      ...previousChildren,
+                      if (currentChild != null) currentChild,
+                    ],
                   );
                 },
                 child: _animationController.value > 0.3
@@ -102,7 +115,8 @@ class MusicPlayerState extends State<MusicPlayer> with SingleTickerProviderState
                     : Opacity(
                         opacity: 1 - (_animationController.value * (1 / 0.3)),
                         child: CollapsedMusicPlayer(
-                          onTap: () => _expand(const Duration(milliseconds: 250)),
+                          onTap: () =>
+                              _expand(const Duration(milliseconds: 250)),
                         ),
                       ),
               ),

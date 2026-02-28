@@ -8,7 +8,11 @@ class TileAction {
   final IconData icon;
   final VoidCallback onTap;
 
-  const TileAction({required this.icon, required this.text, required this.onTap});
+  const TileAction({
+    required this.icon,
+    required this.text,
+    required this.onTap,
+  });
 }
 
 class GenericItemTile<T> extends StatelessWidget {
@@ -45,7 +49,12 @@ class GenericItemTile<T> extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: borderRadius,
-                child: LazyImage(artwork: artwork, icon: icon, width: 48, size: ArtworkSize.small),
+                child: LazyImage(
+                  artwork: artwork,
+                  icon: icon,
+                  width: 48,
+                  size: ArtworkSize.small,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -78,7 +87,12 @@ class GenericItemTile<T> extends StatelessWidget {
 
         leading: ClipRRect(
           borderRadius: borderRadius,
-          child: LazyImage(artwork: artwork, icon: icon, width: 48, size: ArtworkSize.small),
+          child: LazyImage(
+            artwork: artwork,
+            icon: icon,
+            width: 48,
+            size: ArtworkSize.small,
+          ),
         ),
 
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),

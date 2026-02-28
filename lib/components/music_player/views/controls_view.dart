@@ -389,7 +389,7 @@ String _labelFromFormat(
     parts.add(format);
   }
   if (bitrateKbps != null && bitrateKbps > 0) {
-    parts.add("${bitrateKbps} kbps");
+    parts.add("$bitrateKbps kbps");
   }
   if (sampleRateHz != null && sampleRateHz > 0) {
     parts.add(_formatSampleRate(sampleRateHz));
