@@ -3,6 +3,8 @@ import 'package:unimusic/components/adaptive_context_menu.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/components/lazy_image.dart';
 
+enum ContainedTilePosition { single, first, middle, last }
+
 class TileAction {
   final String text;
   final IconData icon;
@@ -16,6 +18,9 @@ class TileAction {
 }
 
 class GenericItemTile<T> extends StatelessWidget {
+  static const double _containedOuterRadius = 20;
+  static const double _containedInnerRadius = 4;
+
   final BorderRadiusGeometry borderRadius;
   final String type;
   final String title;
@@ -24,6 +29,8 @@ class GenericItemTile<T> extends StatelessWidget {
   final Artwork? artwork;
   final Widget icon;
   final List<AdaptiveMenuItem>? menuItems;
+  final bool contained;
+  final ContainedTilePosition containedPosition;
 
   final TileAction action;
 
@@ -37,11 +44,18 @@ class GenericItemTile<T> extends StatelessWidget {
     required this.action,
     this.menuItems,
     this.subtitle,
+    this.contained = false,
+    this.containedPosition = ContainedTilePosition.single,
     super.key,
   }) : super();
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final containedShape = RoundedRectangleBorder(
+      borderRadius: _borderRadiusForContainedPosition(containedPosition),
+    );
+
     return AdaptiveContextMenu(
       items: [
         MenuHeader(
@@ -81,9 +95,13 @@ class GenericItemTile<T> extends StatelessWidget {
 
       child: ListTile(
         onTap: action.onTap,
-
         minTileHeight: 12,
-        dense: true,
+        dense: !contained,
+        shape: contained ? containedShape : null,
+        tileColor: contained ? theme.colorScheme.surfaceContainerLow : null,
+        contentPadding: contained
+            ? const EdgeInsetsDirectional.fromSTEB(16, 6, 16, 6)
+            : null,
 
         leading: ClipRRect(
           borderRadius: borderRadius,
@@ -103,5 +121,30 @@ class GenericItemTile<T> extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  BorderRadius _borderRadiusForContainedPosition(
+    ContainedTilePosition position,
+  ) {
+    return switch (position) {
+      ContainedTilePosition.single => const BorderRadius.all(
+        Radius.circular(_containedOuterRadius),
+      ),
+      ContainedTilePosition.first => const BorderRadius.only(
+        topLeft: Radius.circular(_containedOuterRadius),
+        topRight: Radius.circular(_containedOuterRadius),
+        bottomLeft: Radius.circular(_containedInnerRadius),
+        bottomRight: Radius.circular(_containedInnerRadius),
+      ),
+      ContainedTilePosition.middle => const BorderRadius.all(
+        Radius.circular(_containedInnerRadius),
+      ),
+      ContainedTilePosition.last => const BorderRadius.only(
+        topLeft: Radius.circular(_containedInnerRadius),
+        topRight: Radius.circular(_containedInnerRadius),
+        bottomLeft: Radius.circular(_containedOuterRadius),
+        bottomRight: Radius.circular(_containedOuterRadius),
+      ),
+    };
   }
 }

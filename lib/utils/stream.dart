@@ -89,6 +89,17 @@ extension FlattenStream<T> on Stream<Iterable<T>> {
   }
 }
 
+extension WhereTypeStream<T> on Stream<dynamic> {
+  // ignore: avoid_shadowing_type_parameters
+  Stream<T> whereType<T>() async* {
+    await for (final item in this) {
+      if (item is T) {
+        yield item;
+      }
+    }
+  }
+}
+
 class ReplayableStream {
   late final Stream<List<int>> _source;
   final List<int> buffer = [];

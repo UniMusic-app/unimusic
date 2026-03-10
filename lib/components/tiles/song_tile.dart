@@ -4,6 +4,7 @@ import 'package:unimusic/components/adaptive_context_menu.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
 import 'package:unimusic/views/pages/album_page.dart';
+import 'package:unimusic/views/pages/artist_page.dart';
 
 import 'generic_item_tile.dart';
 
@@ -11,7 +12,17 @@ class SongTile extends StatelessWidget {
   final Song song;
   final TileAction? action;
   final List<AdaptiveMenuItem>? menuItems;
-  const SongTile(this.song, {super.key, this.action, this.menuItems});
+  final bool contained;
+  final ContainedTilePosition containedPosition;
+
+  const SongTile(
+    this.song, {
+    super.key,
+    this.action,
+    this.menuItems,
+    this.contained = false,
+    this.containedPosition = ContainedTilePosition.single,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +36,8 @@ class SongTile extends StatelessWidget {
       subtitle: song.artists.formatted,
       favourite: song.favourite,
       artwork: song.artwork,
+      contained: contained,
+      containedPosition: containedPosition,
 
       action:
           action ??
@@ -63,5 +76,16 @@ class SongTile extends StatelessWidget {
     AlbumPage.openAsync(context, song.getAlbum());
   }
 
-  Future<void> _goToArtist(BuildContext context) async {}
+  Future<void> _goToArtist(BuildContext context) async {
+    if (song.artists.isEmpty) {
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ArtistPage(artist: song.artists.first),
+      ),
+    );
+  }
 }

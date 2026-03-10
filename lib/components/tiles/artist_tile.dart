@@ -9,19 +9,31 @@ class ArtistTile extends StatelessWidget {
   final Artist artist;
   final TileAction? action;
   final List<AdaptiveMenuItem>? menuItems;
-  const ArtistTile(this.artist, {super.key, this.action, this.menuItems});
+  final bool contained;
+  final ContainedTilePosition containedPosition;
+
+  const ArtistTile(
+    this.artist, {
+    super.key,
+    this.action,
+    this.menuItems,
+    this.contained = false,
+    this.containedPosition = ContainedTilePosition.single,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GenericItemTile(
       type: "Artist",
-      icon: Icon(LibraryItemType.songs.icon),
+      icon: Icon(LibraryItemType.artists.icon),
 
       borderRadius: BorderRadius.circular(LibraryItemType.artists.borderRadius),
 
       title: artist.name,
       artwork: artist.artwork,
       favourite: artist.favourite,
+      contained: contained,
+      containedPosition: containedPosition,
 
       action:
           action ??

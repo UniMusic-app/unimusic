@@ -9,13 +9,23 @@ class AlbumTile extends StatelessWidget {
   final Album album;
   final TileAction? action;
   final List<AdaptiveMenuItem>? menuItems;
-  const AlbumTile(this.album, {super.key, this.action, this.menuItems});
+  final bool contained;
+  final ContainedTilePosition containedPosition;
+
+  const AlbumTile(
+    this.album, {
+    super.key,
+    this.action,
+    this.menuItems,
+    this.contained = false,
+    this.containedPosition = ContainedTilePosition.single,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GenericItemTile(
       type: "Album",
-      icon: Icon(LibraryItemType.songs.icon),
+      icon: Icon(LibraryItemType.albums.icon),
 
       borderRadius: BorderRadius.circular(LibraryItemType.albums.borderRadius),
 
@@ -23,6 +33,8 @@ class AlbumTile extends StatelessWidget {
       subtitle: album.artists.formatted,
       favourite: album.favourite,
       artwork: album.artwork,
+      contained: contained,
+      containedPosition: containedPosition,
 
       action:
           action ??

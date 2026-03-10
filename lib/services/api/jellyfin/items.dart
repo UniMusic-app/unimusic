@@ -109,6 +109,7 @@ class JellyfinArtist extends Artist<JellyfinArtwork>
     with JellyfinItemWithFavourite {
   @override
   final JellyfinApi api;
+  bool _didResolveArtwork = false;
 
   JellyfinArtist({
     required this.api,
@@ -119,22 +120,82 @@ class JellyfinArtist extends Artist<JellyfinArtwork>
     super.artwork,
   }) : super(providerId: providerId);
 
-  JellyfinArtist.fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json)
-    : this(
-        api: api,
-        id: json["Id"],
-        name: json["Name"],
-        // In case JellyfinArtist is created as a subArtist, UserData.IsFavorite will be null
-        favourite: json["UserData"]?["IsFavorite"] ?? false,
-        artwork: json["ImageTags"]?["Primary"] != null
-            ? JellyfinArtwork(
-                api: api,
-                id: json["Id"],
-                type: "Primary",
-                tag: json["ImageTags"]?["Primary"],
-              )
-            : null,
-      );
+  factory JellyfinArtist.fromJellyfinJson(
+    JellyfinApi api,
+    Map<String, dynamic> json,
+  ) {
+    return JellyfinArtist(
+      api: api,
+      id: json["Id"],
+      name: json["Name"],
+      // In case JellyfinArtist is created as a subArtist, UserData.IsFavorite will be null
+      favourite: json["UserData"]?["IsFavorite"] ?? false,
+      artwork: json["ImageTags"]?["Primary"] != null
+          ? JellyfinArtwork(
+              api: api,
+              id: json["Id"],
+              type: "Primary",
+              tag: json["ImageTags"]?["Primary"],
+            )
+          : null,
+    );
+  }
+
+  @override
+  Future<JellyfinArtwork?> getArtwork() async {
+    if (artwork != null || _didResolveArtwork) {
+      return artwork;
+    }
+
+    _didResolveArtwork = true;
+
+    try {
+      final item = await api.item(id);
+      if (item is JellyfinArtist) {
+        artwork = item.artwork;
+      }
+    } catch (_) {}
+
+    return artwork;
+  }
+
+  @override
+  Stream<Song> getFeaturedSongs({int? limit, int? startIndex}) async* {
+    yield* api
+        .items(
+          includeItemTypes: {JellyfinItemType.audio},
+          artistIds: {id},
+          sortBy: {JellyfinSortBy.playCount, JellyfinSortBy.name},
+          sortOrder: JellyfinSortOrder.descending,
+          limit: limit,
+          startIndex: startIndex,
+        )
+        .cast();
+  }
+
+  @override
+  Stream<Album> getAlbums({int? limit, int? startIndex}) async* {
+    yield* api
+        .items(
+          includeItemTypes: {JellyfinItemType.musicAlbum},
+          artistIds: {id},
+          sortBy: {JellyfinSortBy.productionYear, JellyfinSortBy.name},
+          sortOrder: JellyfinSortOrder.descending,
+          limit: limit,
+          startIndex: startIndex,
+        )
+        .cast();
+  }
+
+  @override
+  Stream<MusicItem> getFavourites() async* {
+    yield* api.items(
+      artistIds: {id},
+      includeItemTypes: {JellyfinItemType.audio, JellyfinItemType.musicAlbum},
+      isFavourite: true,
+      recursive: true,
+    );
+  }
 }
 
 // FIXME: Inherit albums artwork in case song is missing one
@@ -142,6 +203,7 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork>
     with JellyfinItemWithFavourite {
   final String? albumId;
   JellyfinStreamInfo? _streamInfo;
+  bool _didResolveArtwork = false;
 
   @override
   final JellyfinApi api;
@@ -184,6 +246,24 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork>
               .toInt(),
         ),
       );
+
+  @override
+  Future<JellyfinArtwork?> getArtwork() async {
+    if (artwork != null || _didResolveArtwork) {
+      return artwork;
+    }
+
+    _didResolveArtwork = true;
+
+    try {
+      final item = await api.item(id);
+      if (item is JellyfinSong) {
+        artwork = item.artwork;
+      }
+    } catch (_) {}
+
+    return artwork;
+  }
 
   @override
   Future<AudioSource> getAudioSource() async {
@@ -238,6 +318,7 @@ class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork>
     with JellyfinItemWithFavourite {
   @override
   final JellyfinApi api;
+  bool _didResolveArtwork = false;
 
   JellyfinAlbum({
     required this.api,
@@ -270,6 +351,24 @@ class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork>
             )
           : null,
     );
+  }
+
+  @override
+  Future<JellyfinArtwork?> getArtwork() async {
+    if (artwork != null || _didResolveArtwork) {
+      return artwork;
+    }
+
+    _didResolveArtwork = true;
+
+    try {
+      final item = await api.item(id);
+      if (item is JellyfinAlbum) {
+        artwork = item.artwork;
+      }
+    } catch (_) {}
+
+    return artwork;
   }
 
   @override

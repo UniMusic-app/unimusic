@@ -3,10 +3,12 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
+enum MusicItemType { song, album, artist }
+
 abstract class MusicItem {
   final String providerId;
   final String id;
-  final String type;
+  final MusicItemType type;
   bool favourite;
 
   MusicItem({
@@ -54,7 +56,7 @@ abstract class Artwork {
 
 abstract class Artist<ArtworkType extends Artwork> extends MusicItem {
   final String name;
-  final ArtworkType? artwork;
+  ArtworkType? artwork;
 
   Artist({
     required super.providerId,
@@ -62,7 +64,27 @@ abstract class Artist<ArtworkType extends Artwork> extends MusicItem {
     required super.favourite,
     required this.name,
     this.artwork,
-  }) : super(type: "Artist");
+  }) : super(type: MusicItemType.artist);
+
+  /// Returns the artwork for this artist.
+  ///
+  /// Implementations may override this method to fetch artwork on-demand if it
+  /// wasn't loaded during artist initialization. However, this method may still
+  /// return `null` if no artwork is available for the artist.
+  ///
+  /// Use this method instead of directly accessing the [artwork] property when
+  /// you need to ensure all possible attempts to retrieve artwork have been made.
+  Future<ArtworkType?> getArtwork() async => artwork;
+
+  /// Returns featured songs of this artist.
+  /// Typically "Top Songs", but may be different based on provider.
+  Stream<Song> getFeaturedSongs({int? limit, int? startIndex});
+
+  /// Get all albums of this artist.
+  Stream<Album> getAlbums({int? limit, int? startIndex});
+
+  /// Get all favourited songs and albums from this artist.
+  Stream<MusicItem> getFavourites();
 }
 
 extension FormatArtists on Iterable<Artist> {
@@ -77,12 +99,12 @@ typedef StreamInfoParts = ({
 
 abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
     extends MusicItem {
-  final String? filePath;
   final String name;
   final Duration duration;
   final String? album;
-  final ArtworkType? artwork;
   final List<ArtistType> artists;
+  final String? filePath;
+  ArtworkType? artwork;
 
   Song({
     required super.providerId,
@@ -94,9 +116,21 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
     this.filePath,
     this.album,
     this.artwork,
-  }) : super(type: "Song");
+  }) : super(type: MusicItemType.song);
 
   Future<AudioSource> getAudioSource();
+
+  /// Returns the artwork for this song.
+  ///
+  /// Implementations may override this method to fetch artwork on-demand if it
+  /// wasn't loaded during artist initialization. However, this method may still
+  /// return `null` if no artwork is available for the song.
+  ///
+  /// Use this method instead of directly accessing the [artwork] property when
+  /// you need to ensure all possible attempts to retrieve artwork have been made.
+  Future<ArtworkType?> getArtwork() async => artwork;
+
+  /// Get the album of this song, if available.
   Future<Album?> getAlbum();
 
   /// Returns stream info label parts (format, bitrate, sample rate).
@@ -107,8 +141,8 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
 abstract class Album<ArtistType extends Artist, ArtworkType extends Artwork>
     extends MusicItem {
   final String name;
-  final ArtworkType? artwork;
   final List<ArtistType> artists;
+  ArtworkType? artwork;
 
   Album({
     required super.providerId,
@@ -117,7 +151,17 @@ abstract class Album<ArtistType extends Artist, ArtworkType extends Artwork>
     required this.name,
     required this.artists,
     this.artwork,
-  }) : super(type: "Album");
+  }) : super(type: MusicItemType.album);
+
+  /// Returns the artwork for this album.
+  ///
+  /// Implementations may override this method to fetch artwork on-demand if it
+  /// wasn't loaded during artist initialization. However, this method may still
+  /// return `null` if no artwork is available for the album.
+  ///
+  /// Use this method instead of directly accessing the [artwork] property when
+  /// you need to ensure all possible attempts to retrieve artwork have been made.
+  Future<ArtworkType?> getArtwork() async => artwork;
 
   Stream<Song> getSongs();
 }

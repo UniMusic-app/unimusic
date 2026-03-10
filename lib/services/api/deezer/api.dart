@@ -74,7 +74,12 @@ class DeezerApi {
   final Dio dio;
   final String arl;
   final DeezerUserData userData;
-  final Map<String, Set<String>> favoriteIds = {};
+  // TODO: Implement the incremental favorite fetching (with persistent favorite storage) with checksum
+  final Map<MusicItemType, Set<String>> favoriteIds = {
+    MusicItemType.song: {},
+    MusicItemType.album: {},
+    MusicItemType.artist: {},
+  };
 
   DeezerApi({required this.arl, required this.userData})
     : dio = getDio(arl: arl);
@@ -311,23 +316,21 @@ class DeezerApi {
   }
 
   Stream<DeezerSong> getFavoriteSongs() async* {
-    final songIdResponse = await callMethod("song.getFavoriteIds");
-    final songIds = songIdResponse.data["results"]["data"]
-        .map((item) => item["SNG_ID"])
+    final response = await callMethod("song.getFavoriteIds");
+    final songIds = response.data["results"]["data"]
+        .map((item) => item["SNG_ID"].toString())
         .toList();
 
     final songTracksResponse = await callMethod(
       "song.getListData",
-      data: {"sng_ids": songIds},
+      data: {"SNG_IDS": songIds},
     );
     final songTracks = songTracksResponse.data["results"]["data"];
-
-    favoriteIds["Song"] = {};
 
     for (final trackJson in songTracks) {
       final track = DeezerTrack(api: this, trackInfo: trackJson);
       final song = DeezerSong.fromTrack(track, favourite: true);
-      favoriteIds["Song"]!.add(song.id);
+      favoriteIds[MusicItemType.song]!.add(song.id);
       yield song;
     }
   }
@@ -335,10 +338,9 @@ class DeezerApi {
   Stream<DeezerArtist> getFavoriteArtists() async* {
     final profileResponse = await callMethod(
       "deezer.pageProfile",
-      data: {"user_id": userData.userId, "tab": "artists"},
+      data: {"USER_ID": userData.userId, "tab": "artists"},
     );
 
-    favoriteIds["Artist"] = {};
     final artists = profileResponse.data["results"]["TAB"]["artists"]["data"];
 
     for (final artistJson in artists) {
@@ -347,7 +349,7 @@ class DeezerApi {
         json: artistJson,
         favourite: true,
       );
-      favoriteIds["Artist"]!.add(artist.id);
+      favoriteIds[MusicItemType.artist]!.add(artist.id);
       yield artist;
     }
   }
@@ -355,10 +357,9 @@ class DeezerApi {
   Stream<DeezerAlbum> getFavoriteAlbums() async* {
     final profileResponse = await callMethod(
       "deezer.pageProfile",
-      data: {"user_id": userData.userId, "tab": "albums"},
+      data: {"USER_ID": userData.userId, "tab": "albums"},
     );
 
-    favoriteIds["Album"] = {};
     final albums = profileResponse.data["results"]["TAB"]["albums"]["data"];
 
     for (final albumJson in albums) {
@@ -367,7 +368,7 @@ class DeezerApi {
         json: albumJson,
         favourite: true,
       );
-      favoriteIds["Album"]!.add(album.id);
+      favoriteIds[MusicItemType.album]!.add(album.id);
       yield album;
     }
   }
@@ -375,7 +376,7 @@ class DeezerApi {
   Future<DeezerAlbum> getAlbum(String albumId) async {
     final pageResponse = await callMethod(
       "deezer.pageAlbum",
-      data: {"alb_id": albumId, "lang": "en"},
+      data: {"ALB_ID": albumId, "lang": "en"},
     );
 
     final results = pageResponse.data["results"];
@@ -394,6 +395,85 @@ class DeezerApi {
   Future<List<DeezerSong>> getAlbumSongs(String albumId) async {
     final album = await getAlbum(albumId);
     return album.songs!;
+  }
+
+  Future<List<DeezerSong>> getArtistTopSongs(
+    String artistId, {
+    int? limit,
+    int? index,
+  }) async {
+    final response = await callMethod(
+      'artist.getTopTrack',
+      data: {
+        'ART_ID': artistId,
+        if (limit != null) 'nb': limit,
+        if (index != null) 'start': index,
+      },
+    );
+
+    final data = response.data;
+    final items = data is Map && data['results'] is Map
+        ? data['results']['data']
+        : null;
+    if (items is! List) {
+      throw Exception('Unexpected Deezer GW response: ${response.data}');
+    }
+
+    return items
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .map(
+          (item) => DeezerSong.fromTrack(
+            DeezerTrack(api: this, trackInfo: item),
+            favourite: favoriteIds[MusicItemType.song]?.contains(
+              item['SNG_ID'].toString(),
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<DeezerAlbum>> getArtistAlbums(
+    String artistId, {
+    int? limit,
+    int? index,
+  }) async {
+    final response = await callMethod(
+      'album.getDiscography',
+      data: {
+        'ART_ID': artistId,
+        'discography_mode': 'all',
+        'nb_songs': 0,
+        if (limit != null) 'nb': limit,
+        if (index != null) 'start': index,
+      },
+    );
+
+    final data = response.data;
+    final items = data is Map && data['results'] is Map
+        ? data['results']['data']
+        : null;
+    if (items is! List) {
+      throw Exception('Unexpected Deezer GW response: ${response.data}');
+    }
+
+    return items
+        .whereType<Map<String, dynamic>>()
+        .where((item) {
+          final isOfficialAlbum = item['ARTISTS_ALBUMS_IS_OFFICIAL'];
+          final isPrimaryArtist = item['ART_ID'].toString() == artistId;
+          return isOfficialAlbum && isPrimaryArtist;
+        })
+        .map(
+          (item) => DeezerAlbum.fromDeezerJson(
+            api: this,
+            json: item,
+            favourite: favoriteIds[MusicItemType.album]?.contains(
+              item['ALB_ID'].toString(),
+            ),
+          ),
+        )
+        .toList();
   }
 
   Stream<SearchHint> getSearchHints({
@@ -467,13 +547,32 @@ class DeezerApi {
   }
 
   Future<void> removeFavorite(MusicItem item) async {
-    await callMethod("song.removeFavorites", data: {"IDS": item.id});
-    favoriteIds[item.type]?.remove(item.id);
+    switch (item.type) {
+      case MusicItemType.song:
+        await callMethod('favorite_song.remove', data: {'SNG_ID': item.id});
+        break;
+      case MusicItemType.album:
+        await callMethod('album.deleteFavorite', data: {'ALB_ID': item.id});
+        break;
+      case MusicItemType.artist:
+        await callMethod('artist.deleteFavorite', data: {'ART_ID': item.id});
+        break;
+    }
+    favoriteIds[item.type]!.remove(item.id);
   }
 
   Future<void> addFavorite(MusicItem item) async {
-    await callMethod("song.addFavorites", data: {"IDS": item.id});
-    favoriteIds[item.type] ??= {};
+    switch (item.type) {
+      case MusicItemType.song:
+        await callMethod('favorite_song.add', data: {'SNG_ID': item.id});
+        break;
+      case MusicItemType.album:
+        await callMethod('album.addFavorite', data: {'ALB_ID': item.id});
+        break;
+      case MusicItemType.artist:
+        await callMethod('artist.addFavorite', data: {'ART_ID': item.id});
+        break;
+    }
     favoriteIds[item.type]!.add(item.id);
   }
 
@@ -483,12 +582,15 @@ class DeezerApi {
         return ids.contains(item.id);
       default:
         return switch (item.type) {
-          "Song" => getFavoriteSongs().any((song) => song.id == item.id),
-          "Artist" => getFavoriteArtists().any(
+          MusicItemType.song => getFavoriteSongs().any(
+            (song) => song.id == item.id,
+          ),
+          MusicItemType.artist => getFavoriteArtists().any(
             (artist) => artist.id == item.id,
           ),
-          "Album" => getFavoriteAlbums().any((artist) => artist.id == item.id),
-          final type => throw UnimplementedError(type),
+          MusicItemType.album => getFavoriteAlbums().any(
+            (album) => album.id == item.id,
+          ),
         };
     }
   }

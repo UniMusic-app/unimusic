@@ -74,6 +74,7 @@ class JellyfinApi {
   Future<AudioSource> audio({required JellyfinSong song}) async {
     final uri = _uri(pathSegments: ["Items", song.id, "File"]);
     final headers = {HttpHeaders.authorizationHeader: authenticationHeader};
+    final artwork = await song.getArtwork();
 
     return ProgressiveAudioSource(
       uri,
@@ -85,7 +86,7 @@ class JellyfinApi {
         artist: song.artists.formatted,
         duration: song.duration,
         artHeaders: headers,
-        artUri: song.artwork?.getImageUri(ArtworkSize.medium),
+        artUri: artwork?.getImageUri(ArtworkSize.medium),
       ),
       options: ProgressiveAudioSourceOptions(
         // Required to make FLAC files not seek behind the actual position

@@ -5,8 +5,9 @@ import 'package:unimusic/utils/duration.dart';
 class AlbumSongTile extends StatefulWidget {
   final Song song;
   final void Function()? onTap;
+  final String? subtitle;
 
-  const AlbumSongTile(this.song, {super.key, this.onTap});
+  const AlbumSongTile(this.song, {super.key, this.onTap, this.subtitle});
 
   @override
   State<AlbumSongTile> createState() => _AlbumSongTileState();
@@ -42,6 +43,9 @@ class _AlbumSongTileState extends State<AlbumSongTile> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
+      subtitle: widget.subtitle != null
+          ? Text(widget.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis)
+          : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

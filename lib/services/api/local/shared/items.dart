@@ -114,6 +114,46 @@ class LocalArtist extends Artist<LocalArtwork> {
     favourite = value;
   }
 
+  @override
+  Stream<Song> getFeaturedSongs({int? limit, int? startIndex}) async* {
+    final songsData = await DatabaseHelper.getSongsByArtist(id);
+    songsData.sort((left, right) {
+      final albumCompare = (left.album ?? '').toLowerCase().compareTo(
+        (right.album ?? '').toLowerCase(),
+      );
+      if (albumCompare != 0) {
+        return albumCompare;
+      }
+
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+
+    for (final songData in _pageItems(
+      songsData,
+      limit: limit,
+      startIndex: startIndex,
+    )) {
+      yield await LocalSong.fromDatabase(api, songData);
+    }
+  }
+
+  @override
+  Stream<Album> getAlbums({int? limit, int? startIndex}) async* {
+    final albumsData = await DatabaseHelper.getAlbumsByArtist(id);
+    albumsData.sort(
+      (left, right) =>
+          left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+    );
+
+    for (final albumData in _pageItems(
+      albumsData,
+      limit: limit,
+      startIndex: startIndex,
+    )) {
+      yield await LocalAlbum.fromDatabase(api, albumData);
+    }
+  }
+
   static LocalArtist fromDatabase(
     LocalSharedApi api,
     ArtistDatabaseItem artist,
@@ -129,6 +169,17 @@ class LocalArtist extends Artist<LocalArtwork> {
       favourite: artist.favourite,
       artwork: artwork,
     );
+  }
+
+  @override
+  Stream<MusicItem> getFavourites() async* {
+    final favourites = await DatabaseHelper.getArtistFavourites(id);
+    for (final songData in favourites.songs) {
+      yield await LocalSong.fromDatabase(api, songData);
+    }
+    for (final albumData in favourites.albums) {
+      yield await LocalAlbum.fromDatabase(api, albumData);
+    }
   }
 }
 
@@ -185,6 +236,8 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
 
   @override
   Future<AudioSource> getAudioSource() async {
+    final artwork = await getArtwork();
+
     return AudioSource.file(
       filePath!,
       tag: MediaItem(
@@ -315,4 +368,16 @@ class LocalSearchHint extends SearchHint {
     required super.type,
     super.artwork,
   });
+}
+
+Iterable<T> _pageItems<T>(List<T> items, {int? limit, int? startIndex}) {
+  final start = startIndex ?? 0;
+  if (start >= items.length) {
+    return const [];
+  }
+
+  final end = limit == null
+      ? items.length
+      : (start + limit).clamp(0, items.length);
+  return items.sublist(start, end);
 }

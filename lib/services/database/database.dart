@@ -709,6 +709,56 @@ class DatabaseHelper {
     );
   }
 
+  // FAVOURITE METHODS
+  static Future<List<SongDatabaseItem>> getFavouriteSongs() async {
+    final results = await db.query(
+      "song_items",
+      where: "favourite = 1",
+    );
+    return results.map(SongDatabaseItem.fromMap).toList();
+  }
+
+  static Future<List<AlbumDatabaseItem>> getFavouriteAlbums() async {
+    final results = await db.query(
+      "album_items",
+      where: "favourite = 1",
+    );
+    return results.map(AlbumDatabaseItem.fromMap).toList();
+  }
+
+  static Future<List<ArtistDatabaseItem>> getFavouriteArtists() async {
+    final results = await db.query(
+      "artist_items",
+      where: "favourite = 1",
+    );
+    return results.map(ArtistDatabaseItem.fromMap).toList();
+  }
+
+  /// Returns all favourited songs and albums associated with the given artist.
+  static Future<({List<SongDatabaseItem> songs, List<AlbumDatabaseItem> albums})>
+      getArtistFavourites(String artistId) async {
+    final songResults = await db.rawQuery(
+      """
+      SELECT s.* FROM song_items s
+      JOIN song_artists sa ON s.id = sa.song_id
+      WHERE sa.artist_id = ? AND s.favourite = 1
+      """,
+      [artistId],
+    );
+    final albumResults = await db.rawQuery(
+      """
+      SELECT a.* FROM album_items a
+      JOIN album_artists aa ON a.id = aa.album_id
+      WHERE aa.artist_id = ? AND a.favourite = 1
+      """,
+      [artistId],
+    );
+    return (
+      songs: songResults.map(SongDatabaseItem.fromMap).toList(),
+      albums: albumResults.map(AlbumDatabaseItem.fromMap).toList(),
+    );
+  }
+
   // SEARCH METHODS
   static Future<List<SongDatabaseItem>> searchSongs(String query) async {
     final results = await db.query(

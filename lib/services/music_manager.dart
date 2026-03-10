@@ -196,14 +196,23 @@ class MusicManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setShuffleModeEnabled(
+    bool enabled, {
+    bool reshuffle = true,
+  }) async {
+    await player.setShuffleModeEnabled(enabled);
+    if (enabled && reshuffle && player.sequence.isNotEmpty) {
+      await player.shuffle();
+    }
+  }
+
   Future<void> toggleShuffle() async {
     if (isShuffleEnabled) {
-      await player.setShuffleModeEnabled(false);
+      await setShuffleModeEnabled(false);
       return;
     }
 
-    await player.setShuffleModeEnabled(true);
-    await player.shuffle();
+    await setShuffleModeEnabled(true);
   }
 
   Future<void> cycleLoopMode() async {
@@ -233,6 +242,7 @@ class MusicManager extends ChangeNotifier {
   Future<void> clearQueue() async {
     await player.clearAudioSources();
     queue.clear();
+    queuePosition = 0;
     notifyListeners();
   }
 
@@ -240,6 +250,10 @@ class MusicManager extends ChangeNotifier {
     await player.removeAudioSourceAt(position);
     queue.removeAt(position);
     notifyListeners();
+  }
+
+  Future<List<AudioSource>> _resolveAudioSources(Iterable<Song> songs) {
+    return Future.wait(songs.map((song) => song.getAudioSource()));
   }
 
   Future<void> queueSongStream(Stream<Song> songs, {int? position}) async {
@@ -268,20 +282,18 @@ class MusicManager extends ChangeNotifier {
 
   Future<void> queueSongs(List<Song> songs, {int? position}) async {
     if (songs.isEmpty) return;
-    for (final song in songs) {
-      final audioSource = await song.getAudioSource();
 
-      if (position != null) {
-        queue.insert(position, song);
-        await player.insertAudioSource(position, audioSource);
-        position += 1;
-      } else {
-        queue.add(song);
-        await player.addAudioSource(audioSource);
-      }
+    final audioSources = await _resolveAudioSources(songs);
 
-      notifyListeners();
+    if (position != null) {
+      queue.insertAll(position, songs);
+      await player.insertAudioSources(position, audioSources);
+    } else {
+      queue.addAll(songs);
+      await player.addAudioSources(audioSources);
     }
+
+    notifyListeners();
 
     await _reshuffleIfEnabled();
   }
@@ -301,6 +313,8 @@ class MusicManager extends ChangeNotifier {
         await queueSong(song, position: position);
       case Album album:
         await queueAlbum(album, position: position);
+      case Artist artist:
+        await queueSongStream(artist.getFeaturedSongs(), position: position);
       default:
         throw UnimplementedError();
     }

@@ -1,3 +1,4 @@
+import 'package:async/async.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:unimusic/services/api/deezer/api.dart';
@@ -124,7 +125,10 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
     bool? favourite,
   }) : super(
          providerId: providerId,
-         favourite: favourite ?? api.favoriteIds["Song"]?.contains(id) ?? false,
+         favourite:
+             favourite ??
+             api.favoriteIds[MusicItemType.song]?.contains(id) ??
+             false,
        );
 
   DeezerSong.fromTrack(DeezerTrack track, {bool? favourite})
@@ -134,6 +138,7 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
         name: track.title!,
         artists: track.artists!,
         album: track.album!,
+        favourite: favourite,
         albumId: track.albumId,
         duration: track.duration!,
         trackToken: track.trackToken,
@@ -181,6 +186,8 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
 
   @override
   Future<AudioSource> getAudioSource() async {
+    final artwork = await getArtwork();
+
     return DeezerAudioSource(
       song: this,
       soundFormat: soundFormat,
@@ -265,7 +272,10 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
     bool? favourite,
   }) : super(
          providerId: providerId,
-         favourite: favourite ?? api.favoriteIds["Song"]?.contains(id) ?? false,
+         favourite:
+             favourite ??
+             api.favoriteIds[MusicItemType.artist]?.contains(id) ??
+             false,
        );
 
   factory DeezerArtist.fromDeezerJson({
@@ -290,6 +300,44 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
       artwork: DeezerArtwork.withType(id: json["ART_PICTURE"], type: "artist"),
     );
   }
+
+  @override
+  Stream<Song> getFeaturedSongs({int? limit, int? startIndex}) async* {
+    final songs = await api.getArtistTopSongs(
+      id,
+      limit: limit,
+      index: startIndex,
+    );
+    yield* Stream.fromIterable(songs);
+  }
+
+  @override
+  Stream<Album> getAlbums({int? limit, int? startIndex}) async* {
+    final albums = await api.getArtistAlbums(
+      id,
+      limit: limit,
+      index: startIndex,
+    );
+    yield* Stream.fromIterable(albums);
+  }
+
+  @override
+  Stream<MusicItem> getFavourites() async* {
+    final allFavourites = StreamGroup.merge([
+      api.getFavoriteSongs(),
+      api.getFavoriteAlbums(),
+    ]);
+
+    final artistFavourites = allFavourites.where((item) {
+      return switch (item) {
+        DeezerSong song => song.artists.any((artist) => artist.id == id),
+        DeezerAlbum album => album.artists.any((artist) => artist.id == id),
+        _ => false,
+      };
+    });
+
+    yield* artistFavourites;
+  }
 }
 
 class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork>
@@ -308,7 +356,10 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork>
     bool? favourite,
   }) : super(
          providerId: providerId,
-         favourite: favourite ?? api.favoriteIds["Song"]?.contains(id) ?? false,
+         favourite:
+             favourite ??
+             api.favoriteIds[MusicItemType.album]?.contains(id) ??
+             false,
        );
 
   factory DeezerAlbum.fromDeezerJson({

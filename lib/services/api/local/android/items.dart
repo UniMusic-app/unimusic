@@ -92,6 +92,71 @@ class LocalAndroidArtist extends Artist {
     await DatabaseHelper.setFavourite("artist_items", id, value);
     favourite = value;
   }
+
+  @override
+  Stream<Song> getFeaturedSongs({int? limit, int? startIndex}) async* {
+    await MediaStorePlugin.requestPermission();
+    final songs = await MediaStorePlugin.getSongs()
+        .where((song) => _matchesSong(song, artistId: id, artistName: name))
+        .asyncMap(LocalAndroidSong.fromMediaStore)
+        .toList();
+
+    songs.sort((left, right) {
+      final albumCompare = (left.album ?? '').toLowerCase().compareTo(
+        (right.album ?? '').toLowerCase(),
+      );
+      if (albumCompare != 0) {
+        return albumCompare;
+      }
+
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+
+    yield* Stream.fromIterable(
+      _pageItems(songs, limit: limit, startIndex: startIndex),
+    );
+  }
+
+  @override
+  Stream<Album> getAlbums({int? limit, int? startIndex}) async* {
+    await MediaStorePlugin.requestPermission();
+    final albums = await MediaStorePlugin.getAlbums()
+        .where((album) => _matchesAlbum(album, artistId: id, artistName: name))
+        .asyncMap(LocalAndroidAlbum.fromMediaStore)
+        .toList();
+
+    albums.sort(
+      (left, right) =>
+          left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+    );
+
+    yield* Stream.fromIterable(
+      _pageItems(albums, limit: limit, startIndex: startIndex),
+    );
+  }
+
+  @override
+  Stream<MusicItem> getFavourites() async* {
+    await MediaStorePlugin.requestPermission();
+
+    final songs = await MediaStorePlugin.getSongs()
+        .where((song) => _matchesSong(song, artistId: id, artistName: name))
+        .asyncMap(LocalAndroidSong.fromMediaStore)
+        .toList();
+
+    for (final song in songs) {
+      if (song.favourite) yield song;
+    }
+
+    final albums = await MediaStorePlugin.getAlbums()
+        .where((album) => _matchesAlbum(album, artistId: id, artistName: name))
+        .asyncMap(LocalAndroidAlbum.fromMediaStore)
+        .toList();
+
+    for (final album in albums) {
+      if (album.favourite) yield album;
+    }
+  }
 }
 
 class LocalAndroidArtwork extends Artwork {
@@ -243,6 +308,8 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
 
   @override
   Future<AudioSource> getAudioSource() async {
+    final artwork = await getArtwork();
+
     return AudioSource.uri(
       uri,
       tag: MediaItem(id: id, title: name, artUri: artwork?.uri),
@@ -313,4 +380,35 @@ int? _bitrateFromSize(int? sizeBytes, Duration duration) {
   }
 
   return ((sizeBytes * 8) / seconds / 1000).round();
+}
+
+bool _matchesSong(
+  MediaStoreSong song, {
+  required String artistId,
+  required String artistName,
+}) {
+  return song.artist?.id.toString() == artistId ||
+      song.artist?.name == artistName ||
+      song.album?.artist?.name == artistName;
+}
+
+bool _matchesAlbum(
+  MediaStoreAlbum album, {
+  required String artistId,
+  required String artistName,
+}) {
+  return album.artist?.id.toString() == artistId ||
+      album.artist?.name == artistName;
+}
+
+Iterable<T> _pageItems<T>(List<T> items, {int? limit, int? startIndex}) {
+  final start = startIndex ?? 0;
+  if (start >= items.length) {
+    return const [];
+  }
+
+  final end = limit == null
+      ? items.length
+      : (start + limit).clamp(0, items.length);
+  return items.sublist(start, end);
 }
