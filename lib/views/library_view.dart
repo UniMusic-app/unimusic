@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:unimusic/components/library_filter_button.dart';
 import 'package:unimusic/components/tiles/music_item_tile.dart';
 import 'package:unimusic/services/music_manager.dart';
 import 'package:unimusic/services/music_providers/music_provider.dart';
@@ -21,8 +22,8 @@ class LibraryViewState extends State<LibraryView>
 
   LibrarySortBy sortBy = LibrarySortBy.name;
   LibrarySortOrder sortOrder = LibrarySortOrder.ascending;
+  LibraryFilters filters = const LibraryFilters();
   Map<LibraryItemType, List<MusicItem>> libraryItems = {};
-  MusicItem? currentItem;
 
   final Map<LibrarySortBy, String> _sortLabels = {
     LibrarySortBy.name: 'Name',
@@ -47,10 +48,10 @@ class LibraryViewState extends State<LibraryView>
 
   @override
   Widget build(BuildContext context) {
-    // Listen for changes in music providers
-    context.select(
-      (MusicManager musicManager) => musicManager.providers.length,
-    );
+    final musicManager = context.watch<MusicManager>();
+    final availableProviderIds = musicManager.providers
+        .map((provider) => provider.id)
+        .toSet();
 
     final view = View.of(context);
     final safeAreaPadding = MediaQueryData.fromView(view).padding;
@@ -83,6 +84,15 @@ class LibraryViewState extends State<LibraryView>
                 icon: const Icon(Icons.sort_by_alpha),
                 tooltip: "Sort By",
               ),
+              LibraryFilterButton(
+                filters: filters,
+                providers: musicManager.providers,
+                onChanged: (nextFilters) {
+                  setState(() {
+                    filters = nextFilters;
+                  });
+                },
+              ),
             ],
 
             bottom: TabBar(
@@ -101,27 +111,47 @@ class LibraryViewState extends State<LibraryView>
           return StreamBuilder(
             stream: _loadLibraryItems(context, itemType).asBroadcastStream(),
             builder: (context, snapshot) {
-              if (libraryItems.isNotEmpty ||
-                  snapshot.connectionState != ConnectionState.waiting) {
-                final items = libraryItems[itemType];
+              final filteredItems = _filteredItems(
+                itemType,
+                availableProviderIds,
+              );
+              final hasActiveFilters =
+                  filters.textFilterCount > 0 ||
+                  filters.providerIds
+                      .intersection(availableProviderIds)
+                      .isNotEmpty;
+              final isStillLoading =
+                  filteredItems.isEmpty &&
+                  snapshot.connectionState != ConnectionState.done;
 
-                return RefreshIndicator(
-                  onRefresh: _handleRefresh,
-                  child: ListView.builder(
-                    padding: EdgeInsets.only(
-                      top: 16,
-                      bottom: safeAreaPadding.bottom + 48,
-                    ),
-                    itemCount: items?.length ?? 0,
-                    itemBuilder: (context, index) {
-                      final item = items![index];
-                      return MusicItemTile(item);
-                    },
-                  ),
-                );
+              if (isStillLoading) {
+                return const Center(child: CircularProgressIndicator());
               }
 
-              return const Center(child: CircularProgressIndicator());
+              final showEmptyState = filteredItems.isEmpty;
+
+              return RefreshIndicator(
+                onRefresh: _handleRefresh,
+                child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    top: 16,
+                    bottom: safeAreaPadding.bottom + 48,
+                  ),
+                  itemCount: showEmptyState ? 1 : filteredItems.length,
+                  itemBuilder: (context, index) {
+                    if (showEmptyState) {
+                      return _EmptyLibraryState(
+                        itemType: itemType,
+                        hasActiveFilters: hasActiveFilters,
+                      );
+                    }
+
+                    final item = filteredItems[index];
+                    return MusicItemTile(item);
+                  },
+                ),
+              );
             },
           );
         }).toList(),
@@ -309,5 +339,88 @@ class LibraryViewState extends State<LibraryView>
       Artist artist => artist.name,
       _ => '',
     };
+  }
+
+  List<MusicItem> _filteredItems(
+    LibraryItemType itemType,
+    Set<String> availableProviderIds,
+  ) {
+    final items = libraryItems[itemType] ?? const <MusicItem>[];
+
+    return items
+        .where((item) => _matchesFilters(item, availableProviderIds))
+        .toList(growable: false);
+  }
+
+  bool _matchesFilters(MusicItem item, Set<String> availableProviderIds) {
+    final selectedProviderIds = filters.providerIds.intersection(
+      availableProviderIds,
+    );
+
+    if (selectedProviderIds.isNotEmpty &&
+        !selectedProviderIds.contains(item.providerId)) {
+      return false;
+    }
+
+    final titleQuery = filters.titleQuery.trim().toLowerCase();
+    final albumQuery = filters.albumQuery.trim().toLowerCase();
+    final artistQuery = filters.artistQuery.trim().toLowerCase();
+
+    return switch (item) {
+      Song song =>
+        _matchesText(song.name, titleQuery) &&
+            _matchesText(song.album ?? '', albumQuery) &&
+            _matchesText(song.artists.formatted, artistQuery),
+      Album album =>
+        titleQuery.isEmpty &&
+            _matchesText(album.name, albumQuery) &&
+            _matchesText(album.artists.formatted, artistQuery),
+      Artist artist =>
+        titleQuery.isEmpty &&
+            albumQuery.isEmpty &&
+            _matchesText(artist.name, artistQuery),
+      _ => true,
+    };
+  }
+
+  bool _matchesText(String source, String query) {
+    if (query.isEmpty) return true;
+    return source.toLowerCase().contains(query);
+  }
+}
+
+class _EmptyLibraryState extends StatelessWidget {
+  final LibraryItemType itemType;
+  final bool hasActiveFilters;
+
+  const _EmptyLibraryState({
+    required this.itemType,
+    required this.hasActiveFilters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final description = hasActiveFilters
+        ? 'No ${itemType.name.toLowerCase()} match the current filters.'
+        : 'No ${itemType.name.toLowerCase()} found yet.';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+      child: Column(
+        children: [
+          Icon(
+            itemType.icon,
+            size: 40,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -205,8 +205,9 @@ enum LibrarySortOrder {
 }
 
 abstract class MusicProvider {
+  final String id;
   final String name;
-  const MusicProvider(this.name);
+  const MusicProvider({required this.id, required this.name});
 
   Stream<Song> getLibrarySongs();
   Stream<Album> getLibraryAlbums();
