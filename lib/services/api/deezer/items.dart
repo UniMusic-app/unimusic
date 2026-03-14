@@ -60,6 +60,8 @@ class DeezerTrack {
   String? get album => trackInfo["ALB_TITLE"];
   String? get albumId => trackInfo["ALB_ID"];
   String? get trackToken => trackInfo["TRACK_TOKEN"];
+  int? get discNumber => int.tryParse(trackInfo["DISK_NUMBER"] ?? "");
+  int? get trackNumber => int.tryParse(trackInfo["TRACK_NUMBER"] ?? "");
 
   List<DeezerArtist>? get artists => switch (trackInfo["ARTISTS"]) {
     List<dynamic> artists =>
@@ -121,6 +123,8 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
     required super.album,
     required super.duration,
     super.artwork,
+    super.discNumber,
+    super.trackNumber,
 
     bool? favourite,
   }) : super(
@@ -144,6 +148,8 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
         trackToken: track.trackToken,
         trackTokenExpire: track.trackTokenExpire,
         artwork: track.albumArtwork,
+        discNumber: track.discNumber,
+        trackNumber: track.trackNumber,
       );
 
   DeezerSong.fromDeezerJson({

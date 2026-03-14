@@ -107,6 +107,18 @@ class _AlbumPageState extends State<AlbumPage> {
         .toList()
         .then((songs) {
           if (mounted) {
+            songs.sort((a, b) {
+              final discA = a.discNumber ?? 1;
+              final discB = b.discNumber ?? 1;
+              if (discA != discB) {
+                return discA.compareTo(discB);
+              }
+
+              final trackA = a.trackNumber ?? 9999;
+              final trackB = b.trackNumber ?? 9999;
+              return trackA.compareTo(trackB);
+            });
+
             setState(() {
               _songs = songs;
               _isLoadingSongs = false;
@@ -253,20 +265,60 @@ class _AlbumPageState extends State<AlbumPage> {
               ),
             )
           else
-            SliverList.builder(
-              itemCount: _songs!.length,
-              itemBuilder: (context, index) {
-                final song = _songs![index];
-                return AlbumSongTile(
-                  song,
-                  onTap: () async {
-                    await musicManager.queueSong(song);
-                  },
-                );
-              },
-            ),
+            ..._buildSongList(musicManager),
         ],
       ),
     );
+  }
+
+  List<Widget> _buildSongList(MusicManager musicManager) {
+    if (_songs == null || _songs!.isEmpty) return [];
+
+    final songsByDisc = <int, List<Song>>{};
+    for (final song in _songs!) {
+      final disc = song.discNumber ?? 1;
+      songsByDisc.putIfAbsent(disc, () => []).add(song);
+    }
+
+    final discNumbers = songsByDisc.keys.toList()..sort();
+    final hasMultipleDiscs = discNumbers.length > 1;
+
+    final widgets = <Widget>[];
+    for (final discNumber in discNumbers) {
+      final discSongs = songsByDisc[discNumber]!;
+
+      if (hasMultipleDiscs) {
+        widgets.add(
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Disc $discNumber',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        );
+      }
+
+      widgets.add(
+        SliverList.builder(
+          itemCount: discSongs.length,
+          itemBuilder: (context, index) {
+            final song = discSongs[index];
+            return AlbumSongTile(
+              song,
+              onTap: () async {
+                await musicManager.queueSong(song);
+              },
+            );
+          },
+        ),
+      );
+    }
+
+    return widgets;
   }
 }

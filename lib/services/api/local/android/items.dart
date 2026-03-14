@@ -257,6 +257,8 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
     required super.artists,
     required super.album,
     required super.duration,
+    super.discNumber,
+    super.trackNumber,
   }) : super(providerId: providerId, filePath: uri.toString());
 
   static Future<LocalAndroidSong> fromMediaStore(MediaStoreSong song) async {
@@ -291,6 +293,8 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
       mimeType: song.mimeType,
       bitrateKbps: bitrateKbps,
       sizeBytes: song.size,
+      discNumber: song.albumDisc,
+      trackNumber: song.albumTrack,
     );
 
     if (existingDbSong == null) {

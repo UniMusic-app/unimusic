@@ -30,7 +30,7 @@ class DatabaseHelper {
 
     db = await openDatabase(
       databasePath,
-      version: 1,
+      version: 2,
       onCreate: (Database db, int version) async {
         await db.execute("""
           CREATE TABLE recent_searches (
@@ -81,6 +81,8 @@ class DatabaseHelper {
             album TEXT,
             artwork_id TEXT,
             file_path TEXT,
+            disc_number INTEGER,
+            track_number INTEGER,
             favourite INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY(artwork_id) REFERENCES artwork_items(id) ON DELETE SET NULL
           )
@@ -115,6 +117,16 @@ class DatabaseHelper {
             FOREIGN KEY(song_id) REFERENCES song_items(id) ON DELETE CASCADE
           )
         """);
+      },
+      onUpgrade: (Database db, int oldVersion, int newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            "ALTER TABLE song_items ADD COLUMN disc_number INTEGER",
+          );
+          await db.execute(
+            "ALTER TABLE song_items ADD COLUMN track_number INTEGER",
+          );
+        }
       },
     );
 
@@ -431,6 +443,8 @@ class DatabaseHelper {
         "album": song.album,
         "artwork_id": song.artwork?.id,
         "file_path": song.filePath,
+        "disc_number": song.discNumber,
+        "track_number": song.trackNumber,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
 
       // Insert song-artist relationships
@@ -711,32 +725,25 @@ class DatabaseHelper {
 
   // FAVOURITE METHODS
   static Future<List<SongDatabaseItem>> getFavouriteSongs() async {
-    final results = await db.query(
-      "song_items",
-      where: "favourite = 1",
-    );
+    final results = await db.query("song_items", where: "favourite = 1");
     return results.map(SongDatabaseItem.fromMap).toList();
   }
 
   static Future<List<AlbumDatabaseItem>> getFavouriteAlbums() async {
-    final results = await db.query(
-      "album_items",
-      where: "favourite = 1",
-    );
+    final results = await db.query("album_items", where: "favourite = 1");
     return results.map(AlbumDatabaseItem.fromMap).toList();
   }
 
   static Future<List<ArtistDatabaseItem>> getFavouriteArtists() async {
-    final results = await db.query(
-      "artist_items",
-      where: "favourite = 1",
-    );
+    final results = await db.query("artist_items", where: "favourite = 1");
     return results.map(ArtistDatabaseItem.fromMap).toList();
   }
 
   /// Returns all favourited songs and albums associated with the given artist.
-  static Future<({List<SongDatabaseItem> songs, List<AlbumDatabaseItem> albums})>
-      getArtistFavourites(String artistId) async {
+  static Future<
+    ({List<SongDatabaseItem> songs, List<AlbumDatabaseItem> albums})
+  >
+  getArtistFavourites(String artistId) async {
     final songResults = await db.rawQuery(
       """
       SELECT s.* FROM song_items s

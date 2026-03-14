@@ -219,6 +219,8 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork>
     required super.duration,
     required super.favourite,
     super.artwork,
+    super.discNumber,
+    super.trackNumber,
   }) : super(providerId: providerId);
 
   JellyfinSong.fromJellyfinJson(JellyfinApi api, Map<String, dynamic> json)
@@ -245,6 +247,8 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork>
           microseconds: ((json["RunTimeTicks"] as int) / ticksInMicroseconds)
               .toInt(),
         ),
+        trackNumber: json["IndexNumber"],
+        discNumber: json["ParentIndexNumber"],
       );
 
   @override

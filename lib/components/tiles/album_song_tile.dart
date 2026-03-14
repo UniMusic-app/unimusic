@@ -38,6 +38,19 @@ class _AlbumSongTileState extends State<AlbumSongTile> {
     return ListTile(
       onTap: widget.onTap,
       dense: true,
+      leading: widget.song.trackNumber != null
+          ? SizedBox(
+              width: 32,
+              child: Center(
+                child: Text(
+                  '${widget.song.trackNumber}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            )
+          : null,
       title: Text(
         widget.song.name,
         maxLines: 1,
@@ -59,7 +72,7 @@ class _AlbumSongTileState extends State<AlbumSongTile> {
                   )
                 : Icon(
                     Icons.favorite_outline_rounded,
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 16,
                   ),
             onPressed: _toggleFavourite,

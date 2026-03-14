@@ -433,10 +433,7 @@ class DeezerApi {
       },
     );
 
-    final items = results is Map ? results['data'] : null;
-    if (items is! List) {
-      throw Exception('Unexpected Deezer GW response for artist.getTopTrack');
-    }
+    final items = results['data'] as List;
 
     return items
         .whereType<Map>()
@@ -468,10 +465,7 @@ class DeezerApi {
       },
     );
 
-    final items = results is Map ? results['data'] : null;
-    if (items is! List) {
-      throw Exception('Unexpected Deezer GW response for album.getDiscography');
-    }
+    final items = results['data'] as List;
 
     return items
         .whereType<Map<String, dynamic>>()

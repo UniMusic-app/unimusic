@@ -199,6 +199,8 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
     required super.duration,
     super.album,
     super.artwork,
+    super.discNumber,
+    super.trackNumber,
   }) : super(providerId: providerId, filePath: filePath);
 
   static Future<LocalSong> fromDatabase(
@@ -231,6 +233,8 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
       filePath: song.filePath!,
       bitrateKbps: bitrateKbps,
       artwork: artwork,
+      discNumber: song.discNumber,
+      trackNumber: song.trackNumber,
     );
   }
 

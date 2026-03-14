@@ -258,6 +258,8 @@ class LocalSharedApi extends LocalApi {
         filePath: file.path,
         bitrateKbps: bitrateKbps,
         artwork: artwork,
+        discNumber: tags.discNumber,
+        trackNumber: tags.trackNumber,
       );
 
       // Insert song into database

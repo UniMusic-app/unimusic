@@ -104,6 +104,8 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
   final String? album;
   final List<ArtistType> artists;
   final String? filePath;
+  final int? discNumber;
+  final int? trackNumber;
   ArtworkType? artwork;
 
   Song({
@@ -116,6 +118,8 @@ abstract class Song<ArtistType extends Artist, ArtworkType extends Artwork>
     this.filePath,
     this.album,
     this.artwork,
+    this.discNumber,
+    this.trackNumber,
   }) : super(type: MusicItemType.song);
 
   Future<AudioSource> getAudioSource();

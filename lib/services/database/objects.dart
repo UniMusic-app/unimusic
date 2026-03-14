@@ -31,6 +31,8 @@ class SongDatabaseItem extends DatabaseArtworkItem {
   final String? album;
   final bool favourite;
   final String? filePath;
+  final int? discNumber;
+  final int? trackNumber;
 
   const SongDatabaseItem({
     required super.id,
@@ -41,6 +43,8 @@ class SongDatabaseItem extends DatabaseArtworkItem {
     required this.album,
     required this.filePath,
     required this.favourite,
+    this.discNumber,
+    this.trackNumber,
   });
 
   factory SongDatabaseItem.fromMap(Map<String, dynamic> map) =>
@@ -53,6 +57,8 @@ class SongDatabaseItem extends DatabaseArtworkItem {
         artworkId: map["artwork_id"],
         filePath: map["file_path"],
         favourite: map["favourite"] == 1,
+        discNumber: map["disc_number"],
+        trackNumber: map["track_number"],
       );
 
   Future<List<ArtistDatabaseItem>> getSongArtists() async {
