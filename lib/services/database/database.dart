@@ -1,19 +1,42 @@
-import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/services/database/cache.dart';
-import 'package:unimusic/services/database/objects.dart';
-import 'package:path/path.dart' as path;
-import 'package:sqflite/sqflite.dart';
+import "package:flutter/material.dart";
+import "package:path_provider/path_provider.dart";
+import "package:unimusic/services/database/cache.dart";
+import "package:unimusic/services/database/dao/album_dao.dart";
+import "package:unimusic/services/database/dao/artist_dao.dart";
+import "package:unimusic/services/database/dao/artwork_dao.dart";
+import "package:unimusic/services/database/dao/favourite_dao.dart";
+import "package:unimusic/services/database/dao/recent_search_dao.dart";
+import "package:unimusic/services/database/dao/song_dao.dart";
+import "package:unimusic/services/database/objects.dart";
+import "package:unimusic/services/database/tables.dart";
+import "package:path/path.dart" as path;
+import "package:sqflite/sqflite.dart";
+
+export "package:unimusic/services/database/dao/album_dao.dart";
+export "package:unimusic/services/database/dao/artist_dao.dart";
+export "package:unimusic/services/database/dao/artwork_dao.dart";
+export "package:unimusic/services/database/dao/favourite_dao.dart";
+export "package:unimusic/services/database/dao/recent_search_dao.dart";
+export "package:unimusic/services/database/dao/song_dao.dart";
+export "package:unimusic/services/database/tables.dart";
 
 class DatabaseHelper {
   static late final Database db;
 
-  DatabaseHelper._internal();
-  static late final DatabaseHelper _instance;
-  factory DatabaseHelper() {
-    return _instance;
-  }
+  static SongDao? _songs;
+  static AlbumDao? _albums;
+  static ArtistDao? _artists;
+  static ArtworkDao? _artworks;
+  static FavouriteDao? _favourites;
+  static RecentSearchDao? _recentSearches;
+
+  static SongDao get songs => _songs ??= SongDao(db);
+  static AlbumDao get albums => _albums ??= AlbumDao(db);
+  static ArtistDao get artists => _artists ??= ArtistDao(db);
+  static ArtworkDao get artworks => _artworks ??= ArtworkDao(db);
+  static FavouriteDao get favourites => _favourites ??= FavouriteDao(db);
+  static RecentSearchDao get recentSearches =>
+      _recentSearches ??= RecentSearchDao(db);
 
   static Future<String> getDatabaseDirectory() async {
     final directory = await getApplicationSupportDirectory();
@@ -33,14 +56,14 @@ class DatabaseHelper {
       version: 2,
       onCreate: (Database db, int version) async {
         await db.execute("""
-          CREATE TABLE recent_searches (
+          CREATE TABLE ${Tables.recentSearches} (
             id TEXT PRIMARY KEY,
             type TEXT NOT NULL
           )
         """);
 
         await db.execute("""
-          CREATE TABLE artwork_items (
+          CREATE TABLE ${Tables.artworks} (
             id TEXT NOT NULL,
             provider_id TEXT NOT NULL,
             mime_type TEXT NOT NULL,
@@ -51,29 +74,29 @@ class DatabaseHelper {
         """);
 
         await db.execute("""
-          CREATE TABLE artist_items (
+          CREATE TABLE ${Tables.artists} (
             id TEXT PRIMARY KEY,
             provider_id TEXT NOT NULL,
             name TEXT NOT NULL,
             artwork_id TEXT,
             favourite INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY(artwork_id) REFERENCES artwork_items(id) ON DELETE SET NULL
+            FOREIGN KEY(artwork_id) REFERENCES ${Tables.artworks}(id) ON DELETE SET NULL
           )
         """);
 
         await db.execute("""
-          CREATE TABLE album_items (
+          CREATE TABLE ${Tables.albums} (
             id TEXT PRIMARY KEY,
             provider_id TEXT NOT NULL,
             name TEXT NOT NULL,
             artwork_id TEXT,
             favourite INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY(artwork_id) REFERENCES artwork_items(id) ON DELETE SET NULL
+            FOREIGN KEY(artwork_id) REFERENCES ${Tables.artworks}(id) ON DELETE SET NULL
           )
         """);
 
         await db.execute("""
-          CREATE TABLE song_items (
+          CREATE TABLE ${Tables.songs} (
             id TEXT PRIMARY KEY,
             provider_id TEXT NOT NULL,
             name TEXT NOT NULL,
@@ -84,633 +107,118 @@ class DatabaseHelper {
             disc_number INTEGER,
             track_number INTEGER,
             favourite INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY(artwork_id) REFERENCES artwork_items(id) ON DELETE SET NULL
+            FOREIGN KEY(artwork_id) REFERENCES ${Tables.artworks}(id) ON DELETE SET NULL
           )
         """);
 
         await db.execute("""
-          CREATE TABLE album_artists (
+          CREATE TABLE ${Tables.albumArtists} (
             album_id TEXT NOT NULL,
             artist_id TEXT NOT NULL,
             PRIMARY KEY(album_id, artist_id),
-            FOREIGN KEY(album_id) REFERENCES album_items(id) ON DELETE CASCADE,
-            FOREIGN KEY(artist_id) REFERENCES artist_items(id) ON DELETE CASCADE
+            FOREIGN KEY(album_id) REFERENCES ${Tables.albums}(id) ON DELETE CASCADE,
+            FOREIGN KEY(artist_id) REFERENCES ${Tables.artists}(id) ON DELETE CASCADE
           )
         """);
 
         await db.execute("""
-          CREATE TABLE song_artists (
+          CREATE TABLE ${Tables.songArtists} (
             song_id TEXT NOT NULL,
             artist_id TEXT NOT NULL,
             PRIMARY KEY(song_id, artist_id),
-            FOREIGN KEY(song_id) REFERENCES song_items(id) ON DELETE CASCADE,
-            FOREIGN KEY(artist_id) REFERENCES artist_items(id) ON DELETE CASCADE
+            FOREIGN KEY(song_id) REFERENCES ${Tables.songs}(id) ON DELETE CASCADE,
+            FOREIGN KEY(artist_id) REFERENCES ${Tables.artists}(id) ON DELETE CASCADE
           )
         """);
 
         await db.execute("""
-          CREATE TABLE album_songs (
+          CREATE TABLE ${Tables.albumSongs} (
             album_id TEXT NOT NULL,
             song_id TEXT NOT NULL,
             PRIMARY KEY(album_id, song_id),
-            FOREIGN KEY(album_id) REFERENCES album_items(id) ON DELETE CASCADE,
-            FOREIGN KEY(song_id) REFERENCES song_items(id) ON DELETE CASCADE
+            FOREIGN KEY(album_id) REFERENCES ${Tables.albums}(id) ON DELETE CASCADE,
+            FOREIGN KEY(song_id) REFERENCES ${Tables.songs}(id) ON DELETE CASCADE
           )
         """);
       },
       onUpgrade: (Database db, int oldVersion, int newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
-            "ALTER TABLE song_items ADD COLUMN disc_number INTEGER",
+            "ALTER TABLE ${Tables.songs} ADD COLUMN disc_number INTEGER",
           );
           await db.execute(
-            "ALTER TABLE song_items ADD COLUMN track_number INTEGER",
+            "ALTER TABLE ${Tables.songs} ADD COLUMN track_number INTEGER",
           );
         }
       },
     );
-
-    _instance = DatabaseHelper._internal();
   }
 
-  // FAVOURITE METHODS
-  static Future<void> setFavourite(
-    String table,
-    String id,
-    bool favourite,
-  ) async {
-    await db.update(
-      table,
-      {'favourite': favourite ? 1 : 0},
-      where: "id = ?",
-      whereArgs: [id],
-    );
-  }
-
-  // ARTWORK METHODS
-  static Future<void> insertArtwork(
-    Artwork artwork, {
-    required String mimeType,
-    required ArtworkSize size,
-    String? filePath,
-  }) async {
-    await db.insert("artwork_items", {
-      "id": artwork.id,
-      "provider_id": artwork.providerId,
-      "mime_type": mimeType,
-      "size": size.toString(),
-      "file_path": filePath,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  static Future<ArtworkDatabaseItem?> getArtwork(
-    String id, {
-    ArtworkSize? size,
-  }) async {
-    if (size != null) {
-      // Get specific size
-      final results = await db.query(
-        "artwork_items",
-        where: "id = ? AND size = ?",
-        whereArgs: [id, size.toString()],
-        limit: 1,
-      );
-
-      if (results.isNotEmpty) {
-        return ArtworkDatabaseItem.fromMap(results.first);
-      }
-    }
-
-    // Fallback to any size variant, preferring larger size
-    final results = await db.query(
-      "artwork_items",
-      where: "id = ?",
-      whereArgs: [id],
-      orderBy: """
-      CASE size
-          WHEN 'large' THEN 3
-          WHEN 'medium' THEN 2
-          WHEN 'small' THEN 1
-      END DESC;
-      """,
-      limit: 1,
-    );
-    if (results.isEmpty) {
-      return null;
-    }
-    return ArtworkDatabaseItem.fromMap(results.first);
-  }
-
-  static Future<List<ArtworkDatabaseItem>> getAllArtwork() async {
-    final results = await db.query("artwork_items");
-    return results.map(ArtworkDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<ArtworkDatabaseItem>> getAllArtworkSizes(String id) async {
-    final results = await db.query(
-      "artwork_items",
-      where: "id = ?",
-      whereArgs: [id],
-    );
-    return results.map(ArtworkDatabaseItem.fromMap).toList();
-  }
-
-  static Future<void> updateArtwork(
-    String id, {
-    required ArtworkSize size,
-    required String mimeType,
-    String? filePath,
-  }) async {
-    await db.update(
-      "artwork_items",
-      {"mime_type": mimeType, "file_path": filePath},
-      where: "id = ? AND size = ?",
-      whereArgs: [id, size.toString()],
-    );
-  }
-
-  static Future<void> deleteArtwork(String id, {ArtworkSize? size}) async {
-    if (size != null) {
-      // Delete specific size
-      final artworkData = await getArtwork(id, size: size);
-      if (artworkData != null) {
-        await CacheHelper.deleteArtwork(id, artworkData.mimeType, size);
-      }
-
-      await db.delete(
-        "artwork_items",
-        where: "id = ? AND size = ?",
-        whereArgs: [id, size.toString()],
-      );
-    } else {
-      // Delete all sizes
-      final artworkSizes = await getAllArtworkSizes(id);
-      for (final artworkData in artworkSizes) {
-        final mimeType = artworkData.mimeType;
-        final size = artworkData.size;
-        await CacheHelper.deleteArtwork(id, mimeType, size);
-      }
-      await db.delete("artwork_items", where: "id = ?", whereArgs: [id]);
-    }
-  }
-
-  // ARTIST METHODS
-  static Future<void> insertArtist(Artist artist) async {
-    await db.transaction((txn) async {
-      await txn.insert("artist_items", {
-        "id": artist.id,
-        "provider_id": artist.providerId,
-        "name": artist.name,
-        "artwork_id": artist.artwork?.id,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-    });
-  }
-
-  static Future<ArtistDatabaseItem?> getArtist(String id) async {
-    final List<Map<String, dynamic>> results = await db.query(
-      "artist_items",
-      where: "id = ?",
-      whereArgs: [id],
-      limit: 1,
-    );
-
-    if (results.isEmpty) {
-      return null;
-    }
-    return ArtistDatabaseItem.fromMap(results.first);
-  }
-
-  static Future<List<ArtistDatabaseItem>> getAllArtists() async {
-    final results = await db.query("artist_items");
-    return results.map(ArtistDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<ArtistDatabaseItem>> getArtistsByProvider(
-    String providerId,
-  ) async {
-    final results = await db.query(
-      "artist_items",
-      where: "provider_id = ?",
-      whereArgs: [providerId],
-    );
-    return results.map(ArtistDatabaseItem.fromMap).toList();
-  }
-
-  static Future<void> updateArtist(Artist artist) async {
-    await db.transaction((txn) async {
-      await txn.update(
-        "artist_items",
-        {
-          "provider_id": artist.providerId,
-          "name": artist.name,
-          "artwork_id": artist.artwork?.id,
-        },
-        where: "id = ?",
-        whereArgs: [artist.id],
-      );
-    });
-  }
-
-  static Future<void> deleteArtist(String id) async {
-    await db.delete("artist_items", where: "id = ?", whereArgs: [id]);
-  }
-
-  // ALBUM METHODS
-  static Future<void> insertAlbum(Album album) async {
-    await db.transaction((txn) async {
-      await txn.insert("album_items", {
-        "id": album.id,
-        "provider_id": album.providerId,
-        "name": album.name,
-        "artwork_id": album.artwork?.id,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-
-      // Insert album-artist relationships
-      for (final artist in album.artists) {
-        await txn.insert("album_artists", {
-          "album_id": album.id,
-          "artist_id": artist.id,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
-      }
-    });
-  }
-
-  static Future<AlbumDatabaseItem?> getAlbum(String id) async {
-    final List<Map<String, dynamic>> results = await db.query(
-      "album_items",
-      where: "id = ?",
-      whereArgs: [id],
-      limit: 1,
-    );
-
-    if (results.isEmpty) {
-      return null;
-    }
-    return AlbumDatabaseItem.fromMap(results.first);
-  }
-
-  static Future<List<AlbumDatabaseItem>> getAllAlbums() async {
-    final results = await db.query("album_items");
-    return results.map(AlbumDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<AlbumDatabaseItem>> getAlbumsByProvider(
-    String providerId,
-  ) async {
-    final results = await db.query(
-      "album_items",
-      where: "provider_id = ?",
-      whereArgs: [providerId],
-    );
-    return results.map(AlbumDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<AlbumDatabaseItem>> getAlbumsByArtist(
-    String artistId,
-  ) async {
-    final results = await db.rawQuery(
-      """
-      SELECT a.* FROM album_items a
-      JOIN album_artists aa ON a.id = aa.album_id
-      WHERE aa.artist_id = ?
-      """,
-      [artistId],
-    );
-    return results.map(AlbumDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<ArtistDatabaseItem>> getAlbumArtists(
-    String albumId,
-  ) async {
-    final results = await db.rawQuery(
-      """
-      SELECT a.* FROM artist_items a
-      JOIN album_artists aa ON a.id = aa.artist_id
-      WHERE aa.album_id = ?
-      """,
-      [albumId],
-    );
-    return results.map(ArtistDatabaseItem.fromMap).toList();
-  }
-
-  static Future<void> updateAlbum(Album album) async {
-    await db.transaction((txn) async {
-      await txn.update(
-        "album_items",
-        {
-          "provider_id": album.providerId,
-          "name": album.name,
-          "artwork_id": album.artwork?.id,
-        },
-        where: "id = ?",
-        whereArgs: [album.id],
-      );
-
-      // Delete existing album-artist relationships
-      await txn.delete(
-        "album_artists",
-        where: "album_id = ?",
-        whereArgs: [album.id],
-      );
-
-      // Insert new album-artist relationships
-      for (final artist in album.artists) {
-        await txn.insert("album_artists", {
-          "album_id": album.id,
-          "artist_id": artist.id,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
-      }
-    });
-  }
-
-  static Future<void> deleteAlbum(String id) async {
-    await db.transaction((txn) async {
-      // Delete album-song relationships first
-      await txn.delete("album_songs", where: "album_id = ?", whereArgs: [id]);
-      // Delete the album
-      await txn.delete("album_items", where: "id = ?", whereArgs: [id]);
-    });
-  }
-
-  // SONG METHODS
-  static Future<void> insertSong(Song song) async {
-    await db.transaction((txn) async {
-      await txn.insert("song_items", {
-        "id": song.id,
-        "provider_id": song.providerId,
-        "name": song.name,
-        "duration": song.duration.inMilliseconds,
-        "album": song.album,
-        "artwork_id": song.artwork?.id,
-        "file_path": song.filePath,
-        "disc_number": song.discNumber,
-        "track_number": song.trackNumber,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-
-      // Insert song-artist relationships
-      for (final artist in song.artists) {
-        await txn.insert("song_artists", {
-          "song_id": song.id,
-          "artist_id": artist.id,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
-      }
-    });
-  }
-
-  static Future<SongDatabaseItem?> getSong(String id) async {
-    final List<Map<String, dynamic>> results = await db.query(
-      "song_items",
-      where: "id = ?",
-      whereArgs: [id],
-      limit: 1,
-    );
-
-    if (results.isEmpty) {
-      return null;
-    }
-    return SongDatabaseItem.fromMap(results.first);
-  }
-
-  static Future<List<SongDatabaseItem>> getAllSongs() async {
-    final results = await db.query("song_items");
-    return results.map(SongDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<SongDatabaseItem>> getSongsByProvider(
-    String providerId,
-  ) async {
-    final results = await db.query(
-      "song_items",
-      where: "provider_id = ?",
-      whereArgs: [providerId],
-    );
-    return results.map(SongDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<SongDatabaseItem>> getSongsByArtist(
-    String artistId,
-  ) async {
-    final results = await db.rawQuery(
-      """
-      SELECT s.* FROM song_items s
-      JOIN song_artists sa ON s.id = sa.song_id
-      WHERE sa.artist_id = ?
-      """,
-      [artistId],
-    );
-    return results.map(SongDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<ArtistDatabaseItem>> getSongArtists(String songId) async {
-    final results = await db.rawQuery(
-      """
-      SELECT a.* FROM artist_items a
-      JOIN song_artists sa ON a.id = sa.artist_id
-      WHERE sa.song_id = ?
-      """,
-      [songId],
-    );
-    return results.map(ArtistDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<SongDatabaseItem>> getSongsByAlbum(String album) async {
-    final results = await db.query(
-      "song_items",
-      where: "album = ?",
-      whereArgs: [album],
-    );
-    return results.map(SongDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<SongDatabaseItem>> getSongsByAlbumId(
-    String albumId,
-  ) async {
-    final results = await db.rawQuery(
-      """
-      SELECT s.* FROM song_items s
-      JOIN album_songs als ON s.id = als.song_id
-      WHERE als.album_id = ?
-      """,
-      [albumId],
-    );
-    return results.map(SongDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<AlbumDatabaseItem>> getSongAlbums(String songId) async {
-    final results = await db.rawQuery(
-      """
-      SELECT a.* FROM album_items a
-      JOIN album_songs als ON a.id = als.album_id
-      WHERE als.song_id = ?
-      """,
-      [songId],
-    );
-    return results.map(AlbumDatabaseItem.fromMap).toList();
-  }
-
-  // ALBUM-SONG RELATIONSHIP METHODS
-  static Future<void> insertAlbumSong(String albumId, String songId) async {
-    await db.insert("album_songs", {
-      "album_id": albumId,
-      "song_id": songId,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  static Future<void> deleteAlbumSong(String albumId, String songId) async {
-    await db.delete(
-      "album_songs",
-      where: "album_id = ? AND song_id = ?",
-      whereArgs: [albumId, songId],
-    );
-  }
-
-  static Future<void> deleteAlbumSongs(String albumId) async {
-    await db.delete("album_songs", where: "album_id = ?", whereArgs: [albumId]);
-  }
-
-  static Future<void> updateSong(Song song) async {
-    await db.transaction((txn) async {
-      await txn.update(
-        "song_items",
-        {
-          "provider_id": song.providerId,
-          "name": song.name,
-          "duration": song.duration.inMilliseconds,
-          "album": song.album,
-          "artwork_id": song.artwork?.id,
-        },
-        where: "id = ?",
-        whereArgs: [song.id],
-      );
-
-      // Delete existing song-artist relationships
-      await txn.delete(
-        "song_artists",
-        where: "song_id = ?",
-        whereArgs: [song.id],
-      );
-
-      // Insert new song-artist relationships
-      for (final artist in song.artists) {
-        await txn.insert("song_artists", {
-          "song_id": song.id,
-          "artist_id": artist.id,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
-      }
-    });
-  }
-
-  static Future<void> deleteSong(String id) async {
-    await db.transaction((txn) async {
-      // Delete album-song relationships first
-      await txn.delete("album_songs", where: "song_id = ?", whereArgs: [id]);
-      // Delete the song
-      await txn.delete("song_items", where: "id = ?", whereArgs: [id]);
-    });
-  }
-
-  // RECENT SEARCHES METHODS
-  static Future<void> insertRecentSearch(String id, String type) async {
-    await db.insert("recent_searches", {
-      "id": id,
-      "type": type,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  static Future<List<RecentSearchDatabaseItem>> getRecentSearches() async {
-    final results = await db.query("recent_searches", orderBy: "ROWID DESC");
-    return results.map(RecentSearchDatabaseItem.fromMap).toList();
-  }
-
-  static Future<void> deleteRecentSearch(String id) async {
-    await db.delete("recent_searches", where: "id = ?", whereArgs: [id]);
-  }
-
-  static Future<void> clearRecentSearches() async {
-    await db.delete("recent_searches");
-  }
-
-  // UTILITY METHODS
   static Future<void> cleanupOrphanedArtworks() async {
-    final allArtworks = await getAllArtwork();
-    if (allArtworks.isEmpty) {
-      return;
-    }
+    final allArtworkItems = await artworks.getAll();
+    if (allArtworkItems.isEmpty) return;
 
     final referencedArtworkIds = <String>{};
 
-    final songs = await getAllSongs();
-    for (final song in songs) {
-      if (song.artworkId != null) {
-        referencedArtworkIds.add(song.artworkId!);
-      }
+    for (final song in await songs.getAll()) {
+      if (song.artworkId != null) referencedArtworkIds.add(song.artworkId!);
+    }
+    for (final album in await albums.getAll()) {
+      if (album.artworkId != null) referencedArtworkIds.add(album.artworkId!);
+    }
+    for (final artist in await artists.getAll()) {
+      if (artist.artworkId != null) referencedArtworkIds.add(artist.artworkId!);
     }
 
-    final albums = await getAllAlbums();
-    for (final album in albums) {
-      if (album.artworkId != null) {
-        referencedArtworkIds.add(album.artworkId!);
-      }
-    }
-
-    final artists = await getAllArtists();
-    for (final artist in artists) {
-      if (artist.artworkId != null) {
-        referencedArtworkIds.add(artist.artworkId!);
-      }
-    }
-
-    for (final artwork in allArtworks) {
+    for (final artwork in allArtworkItems) {
       if (!referencedArtworkIds.contains(artwork.id)) {
-        await deleteArtwork(artwork.id);
+        await artworks.delete(artwork.id);
       }
     }
   }
 
   static Future<void> clearAllData() async {
-    // Clear all cached artwork files before deleting database records
     await CacheHelper.clearArtworkCache();
 
     await db.transaction((txn) async {
-      await txn.delete("song_artists");
-      await txn.delete("album_artists");
-      await txn.delete("album_songs");
-      await txn.delete("song_items");
-      await txn.delete("album_items");
-      await txn.delete("artist_items");
-      await txn.delete("artwork_items");
-      await txn.delete("recent_searches");
+      await txn.delete(Tables.songArtists);
+      await txn.delete(Tables.albumArtists);
+      await txn.delete(Tables.albumSongs);
+      await txn.delete(Tables.songs);
+      await txn.delete(Tables.albums);
+      await txn.delete(Tables.artists);
+      await txn.delete(Tables.artworks);
+      await txn.delete(Tables.recentSearches);
     });
   }
 
   static Future<DatabaseStatsDatabaseItem> getDatabaseStats() async {
     final artworkCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM artwork_items",
+      "SELECT COUNT(*) as count FROM ${Tables.artworks}",
     );
     final artistCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM artist_items",
+      "SELECT COUNT(*) as count FROM ${Tables.artists}",
     );
     final albumCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM album_items",
+      "SELECT COUNT(*) as count FROM ${Tables.albums}",
     );
     final songCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM song_items",
+      "SELECT COUNT(*) as count FROM ${Tables.songs}",
     );
     final searchCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM recent_searches",
+      "SELECT COUNT(*) as count FROM ${Tables.recentSearches}",
     );
 
     return DatabaseStatsDatabaseItem(
-      artwork: artworkCount.first['count'] as int,
-      artists: artistCount.first['count'] as int,
-      albums: albumCount.first['count'] as int,
-      songs: songCount.first['count'] as int,
-      recentSearches: searchCount.first['count'] as int,
+      artwork: artworkCount.first["count"] as int,
+      artists: artistCount.first["count"] as int,
+      albums: albumCount.first["count"] as int,
+      songs: songCount.first["count"] as int,
+      recentSearches: searchCount.first["count"] as int,
     );
   }
 
   static Future<CacheStatsDatabaseItem> getCacheStats() async {
-    // Get artwork cache size and file count
     final cacheSize = await CacheHelper.getArtworkCacheSize();
     final cacheFiles = await CacheHelper.getArtworkFiles().toList();
     final cacheDirectory = await CacheHelper.getCacheDirectory();
@@ -723,149 +231,70 @@ class DatabaseHelper {
     );
   }
 
-  // FAVOURITE METHODS
-  static Future<List<SongDatabaseItem>> getFavouriteSongs() async {
-    final results = await db.query("song_items", where: "favourite = 1");
-    return results.map(SongDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<AlbumDatabaseItem>> getFavouriteAlbums() async {
-    final results = await db.query("album_items", where: "favourite = 1");
-    return results.map(AlbumDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<ArtistDatabaseItem>> getFavouriteArtists() async {
-    final results = await db.query("artist_items", where: "favourite = 1");
-    return results.map(ArtistDatabaseItem.fromMap).toList();
-  }
-
-  /// Returns all favourited songs and albums associated with the given artist.
-  static Future<
-    ({List<SongDatabaseItem> songs, List<AlbumDatabaseItem> albums})
-  >
-  getArtistFavourites(String artistId) async {
-    final songResults = await db.rawQuery(
-      """
-      SELECT s.* FROM song_items s
-      JOIN song_artists sa ON s.id = sa.song_id
-      WHERE sa.artist_id = ? AND s.favourite = 1
-      """,
-      [artistId],
-    );
-    final albumResults = await db.rawQuery(
-      """
-      SELECT a.* FROM album_items a
-      JOIN album_artists aa ON a.id = aa.album_id
-      WHERE aa.artist_id = ? AND a.favourite = 1
-      """,
-      [artistId],
-    );
-    return (
-      songs: songResults.map(SongDatabaseItem.fromMap).toList(),
-      albums: albumResults.map(AlbumDatabaseItem.fromMap).toList(),
-    );
-  }
-
-  // SEARCH METHODS
-  static Future<List<SongDatabaseItem>> searchSongs(String query) async {
-    final results = await db.query(
-      "song_items",
-      where: "name LIKE ? OR album LIKE ?",
-      whereArgs: ["%$query%", "%$query%"],
-    );
-    return results.map(SongDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<AlbumDatabaseItem>> searchAlbums(String query) async {
-    final results = await db.query(
-      "album_items",
-      where: "name LIKE ?",
-      whereArgs: ["%$query%"],
-    );
-    return results.map(AlbumDatabaseItem.fromMap).toList();
-  }
-
-  static Future<List<ArtistDatabaseItem>> searchArtists(String query) async {
-    final results = await db.query(
-      "artist_items",
-      where: "name LIKE ?",
-      whereArgs: ["%$query%"],
-    );
-    return results.map(ArtistDatabaseItem.fromMap).toList();
-  }
-
-  // PROVIDER-SPECIFIC CACHE MANAGEMENT
   static Future<void> clearProviderCache(String providerId) async {
-    // Get all artwork items for this provider before deleting
     final providerArtwork = await db.query(
-      'artwork_items',
-      where: 'provider_id = ?',
+      Tables.artworks,
+      where: "provider_id = ?",
       whereArgs: [providerId],
     );
 
-    // Delete cached artwork files (all size variants)
     for (final artwork in providerArtwork) {
-      final id = artwork['id'] as String;
-      final mimeType = artwork['mime_type'] as String;
+      final id = artwork["id"] as String;
+      final mimeType = artwork["mime_type"] as String;
       await CacheHelper.deleteAllArtworkSizes(id, mimeType);
     }
 
-    // Clear all provider-specific data from database
     await db.transaction((txn) async {
-      // Delete song-artist relationships for this provider's songs
       await txn.rawDelete(
         """
-        DELETE FROM song_artists
-        WHERE song_id IN (SELECT id FROM song_items WHERE provider_id = ?)
+        DELETE FROM ${Tables.songArtists}
+        WHERE song_id IN (SELECT id FROM ${Tables.songs} WHERE provider_id = ?)
         """,
         [providerId],
       );
 
-      // Delete album-artist relationships for this provider's albums
       await txn.rawDelete(
         """
-        DELETE FROM album_artists
-        WHERE album_id IN (SELECT id FROM album_items WHERE provider_id = ?)
+        DELETE FROM ${Tables.albumArtists}
+        WHERE album_id IN (SELECT id FROM ${Tables.albums} WHERE provider_id = ?)
         """,
         [providerId],
       );
 
-      // Delete album-song relationships for this provider's albums
       await txn.rawDelete(
         """
-        DELETE FROM album_songs
-        WHERE album_id IN (SELECT id FROM album_items WHERE provider_id = ?)
+        DELETE FROM ${Tables.albumSongs}
+        WHERE album_id IN (SELECT id FROM ${Tables.albums} WHERE provider_id = ?)
         """,
         [providerId],
       );
 
-      // Delete song-album relationships for this provider's songs
       await txn.rawDelete(
         """
-        DELETE FROM album_songs
-        WHERE song_id IN (SELECT id FROM song_items WHERE provider_id = ?)
+        DELETE FROM ${Tables.albumSongs}
+        WHERE song_id IN (SELECT id FROM ${Tables.songs} WHERE provider_id = ?)
         """,
         [providerId],
       );
 
       await txn.delete(
-        'song_items',
-        where: 'provider_id = ?',
+        Tables.songs,
+        where: "provider_id = ?",
         whereArgs: [providerId],
       );
       await txn.delete(
-        'album_items',
-        where: 'provider_id = ?',
+        Tables.albums,
+        where: "provider_id = ?",
         whereArgs: [providerId],
       );
       await txn.delete(
-        'artist_items',
-        where: 'provider_id = ?',
+        Tables.artists,
+        where: "provider_id = ?",
         whereArgs: [providerId],
       );
       await txn.delete(
-        'artwork_items',
-        where: 'provider_id = ?',
+        Tables.artworks,
+        where: "provider_id = ?",
         whereArgs: [providerId],
       );
     });
@@ -877,27 +306,27 @@ class DatabaseHelper {
     String providerId,
   ) async {
     final artworkCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM artwork_items WHERE provider_id = ?",
+      "SELECT COUNT(*) as count FROM ${Tables.artworks} WHERE provider_id = ?",
       [providerId],
     );
     final artistCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM artist_items WHERE provider_id = ?",
+      "SELECT COUNT(*) as count FROM ${Tables.artists} WHERE provider_id = ?",
       [providerId],
     );
     final albumCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM album_items WHERE provider_id = ?",
+      "SELECT COUNT(*) as count FROM ${Tables.albums} WHERE provider_id = ?",
       [providerId],
     );
     final songCount = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM song_items WHERE provider_id = ?",
+      "SELECT COUNT(*) as count FROM ${Tables.songs} WHERE provider_id = ?",
       [providerId],
     );
 
     return ProviderStatsDatabaseItem(
-      artwork: artworkCount.first['count'] as int,
-      artists: artistCount.first['count'] as int,
-      albums: albumCount.first['count'] as int,
-      songs: songCount.first['count'] as int,
+      artwork: artworkCount.first["count"] as int,
+      artists: artistCount.first["count"] as int,
+      albums: albumCount.first["count"] as int,
+      songs: songCount.first["count"] as int,
     );
   }
 }

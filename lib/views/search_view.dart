@@ -1,11 +1,12 @@
-import 'dart:async';
+import "dart:async";
 
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:unimusic/components/tiles/music_item_tile.dart';
-import 'package:unimusic/components/tiles/search_hint_tile.dart';
-import 'package:unimusic/services/music_manager.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:provider/provider.dart";
+import "package:unimusic/components/tiles/music_item_tile.dart";
+import "package:unimusic/components/tiles/search_hint_tile.dart";
+import "package:unimusic/services/provider_registry.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class SearchView extends StatelessWidget {
   const SearchView({super.key});
@@ -22,7 +23,7 @@ class SearchView extends StatelessWidget {
           snap: true,
           scrolledUnderElevation: 0,
           toolbarHeight: kToolbarHeight + 16,
-          title: ExcludeFocus(child: SearchBar()),
+          title: ExcludeFocus(child: SearchEntryPoint()),
         ),
       ],
       body: const SizedBox.shrink(),
@@ -30,42 +31,46 @@ class SearchView extends StatelessWidget {
   }
 }
 
-class SearchBar extends StatelessWidget {
+class SearchEntryPoint extends StatelessWidget {
   final String hint;
   final ValueChanged<String>? onSubmitted;
 
-  const SearchBar({super.key, this.hint = 'Search', this.onSubmitted});
+  const SearchEntryPoint({super.key, this.hint = "Search", this.onSubmitted});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Hero(
-      tag: 'search-hero',
+      tag: "search-hero",
       child: Material(
         color: theme.colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(28),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(28),
-          onTap: () => _openSearchPage(context),
-          child: SizedBox(
-            height: 56,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.search),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      hint,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: theme.colorScheme.onSurfaceVariant,
+        child: Semantics(
+          button: true,
+          label: "Search",
+          child: InkWell(
+            borderRadius: BorderRadius.circular(28),
+            onTap: () => _openSearchPage(context),
+            mouseCursor: SystemMouseCursors.click,
+            child: SizedBox(
+              height: 56,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Icon(Symbols.search_rounded),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        hint,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -102,7 +107,7 @@ class SearchPage extends StatefulWidget {
   final String hint;
   final ValueChanged<String>? onSubmitted;
 
-  const SearchPage({super.key, this.hint = 'Search', this.onSubmitted});
+  const SearchPage({super.key, this.hint = "Search", this.onSubmitted});
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -112,7 +117,7 @@ class _SearchPageState extends State<SearchPage>
     with SingleTickerProviderStateMixin {
   late final TextEditingController _controller;
   late final TabController _tabController;
-  late final MusicManager _musicManager;
+  late final ProviderRegistry _registry;
   Timer? _debounceTimer;
 
   String? _searchQuery;
@@ -129,7 +134,7 @@ class _SearchPageState extends State<SearchPage>
       length: LibraryItemType.values.length + 1,
       vsync: this,
     );
-    _musicManager = context.read<MusicManager>();
+    _registry = context.read<ProviderRegistry>();
   }
 
   @override
@@ -164,7 +169,7 @@ class _SearchPageState extends State<SearchPage>
     setState(() => _isLoadingHints = true);
 
     final hints = <SearchHint>[];
-    await for (final hint in _musicManager.getSearchHints(query: query)) {
+    await for (final hint in _registry.getSearchHints(query: query)) {
       hints.add(hint);
     }
 
@@ -209,7 +214,7 @@ class _SearchPageState extends State<SearchPage>
 
   Widget _buildSearchBar(ThemeData theme) {
     return Hero(
-      tag: 'search-hero',
+      tag: "search-hero",
       child: Material(
         borderRadius: BorderRadius.circular(28),
         color: theme.colorScheme.surfaceContainerLow,
@@ -224,7 +229,8 @@ class _SearchPageState extends State<SearchPage>
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back),
+                tooltip: "Back",
+                icon: const Icon(Symbols.arrow_back_rounded),
                 onPressed: () => Navigator.of(context).pop(),
               ),
               const SizedBox(width: 8),
@@ -242,7 +248,8 @@ class _SearchPageState extends State<SearchPage>
               ),
               if (_controller.text.isNotEmpty)
                 IconButton(
-                  icon: const Icon(Icons.clear),
+                  tooltip: "Clear",
+                  icon: const Icon(Symbols.clear_rounded),
                   onPressed: _controller.clear,
                 ),
             ],
@@ -256,8 +263,8 @@ class _SearchPageState extends State<SearchPage>
     return TabBar(
       controller: _tabController,
       tabs: [
-        const Tab(text: 'All'),
-        ...LibraryItemType.values.map((type) => Tab(text: '${type.name}s')),
+        const Tab(text: "All"),
+        ...LibraryItemType.values.map((type) => Tab(text: "${type.name}s")),
       ],
     );
   }
@@ -312,7 +319,7 @@ class SearchResultsTab extends StatefulWidget {
 
 class _SearchResultsTabState extends State<SearchResultsTab>
     with AutomaticKeepAliveClientMixin {
-  late final MusicManager _musicManager;
+  late final ProviderRegistry _registry;
   List<MusicItem> _results = [];
   bool _isLoading = false;
   bool _hasLoaded = false;
@@ -323,7 +330,7 @@ class _SearchResultsTabState extends State<SearchResultsTab>
   @override
   void initState() {
     super.initState();
-    _musicManager = context.read<MusicManager>();
+    _registry = context.read<ProviderRegistry>();
     _loadResults();
   }
 
@@ -333,17 +340,15 @@ class _SearchResultsTabState extends State<SearchResultsTab>
     setState(() {
       _isLoading = true;
       _hasLoaded = true;
+      _results = [];
     });
 
-    final results = <MusicItem>[];
-    await for (final item in _musicManager.getSearchResults(
+    await for (final item in _registry.getSearchResults(
       query: widget.query,
       itemType: widget.itemType,
     )) {
-      results.add(item);
-      if (mounted) {
-        setState(() => _results = List.from(results));
-      }
+      _results.add(item);
+      if (mounted) setState(() {});
     }
 
     if (mounted) {
@@ -360,7 +365,7 @@ class _SearchResultsTabState extends State<SearchResultsTab>
     }
 
     if (_results.isEmpty) {
-      return const Center(child: Text('No results found'));
+      return const Center(child: Text("No results found"));
     }
 
     return ListView.builder(

@@ -1,10 +1,11 @@
-import 'package:unimusic/services/api/deezer/api.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:unimusic/services/api/deezer/api.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class DeezerMusicProvider extends MusicProvider {
   final DeezerApi api;
+
   const DeezerMusicProvider({required this.api})
-    : super(id: 'deezer', name: 'Deezer');
+    : super(id: "deezer", name: "Deezer");
 
   @override
   Stream<Album> getLibraryAlbums() async* {

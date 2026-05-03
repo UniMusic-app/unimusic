@@ -1,4 +1,4 @@
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 abstract class LocalApi {
   Stream<Song> getAllSongs();

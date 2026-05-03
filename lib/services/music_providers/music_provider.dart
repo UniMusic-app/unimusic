@@ -1,11 +1,12 @@
-import 'dart:async';
-import 'package:async/async.dart';
-import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
+import "dart:async";
+import "package:async/async.dart";
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:just_audio/just_audio.dart";
 
 enum MusicItemType { song, album, artist }
 
-abstract class MusicItem {
+sealed class MusicItem {
   final String providerId;
   final String id;
   final MusicItemType type;
@@ -28,8 +29,8 @@ enum ArtworkSize {
   small(96);
 
   final double width;
-  const ArtworkSize(this.width);
 
+  const ArtworkSize(this.width);
   factory ArtworkSize.fromString(String sizeString) => switch (sizeString) {
     "small" => ArtworkSize.small,
     "medium" => ArtworkSize.medium,
@@ -48,6 +49,7 @@ enum ArtworkSize {
 abstract class Artwork {
   final String providerId;
   final String id;
+
   const Artwork({required this.providerId, required this.id});
 
   Uri? getImageUri(ArtworkSize size);
@@ -179,15 +181,17 @@ abstract class SearchHint {
 }
 
 enum LibraryItemType {
-  songs("Song", 4, Icons.music_note),
-  albums("Album", 12, Icons.album),
-  artists("Artist", 9999, Icons.person);
+  songs("Song", 4, Symbols.music_note_rounded),
+  albums("Album", 12, Symbols.album_rounded),
+  artists("Artist", 9999, Symbols.person_rounded);
 
   final String name;
   final double borderRadius;
   final IconData icon;
 
   const LibraryItemType(this.name, this.borderRadius, this.icon);
+
+  String get label => "${name}s";
 }
 
 enum LibrarySortBy { album, artist, name }
@@ -207,6 +211,7 @@ enum LibrarySortOrder {
 abstract class MusicProvider {
   final String id;
   final String name;
+
   const MusicProvider({required this.id, required this.name});
 
   Stream<Song> getLibrarySongs();

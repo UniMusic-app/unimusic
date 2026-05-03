@@ -1,4 +1,4 @@
-part of '../credentials_service.dart';
+part of "../credentials_service.dart";
 
 class JellyfinCredentials extends ServiceCredentials {
   final String serverUri;
@@ -13,6 +13,15 @@ class JellyfinCredentials extends ServiceCredentials {
     this.displayName,
   }) : super(type: ServiceType.jellyfin);
 
+  factory JellyfinCredentials.fromJson(Map<String, dynamic> json) {
+    return JellyfinCredentials(
+      serverUri: json["serverUri"],
+      username: json["username"],
+      password: json["password"],
+      displayName: json["displayName"],
+    );
+  }
+
   @override
   int get hashCode => Object.hash(type, serverUri, username);
 
@@ -24,19 +33,10 @@ class JellyfinCredentials extends ServiceCredentials {
 
   @override
   Map<String, dynamic> toJson() => {
-    'type': type.id,
-    'serverUri': serverUri,
-    'username': username,
-    'password': password,
-    'displayName': displayName,
+    "type": type.id,
+    "serverUri": serverUri,
+    "username": username,
+    "password": password,
+    "displayName": displayName,
   };
-
-  factory JellyfinCredentials.fromJson(Map<String, dynamic> json) {
-    return JellyfinCredentials(
-      serverUri: json['serverUri'] as String,
-      username: json['username'] as String,
-      password: json['password'] as String,
-      displayName: json['displayName'] as String?,
-    );
-  }
 }

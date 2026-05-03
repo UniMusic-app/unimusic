@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/scheduler.dart';
+import "package:flutter/cupertino.dart";
+import "package:flutter/scheduler.dart";
 
 class BottomSheetBarNotification extends Notification {
   final double value;
@@ -14,6 +14,7 @@ class BottomSheetBarNotification extends Notification {
 class BottomSheetBar extends StatefulWidget {
   final Widget sheet;
   final Widget bar;
+
   const BottomSheetBar({super.key, required this.sheet, required this.bar});
 
   @override

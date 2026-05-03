@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/components/adaptive_context_menu.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/components/lazy_image.dart';
+import "package:flutter/material.dart";
+import "package:unimusic/components/adaptive_context_menu.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/components/lazy_image.dart";
 
 enum ContainedTilePosition { single, first, middle, last }
 
@@ -31,7 +31,6 @@ class GenericItemTile<T> extends StatelessWidget {
   final List<AdaptiveMenuItem>? menuItems;
   final bool contained;
   final ContainedTilePosition containedPosition;
-
   final TileAction action;
 
   const GenericItemTile({
@@ -47,7 +46,7 @@ class GenericItemTile<T> extends StatelessWidget {
     this.contained = false,
     this.containedPosition = ContainedTilePosition.single,
     super.key,
-  }) : super();
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -71,16 +70,18 @@ class GenericItemTile<T> extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    subtitle == null ? type : "$type · $subtitle",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      subtitle == null ? type : "$type · $subtitle",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

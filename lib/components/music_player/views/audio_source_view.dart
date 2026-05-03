@@ -1,11 +1,26 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:unimusic/services/audio_routing_service.dart';
-import 'package:unimusic/services/music_manager.dart';
+import "package:flutter/foundation.dart";
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:provider/provider.dart";
+import "package:unimusic/components/airplay_route_picker_button.dart";
+import "package:unimusic/services/music_manager.dart";
 
 class AudioSourceView extends StatefulWidget {
   const AudioSourceView({super.key});
+
+  static Future<void> show(BuildContext context) async {
+    final musicManager = context.read<MusicManager>();
+    await musicManager.refreshAudioRoutingCapabilities();
+    await musicManager.refreshAudioRoute();
+    if (!context.mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const AudioSourceView(),
+    );
+  }
 
   @override
   State<AudioSourceView> createState() => _AudioSourceViewState();
@@ -33,23 +48,23 @@ class _AudioSourceViewState extends State<AudioSourceView> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Audio output', style: theme.textTheme.titleLarge),
+          Text("Audio output", style: theme.textTheme.titleLarge),
           const SizedBox(height: 12),
           Row(
             children: [
               Icon(
-                Icons.volume_up_rounded,
+                Symbols.volume_up_rounded,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Player volume',
+                  "Player volume",
                   style: theme.textTheme.titleMedium,
                 ),
               ),
               Text(
-                '${(volume * 100).round()}%',
+                "${(volume * 100).round()}%",
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -66,7 +81,7 @@ class _AudioSourceViewState extends State<AudioSourceView> {
             },
           ),
           const SizedBox(height: 8),
-          Text('Current output', style: theme.textTheme.titleMedium),
+          Text("Current output", style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           ListTile(
             dense: true,
@@ -89,9 +104,9 @@ class _AudioSourceViewState extends State<AudioSourceView> {
           if (!isApple)
             ListTile(
               dense: true,
-              leading: const Icon(Icons.tune_rounded),
-              title: const Text('Choose output…'),
-              subtitle: const Text('Open the system output chooser'),
+              leading: const Icon(Symbols.tune_rounded),
+              title: const Text("Choose output…"),
+              subtitle: const Text("Open the system output chooser"),
               contentPadding: EdgeInsets.zero,
               enabled:
                   musicManager.audioRoutingCapabilities.canOpenSystemChooser,
@@ -100,13 +115,13 @@ class _AudioSourceViewState extends State<AudioSourceView> {
                   : null,
             ),
           if (canShowAirPlayPicker)
-            ListTile(
+            const ListTile(
               dense: true,
-              leading: const Icon(Icons.airplay_rounded),
-              title: const Text('AirPlay'),
-              subtitle: const Text('Choose an AirPlay output'),
+              leading: Icon(Symbols.airplay_rounded),
+              title: Text("AirPlay"),
+              subtitle: Text("Choose an AirPlay output"),
               contentPadding: EdgeInsets.zero,
-              trailing: const AirPlayRoutePickerButton(height: 36),
+              trailing: AirPlayRoutePickerButton(height: 36),
             ),
         ],
       ),

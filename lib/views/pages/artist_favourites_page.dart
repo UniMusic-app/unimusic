@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/components/album_carousel_card.dart';
-import 'package:unimusic/components/tiles/music_item_tile.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:unimusic/components/album_carousel_card.dart";
+import "package:unimusic/components/empty_state_view.dart";
+import "package:unimusic/components/tiles/music_item_tile.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class ArtistFavouritesPage extends StatelessWidget {
   final Artist artist;
@@ -38,18 +40,27 @@ class ArtistFavouritesPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Favourites from ${artist.name}',
+          "Favourites from ${artist.name}",
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ),
       body: favouriteSongs.isEmpty && favouriteAlbums.isEmpty
-          ? const _FavouritesEmptyState()
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: EmptyStateView(
+                  icon: Symbols.favorite_border_rounded,
+                  message:
+                      "No favourite songs or albums were found for this artist.",
+                ),
+              ),
+            )
           : CustomScrollView(
               slivers: [
                 if (favouriteAlbums.isNotEmpty) ...[
                   const SliverToBoxAdapter(
-                    child: _SectionHeader(title: 'Albums'),
+                    child: _SectionHeader(title: "Albums"),
                   ),
                   SliverToBoxAdapter(
                     child: SizedBox(
@@ -60,7 +71,11 @@ class ArtistFavouritesPage extends StatelessWidget {
                         itemCount: favouriteAlbums.length,
                         separatorBuilder: (_, _) => const SizedBox(width: 12),
                         itemBuilder: (context, index) {
-                          return AlbumCarouselCard(favouriteAlbums[index]);
+                          return AlbumCarouselCard(
+                            favouriteAlbums[index],
+                            width: 168,
+                            height: albumCarouselCardHeight,
+                          );
                         },
                       ),
                     ),
@@ -68,7 +83,7 @@ class ArtistFavouritesPage extends StatelessWidget {
                 ],
                 if (favouriteSongs.isNotEmpty) ...[
                   const SliverToBoxAdapter(
-                    child: _SectionHeader(title: 'Songs'),
+                    child: _SectionHeader(title: "Songs"),
                   ),
                   SliverList.separated(
                     itemCount: favouriteSongs.length,
@@ -110,30 +125,6 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-    );
-  }
-}
-
-class _FavouritesEmptyState extends StatelessWidget {
-  const _FavouritesEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.favorite_border_rounded, size: 40),
-            SizedBox(height: 12),
-            Text(
-              'No favourite songs or albums were found for this artist.',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

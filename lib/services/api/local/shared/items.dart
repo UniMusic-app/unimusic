@@ -1,17 +1,19 @@
-import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:unimusic/services/api/local/shared/api.dart';
-import 'package:unimusic/services/database/database.dart';
-import 'package:unimusic/services/database/objects.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/services/database/cache.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
+import "dart:io";
+import "dart:ui" as ui;
+import "package:flutter/foundation.dart";
+import "package:flutter/material.dart";
+import "package:unimusic/services/api/local/local_utils.dart";
+import "package:unimusic/services/api/local/shared/api.dart";
+import "package:unimusic/services/database/database.dart";
+import "package:unimusic/services/database/objects.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/services/database/cache.dart";
+import "package:just_audio/just_audio.dart";
+import "package:just_audio_background/just_audio_background.dart";
 
 class LocalArtwork extends Artwork {
   Uri? imageUri;
+
   LocalArtwork({required super.id}) : super(providerId: providerId);
 
   @override
@@ -52,7 +54,7 @@ class _LocalArtworkImageProvider
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
-      debugLabel: 'LocalArtwork(${key.artworkId})',
+      debugLabel: "LocalArtwork(${key.artworkId})",
     );
   }
 
@@ -61,13 +63,13 @@ class _LocalArtworkImageProvider
     ImageDecoderCallback decode,
   ) async {
     try {
-      final artworkInfo = await DatabaseHelper.getArtwork(
+      final artworkInfo = await DatabaseHelper.artworks.get(
         key.artworkId,
         size: key.size,
       );
 
       if (artworkInfo == null) {
-        throw Exception('Artwork ${key.artworkId} does not exist in databse');
+        throw Exception("Artwork ${key.artworkId} does not exist in databse");
       }
 
       final cachedFile = await CacheHelper.getArtworkFile(
@@ -77,7 +79,7 @@ class _LocalArtworkImageProvider
       );
 
       if (cachedFile == null) {
-        throw Exception('No image data available for artwork ${key.artworkId}');
+        throw Exception("No image data available for artwork ${key.artworkId}");
       }
 
       artwork.imageUri = cachedFile.uri;
@@ -85,9 +87,19 @@ class _LocalArtworkImageProvider
       final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
       return await decode(buffer);
     } catch (error) {
-      throw Exception('Failed to load artwork ${key.artworkId}: $error');
+      throw Exception("Failed to load artwork ${key.artworkId}: $error");
     }
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _LocalArtworkImageProvider &&
+          other.artworkId == artworkId &&
+          other.size == size;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, artworkId, size);
 }
 
 class LocalArtist extends Artist<LocalArtwork> {
@@ -104,22 +116,22 @@ class LocalArtist extends Artist<LocalArtwork> {
 
   @override
   Future<bool> isFavourite() async {
-    final artist = await DatabaseHelper.getArtist(id);
+    final artist = await DatabaseHelper.artists.get(id);
     return artist?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    await DatabaseHelper.setFavourite("artist_items", id, value);
+    await DatabaseHelper.favourites.setArtist(id, value);
     favourite = value;
   }
 
   @override
   Stream<Song> getFeaturedSongs({int? limit, int? startIndex}) async* {
-    final songsData = await DatabaseHelper.getSongsByArtist(id);
+    final songsData = await DatabaseHelper.songs.getByArtist(id);
     songsData.sort((left, right) {
-      final albumCompare = (left.album ?? '').toLowerCase().compareTo(
-        (right.album ?? '').toLowerCase(),
+      final albumCompare = (left.album ?? "").toLowerCase().compareTo(
+        (right.album ?? "").toLowerCase(),
       );
       if (albumCompare != 0) {
         return albumCompare;
@@ -128,7 +140,7 @@ class LocalArtist extends Artist<LocalArtwork> {
       return left.name.toLowerCase().compareTo(right.name.toLowerCase());
     });
 
-    for (final songData in _pageItems(
+    for (final songData in pageItems(
       songsData,
       limit: limit,
       startIndex: startIndex,
@@ -139,13 +151,13 @@ class LocalArtist extends Artist<LocalArtwork> {
 
   @override
   Stream<Album> getAlbums({int? limit, int? startIndex}) async* {
-    final albumsData = await DatabaseHelper.getAlbumsByArtist(id);
+    final albumsData = await DatabaseHelper.albums.getByArtist(id);
     albumsData.sort(
       (left, right) =>
           left.name.toLowerCase().compareTo(right.name.toLowerCase()),
     );
 
-    for (final albumData in _pageItems(
+    for (final albumData in pageItems(
       albumsData,
       limit: limit,
       startIndex: startIndex,
@@ -173,7 +185,7 @@ class LocalArtist extends Artist<LocalArtwork> {
 
   @override
   Stream<MusicItem> getFavourites() async* {
-    final favourites = await DatabaseHelper.getArtistFavourites(id);
+    final favourites = await DatabaseHelper.favourites.getByArtist(id);
     for (final songData in favourites.songs) {
       yield await LocalSong.fromDatabase(api, songData);
     }
@@ -211,7 +223,7 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
       song.filePath,
       Duration(milliseconds: song.duration),
     );
-    final databaseArtists = await DatabaseHelper.getSongArtists(song.id);
+    final databaseArtists = await DatabaseHelper.songs.getArtists(song.id);
     final artists = (databaseArtists)
         .map((artist) => LocalArtist.fromDatabase(api, artist))
         .whereType<LocalArtist>()
@@ -256,36 +268,29 @@ class LocalSong extends Song<LocalArtist, LocalArtwork> {
   }
 
   @override
-  Future<Album> getAlbum() {
-    // TODO: implement getAlbum
-    throw UnimplementedError();
+  Future<Album?> getAlbum() async {
+    final albums = await DatabaseHelper.songs.getAlbums(id);
+    if (albums.isEmpty) return null;
+    return LocalAlbum.fromDatabase(api, albums.first);
   }
 
   @override
   Future<bool> isFavourite() async {
-    final song = await DatabaseHelper.getSong(id);
+    final song = await DatabaseHelper.songs.get(id);
     return song?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    await DatabaseHelper.setFavourite("song_items", id, value);
+    await DatabaseHelper.favourites.setSong(id, value);
     favourite = value;
   }
 
   @override
   Future<StreamInfoParts?> getStreamInfoParts() async {
-    final format = _fileExtensionFromPath(filePath);
+    final format = fileExtensionFromPath(filePath);
     return (format: format, bitrateKbps: bitrateKbps, sampleRateHz: null);
   }
-}
-
-String? _fileExtensionFromPath(String? path) {
-  if (path == null || path.isEmpty) return null;
-  final lastSegment = path.split(RegExp(r'[\\/]')).last;
-  final dotIndex = lastSegment.lastIndexOf('.');
-  if (dotIndex <= 0 || dotIndex == lastSegment.length - 1) return null;
-  return lastSegment.substring(dotIndex + 1).trim().toUpperCase();
 }
 
 Future<int?> _bitrateFromFile(String? filePath, Duration duration) async {
@@ -327,7 +332,7 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
     LocalSharedApi api,
     AlbumDatabaseItem album,
   ) async {
-    final databaseArtists = await DatabaseHelper.getAlbumArtists(album.id);
+    final databaseArtists = await DatabaseHelper.albums.getArtists(album.id);
     final artists = (databaseArtists)
         .map((artist) => LocalArtist.fromDatabase(api, artist))
         .whereType<LocalArtist>()
@@ -355,13 +360,13 @@ class LocalAlbum extends Album<LocalArtist, LocalArtwork> {
 
   @override
   Future<bool> isFavourite() async {
-    final album = await DatabaseHelper.getAlbum(id);
+    final album = await DatabaseHelper.albums.get(id);
     return album?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    await DatabaseHelper.setFavourite("album_items", id, value);
+    await DatabaseHelper.favourites.setAlbum(id, value);
     favourite = value;
   }
 }
@@ -372,16 +377,4 @@ class LocalSearchHint extends SearchHint {
     required super.type,
     super.artwork,
   });
-}
-
-Iterable<T> _pageItems<T>(List<T> items, {int? limit, int? startIndex}) {
-  final start = startIndex ?? 0;
-  if (start >= items.length) {
-    return const [];
-  }
-
-  final end = limit == null
-      ? items.length
-      : (start + limit).clamp(0, items.length);
-  return items.sublist(start, end);
 }

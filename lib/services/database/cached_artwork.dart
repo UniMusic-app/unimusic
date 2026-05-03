@@ -1,17 +1,17 @@
-import 'dart:io';
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:unimusic/services/database/cache.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/services/database/database.dart';
-import 'package:dio/dio.dart';
-import 'dart:ui' as ui;
+import "dart:io";
+import "dart:async";
+import "package:flutter/foundation.dart";
+import "package:flutter/material.dart";
+import "package:unimusic/services/database/cache.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/services/database/database.dart";
+import "package:dio/dio.dart";
+import "dart:ui" as ui;
 
 final dio = Dio(
   BaseOptions(
     responseType: ResponseType.bytes,
-    headers: {'User-Agent': 'UniMusic/1.0'},
+    headers: {"User-Agent": "UniMusic/1.0"},
   ),
 );
 
@@ -31,7 +31,7 @@ abstract class CachedArtwork extends Artwork {
   /// Download and cache the artwork with synchronization to prevent concurrent downloads
   Future<String?> _downloadAndCache(ArtworkSize size) async {
     final mimeType = getMimeType();
-    final cacheKey = '$id:$mimeType:$size';
+    final cacheKey = "$id:$mimeType:$size";
 
     final cachedPath = _cachedPaths[cacheKey];
     if (cachedPath != null) {
@@ -76,16 +76,19 @@ abstract class CachedArtwork extends Artwork {
       );
 
       try {
-        final existingArtwork = await DatabaseHelper.getArtwork(id, size: size);
+        final existingArtwork = await DatabaseHelper.artworks.get(
+          id,
+          size: size,
+        );
         if (existingArtwork != null) {
-          await DatabaseHelper.updateArtwork(
+          await DatabaseHelper.artworks.update(
             id,
             mimeType: mimeType,
             filePath: filePath,
             size: size,
           );
         } else {
-          await DatabaseHelper.insertArtwork(
+          await DatabaseHelper.artworks.insert(
             this,
             filePath: filePath,
             mimeType: mimeType,
@@ -137,7 +140,7 @@ class CachedArtworkImageProvider
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
-      debugLabel: 'CachedArtwork(${key.artwork.id})',
+      debugLabel: "CachedArtwork(${key.artwork.id})",
     );
   }
 
@@ -173,13 +176,9 @@ class CachedArtworkImageProvider
 
       final uri = key.artwork.getImageUri(size);
 
-      final dio = Dio();
       final response = await dio.get<Uint8List>(
         uri.toString(),
-        options: Options(
-          responseType: ResponseType.bytes,
-          headers: {'User-Agent': 'UniMusic/1.0'},
-        ),
+        options: Options(responseType: ResponseType.bytes),
       );
 
       if (response.data != null && response.data!.isNotEmpty) {
@@ -190,6 +189,19 @@ class CachedArtworkImageProvider
       debugPrint("Network fallback error for ${key.artwork.id}: $networkError");
     }
 
-    throw Exception('All artwork loading methods failed for ${key.artwork.id}');
+    throw Exception("All artwork loading methods failed for ${key.artwork.id}");
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CachedArtworkImageProvider &&
+          other.artwork.providerId == artwork.providerId &&
+          other.artwork.id == artwork.id &&
+          other.size == size &&
+          other.quality == quality;
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, artwork.providerId, artwork.id, size, quality);
 }

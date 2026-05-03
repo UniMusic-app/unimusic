@@ -1,22 +1,14 @@
-extension Capitalize on String {
+extension StringUtils on String {
   String get capitalized {
-    if (length > 0) {
-      return this[0].toUpperCase() + substring(1);
-    }
-    return "";
+    if (isEmpty) return "";
+    return this[0].toUpperCase() + substring(1);
   }
-}
 
-extension Uncapitalize on String {
   String get uncapitalized {
-    if (length > 0) {
-      return this[0].toLowerCase() + substring(1);
-    }
-    return "";
+    if (isEmpty) return "";
+    return this[0].toLowerCase() + substring(1);
   }
-}
 
-extension CompareAlphabetically on String {
   int compareAlphabetically(String other) =>
       toLowerCase().compareTo(other.toLowerCase());
 }

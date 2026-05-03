@@ -1,8 +1,7 @@
-import 'dart:io';
+import "package:flutter/material.dart";
+import "package:unimusic/utils/platform.dart";
 
-import 'package:flutter/material.dart';
-
-abstract class AdaptiveMenuItem {}
+sealed class AdaptiveMenuItem {}
 
 class MenuHeader extends AdaptiveMenuItem {
   final Widget child;
@@ -29,17 +28,17 @@ class AdaptiveContextMenu extends StatelessWidget {
     required this.items,
   });
 
-  bool get isDesktop =>
-      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onSecondaryTapDown: isDesktop
-          ? (details) => _showDesktopMenu(context, details.globalPosition)
-          : null,
-      onLongPress: !isDesktop ? () => _showMobileBottomSheet(context) : null,
-      child: child,
+    return Semantics(
+      onLongPressHint: !isDesktop ? "Show options" : null,
+      child: GestureDetector(
+        onSecondaryTapDown: isDesktop
+            ? (details) => _showDesktopMenu(context, details.globalPosition)
+            : null,
+        onLongPress: !isDesktop ? () => _showMobileBottomSheet(context) : null,
+        child: child,
+      ),
     );
   }
 
@@ -49,25 +48,15 @@ class AdaptiveContextMenu extends StatelessWidget {
       useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
+      showDragHandle: true,
       builder: (context) {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
             Flexible(
               child: ListView(
                 shrinkWrap: true,
-                padding: const EdgeInsets.only(top: 12, bottom: 24),
+                padding: const EdgeInsets.only(bottom: 24),
                 children: items
                     .map((item) => _buildMobileItem(context, item))
                     .toList(),
@@ -79,31 +68,26 @@ class AdaptiveContextMenu extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileItem(BuildContext context, AdaptiveMenuItem item) {
-    if (item is MenuHeader) {
-      return Padding(
-        padding: const EdgeInsets.only(left: 16, bottom: 8),
-        child: item.child,
-      );
-    } else if (item is MenuDivider) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: Divider(),
-      );
-    } else if (item is MenuAction) {
-      return ListTile(
-        dense: true,
-        leading: Icon(item.icon),
-        title: Text(item.title),
-        onTap: () {
-          Navigator.pop(context);
-          item.onTap();
-        },
-      );
-    }
-
-    throw Exception("Unsupported AdaptiveMenuItem on Mobile: $item");
-  }
+  Widget _buildMobileItem(BuildContext context, AdaptiveMenuItem item) =>
+      switch (item) {
+        MenuHeader(:final child) => Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 8),
+          child: child,
+        ),
+        MenuDivider() => const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Divider(),
+        ),
+        MenuAction(:final icon, :final title, :final onTap) => ListTile(
+          dense: true,
+          leading: Icon(icon),
+          title: Text(title),
+          onTap: () {
+            Navigator.pop(context);
+            onTap();
+          },
+        ),
+      };
 
   void _showDesktopMenu(BuildContext context, Offset globalPosition) async {
     final double left = globalPosition.dx;
@@ -113,7 +97,6 @@ class AdaptiveContextMenu extends StatelessWidget {
       context: context,
       useRootNavigator: true,
       elevation: 3,
-      constraints: BoxConstraints.loose(Size(double.infinity, double.infinity)),
       popUpAnimationStyle: const AnimationStyle(
         curve: Curves.easeIn,
         duration: Duration(milliseconds: 150),
@@ -125,33 +108,28 @@ class AdaptiveContextMenu extends StatelessWidget {
     );
   }
 
-  PopupMenuEntry _buildDesktopItem(
+  PopupMenuEntry<void> _buildDesktopItem(
     BuildContext context,
     AdaptiveMenuItem item,
-  ) {
-    if (item is MenuHeader) {
-      return PopupMenuItem(
-        enabled: false,
-        height: kMinInteractiveDimension,
-        labelTextStyle: WidgetStateProperty.all(
-          Theme.of(context).textTheme.bodyMedium,
-        ),
-        child: item.child,
-      );
-    } else if (item is MenuDivider) {
-      return const PopupMenuDivider();
-    } else if (item is MenuAction) {
-      return PopupMenuItem(
-        onTap: item.onTap,
-        child: Row(
-          spacing: 12,
-          children: [
-            Icon(item.icon, color: Theme.of(context).colorScheme.onSurface),
-            Text(item.title),
-          ],
-        ),
-      );
-    }
-    throw Exception("Unsupported AdaptiveMenuItem on Desktop: $item");
-  }
+  ) => switch (item) {
+    MenuHeader(:final child) => PopupMenuItem(
+      enabled: false,
+      height: kMinInteractiveDimension,
+      labelTextStyle: WidgetStateProperty.all(
+        Theme.of(context).textTheme.bodyMedium,
+      ),
+      child: child,
+    ),
+    MenuDivider() => const PopupMenuDivider(),
+    MenuAction(:final icon, :final title, :final onTap) => PopupMenuItem(
+      onTap: onTap,
+      child: Row(
+        spacing: 12,
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.onSurface),
+          Text(title),
+        ],
+      ),
+    ),
+  };
 }

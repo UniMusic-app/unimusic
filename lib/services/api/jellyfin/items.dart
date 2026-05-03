@@ -1,17 +1,18 @@
-import 'package:unimusic/services/api/jellyfin/api.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/services/database/cached_artwork.dart';
-import 'package:just_audio/just_audio.dart';
+import "package:unimusic/services/api/jellyfin/api.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/services/database/cached_artwork.dart";
+import "package:just_audio/just_audio.dart";
 
-mixin JellyfinItemWithFavourite implements MusicItem {
+mixin JellyfinItemWithFavourite {
   JellyfinApi get api;
+  String get id;
+  bool get favourite;
+  set favourite(bool value);
 
-  @override
   Future<bool> isFavourite() async {
     return favourite;
   }
 
-  @override
   Future<void> toggleFavourite(bool value) async {
     if (value) {
       await api.addToFavorites(id);
@@ -36,7 +37,7 @@ class JellyfinArtwork extends CachedArtwork {
   }) : super(providerId: providerId);
 
   @override
-  String getMimeType() => 'image/jpeg';
+  String getMimeType() => "image/jpeg";
 
   @override
   Uri getImageUri(ArtworkSize size) {
@@ -87,8 +88,8 @@ class JellyfinStreamInfo {
       }
     }
 
-    final container = source["Container"] as String?;
-    final codec = audioStream?["Codec"] as String?;
+    final container = source["Container"];
+    final codec = audioStream?["Codec"];
 
     final bitRate =
         _parseInt(audioStream?["BitRate"]) ?? _parseInt(source["BitRate"]);
@@ -231,8 +232,7 @@ class JellyfinSong extends Song<JellyfinArtist, JellyfinArtwork>
         favourite: json["UserData"]["IsFavorite"],
         artists: (json["ArtistItems"] as List)
             .map((json) => JellyfinArtist.fromJellyfinJson(api, json))
-            .toList()
-            .cast<JellyfinArtist>(),
+            .toList(),
         artwork: json["ImageTags"]?["Primary"] != null
             ? JellyfinArtwork(
                 api: api,
@@ -344,8 +344,7 @@ class JellyfinAlbum extends Album<JellyfinArtist, JellyfinArtwork>
       favourite: json["UserData"]["IsFavorite"],
       artists: (json["ArtistItems"] as List)
           .map((json) => JellyfinArtist.fromJellyfinJson(api, json))
-          .toList()
-          .cast<JellyfinArtist>(),
+          .toList(),
       artwork: json["ImageTags"]?["Primary"] != null
           ? JellyfinArtwork(
               api: api,
@@ -424,7 +423,7 @@ class JellyfinSearchHint extends SearchHint {
   }
 }
 
-int? _parseInt(dynamic value) {
+int? _parseInt(Object? value) {
   if (value is int) {
     return value;
   }

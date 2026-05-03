@@ -1,12 +1,11 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:mime/mime.dart';
-import 'package:path/path.dart' as path;
-import 'package:crypto/crypto.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "dart:io";
+import "package:flutter/foundation.dart";
+import "package:mime/mime.dart";
+import "package:path/path.dart" as path;
+import "package:crypto/crypto.dart";
+import "package:path_provider/path_provider.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
-// TODO: What else would be cached? Should it just be ArtworkCacheHelper?
 class CacheHelper {
   static String? _cacheDirectory;
   static Future<String> getCacheDirectory() async {
@@ -29,7 +28,7 @@ class CacheHelper {
     }
 
     final cacheDir = await getCacheDirectory();
-    final directory = Directory(path.join(cacheDir, 'artwork'));
+    final directory = Directory(path.join(cacheDir, "artwork"));
     if (!await directory.exists()) {
       await directory.create(recursive: true);
     }
@@ -45,7 +44,7 @@ class CacheHelper {
     // Create a safe filename from the ID
     final hash = sha256.convert(id.codeUnits).toString();
     final extension = extensionFromMime(mimeType);
-    return '$hash-$size.$extension';
+    return "$hash-$size.$extension";
   }
 
   static Future<String> saveArtwork(

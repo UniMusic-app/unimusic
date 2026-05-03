@@ -1,16 +1,16 @@
-import 'dart:io';
-import 'dart:typed_data';
+import "dart:io";
+import "dart:typed_data";
 
-import 'package:android_id/android_id.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
-import 'package:unimusic/main.dart';
-import 'package:unimusic/services/api/jellyfin/items.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/utils/string.dart';
+import "package:android_id/android_id.dart";
+import "package:device_info_plus/device_info_plus.dart";
+import "package:dio/dio.dart";
+import "package:flutter/material.dart";
+import "package:just_audio/just_audio.dart";
+import "package:just_audio_background/just_audio_background.dart";
+import "package:unimusic/utils/app_info.dart";
+import "package:unimusic/services/api/jellyfin/items.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/utils/string.dart";
 
 const providerId = "jellyfin";
 
@@ -20,7 +20,7 @@ final dio = Dio(
   BaseOptions(
     followRedirects: true,
     validateStatus: (status) {
-      return status != null && status < 500;
+      return status != null && status >= 200 && status < 300;
     },
   ),
 );
@@ -66,7 +66,7 @@ class JellyfinApi {
       return;
     }
 
-    for (final item in data["Items"]) {
+    for (final item in (data["Items"] as List)) {
       yield JellyfinArtist.fromJellyfinJson(this, item);
     }
   }
@@ -88,7 +88,7 @@ class JellyfinApi {
         artHeaders: headers,
         artUri: artwork?.getImageUri(ArtworkSize.medium),
       ),
-      options: ProgressiveAudioSourceOptions(
+      options: const ProgressiveAudioSourceOptions(
         // Required to make FLAC files not seek behind the actual position
         darwinAssetOptions: DarwinAssetOptions(
           preferPreciseDurationAndTiming: true,
@@ -162,7 +162,7 @@ class JellyfinApi {
         options: Options(responseType: ResponseType.bytes),
       );
 
-      bytes = response.data;
+      bytes = response.data as Uint8List?;
     } catch (error) {
       debugPrint("Failed fetching image $itemId: $error");
     }
@@ -253,7 +253,7 @@ class JellyfinApi {
       return;
     }
 
-    for (final item in data["Items"]) {
+    for (final item in (data["Items"] as List)) {
       switch (JellyfinItemType.fromJson(item["Type"])) {
         case JellyfinItemType.audio:
           yield JellyfinSong.fromJellyfinJson(this, item);
@@ -292,7 +292,7 @@ class JellyfinApi {
       return;
     }
 
-    for (final item in data["SearchHints"]) {
+    for (final item in (data["SearchHints"] as List)) {
       final searchHint = JellyfinSearchHint.fromJellyfinJson(this, item);
       if (searchHint != null) yield searchHint;
     }
@@ -361,7 +361,7 @@ class JellyfinApi {
     if (Platform.isAndroid) {
       final info = await deviceInfo.androidInfo;
       device = info.model;
-      final androidId = AndroidId();
+      const androidId = AndroidId();
       deviceId = (await androidId.getId())!;
     } else if (Platform.isIOS) {
       final info = await deviceInfo.iosInfo;
@@ -383,7 +383,7 @@ class JellyfinApi {
       throw Exception("Unimplemented");
     }
 
-    var authorizationHeaderParts = [
+    final authorizationHeaderParts = [
       'Client="$appName"',
       'Device="$device"',
       'DeviceId="$deviceId"',
@@ -391,7 +391,7 @@ class JellyfinApi {
     ];
 
     if (accessToken != null) {
-      authorizationHeaderParts.add('Token=""$accessToken');
+      authorizationHeaderParts.add('Token="$accessToken"');
     }
 
     return "MediaBrowser ${authorizationHeaderParts.join(", ")}";

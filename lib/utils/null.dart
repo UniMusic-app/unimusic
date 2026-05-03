@@ -1,4 +1,4 @@
-extension Let<Type> on Type? {
-  Return? let<Return>(Return Function(Type) f) =>
-      this != null ? f(this as Type) : null;
+extension Let<T> on T? {
+  Return? let<Return>(Return Function(T) f) =>
+      this != null ? f(this as T) : null;
 }

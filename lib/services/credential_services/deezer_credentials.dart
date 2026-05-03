@@ -1,4 +1,4 @@
-part of '../credentials_service.dart';
+part of "../credentials_service.dart";
 
 class DeezerCredentials extends ServiceCredentials {
   final String arl;
@@ -6,6 +6,13 @@ class DeezerCredentials extends ServiceCredentials {
 
   const DeezerCredentials({required this.arl, this.displayName})
     : super(type: ServiceType.deezer);
+
+  factory DeezerCredentials.fromJson(Map<String, dynamic> json) {
+    return DeezerCredentials(
+      arl: json["arl"],
+      displayName: json["displayName"],
+    );
+  }
 
   @override
   int get hashCode => Object.hash(type, arl);
@@ -16,15 +23,8 @@ class DeezerCredentials extends ServiceCredentials {
 
   @override
   Map<String, dynamic> toJson() => {
-    'type': type.id,
-    'arl': arl,
-    'displayName': displayName,
+    "type": type.id,
+    "arl": arl,
+    "displayName": displayName,
   };
-
-  factory DeezerCredentials.fromJson(Map<String, dynamic> json) {
-    return DeezerCredentials(
-      arl: json['arl'] as String,
-      displayName: json['displayName'] as String?,
-    );
-  }
 }

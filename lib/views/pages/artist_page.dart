@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:unimusic/components/album_carousel_card.dart';
-import 'package:unimusic/components/lazy_image.dart';
-import 'package:unimusic/components/tiles/music_item_tile.dart';
-import 'package:unimusic/services/music_manager.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/views/pages/artist_favourites_page.dart';
-import 'package:unimusic/views/pages/artist_songs_page.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:provider/provider.dart";
+import "package:unimusic/components/album_carousel_card.dart";
+import "package:unimusic/components/empty_state_view.dart";
+import "package:unimusic/components/lazy_image.dart";
+import "package:unimusic/components/tiles/music_item_tile.dart";
+import "package:unimusic/services/music_manager.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/views/pages/artist_favourites_page.dart";
+import "package:unimusic/views/pages/artist_songs_page.dart";
 
 class ArtistPage extends StatefulWidget {
   final Artist artist;
@@ -80,7 +82,7 @@ class _ArtistPageState extends State<ArtistPage> {
       }
 
       setState(() {
-        _highlightedSongsError = 'Failed to load songs.';
+        _highlightedSongsError = "Failed to load songs.";
         _isLoadingHighlightedSongs = false;
       });
     }
@@ -135,7 +137,7 @@ class _ArtistPageState extends State<ArtistPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No songs available for this artist.'),
+              content: Text("No songs available for this artist."),
             ),
           );
         }
@@ -146,7 +148,7 @@ class _ArtistPageState extends State<ArtistPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to load songs for this artist.'),
+            content: Text("Failed to load songs for this artist."),
           ),
         );
       }
@@ -173,14 +175,14 @@ class _ArtistPageState extends State<ArtistPage> {
 
       if (!didQueueSongs && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No songs available for this artist.')),
+          const SnackBar(content: Text("No songs available for this artist.")),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to load songs for this artist.'),
+            content: Text("Failed to load songs for this artist."),
           ),
         );
       }
@@ -202,7 +204,7 @@ class _ArtistPageState extends State<ArtistPage> {
         _highlightedSongs.isNotEmpty;
 
     return Material(
-      color: theme.scaffoldBackgroundColor,
+      color: theme.colorScheme.surface,
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -227,8 +229,7 @@ class _ArtistPageState extends State<ArtistPage> {
                       final compact = constraints.maxWidth < 560;
                       final artwork = artworkData == null
                           ? null
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(9999),
+                          : ClipOval(
                               child: LazyImage(
                                 artwork: artworkData,
                                 icon: Icon(LibraryItemType.artists.icon),
@@ -250,8 +251,8 @@ class _ArtistPageState extends State<ArtistPage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.play_arrow_rounded),
-                        label: const Text('Play'),
+                            : const Icon(Symbols.play_arrow_rounded),
+                        label: const Text("Play"),
                       );
 
                       final shuffleButton = OutlinedButton.icon(
@@ -266,8 +267,8 @@ class _ArtistPageState extends State<ArtistPage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.shuffle_rounded),
-                        label: const Text('Shuffle'),
+                            : const Icon(Symbols.shuffle_rounded),
+                        label: const Text("Shuffle"),
                       );
 
                       final actionButtons = Wrap(
@@ -286,8 +287,7 @@ class _ArtistPageState extends State<ArtistPage> {
                                 Text(
                                   widget.artist.name,
                                   textAlign: TextAlign.center,
-                                  style: theme.textTheme.headlineMedium
-                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                  style: theme.textTheme.headlineMedium,
                                 ),
                                 const SizedBox(height: 16),
                                 actionButtons,
@@ -300,8 +300,9 @@ class _ArtistPageState extends State<ArtistPage> {
                                 children: [
                                   Text(
                                     widget.artist.name,
-                                    style: theme.textTheme.headlineMedium
-                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.headlineMedium,
                                   ),
                                   if (artwork != null) const Spacer(),
                                   Align(
@@ -351,13 +352,13 @@ class _ArtistPageState extends State<ArtistPage> {
                     data,
                   ),
                   ConnectionState.done when snapshot.hasError =>
-                    'Could not load favourites.',
-                  _ => 'Loading favourites...',
+                    "Could not load favourites.",
+                  _ => "Loading favourites...",
                 };
 
                 return Column(
                   children: [
-                    const _SectionHeader(title: 'Your favourites'),
+                    const _SectionHeader(title: "Your favourites"),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Card(
@@ -375,10 +376,10 @@ class _ArtistPageState extends State<ArtistPage> {
                                   );
                                 },
                           leading: Icon(
-                            Icons.favorite_rounded,
+                            Symbols.favorite_rounded,
                             color: theme.colorScheme.primary,
                           ),
-                          title: const Text('Your favourites'),
+                          title: const Text("Your favourites"),
                           subtitle: Text(subtitle),
                           trailing:
                               snapshot.connectionState != ConnectionState.done
@@ -392,11 +393,11 @@ class _ArtistPageState extends State<ArtistPage> {
                               : snapshot.hasError
                               ? IconButton(
                                   onPressed: _refreshFavourites,
-                                  icon: const Icon(Icons.refresh_rounded),
+                                  icon: const Icon(Symbols.refresh_rounded),
                                 )
                               : canOpenFavourites
-                              ? const Icon(Icons.chevron_right_rounded)
-                              : const Icon(Icons.remove_circle_outline_rounded),
+                              ? const Icon(Symbols.chevron_right_rounded)
+                              : null,
                         ),
                       ),
                     ),
@@ -408,8 +409,8 @@ class _ArtistPageState extends State<ArtistPage> {
           if (showSongsSection) ...[
             SliverToBoxAdapter(
               child: _SectionHeader(
-                title: 'Featured Songs',
-                actionLabel: 'View all',
+                title: "Featured Songs",
+                actionLabel: "View all",
                 onAction: () => ArtistSongsPage.open(context, widget.artist),
               ),
             ),
@@ -449,7 +450,7 @@ class _ArtistFavouritesData {
 
 String _favouritesSubtitle(_ArtistFavouritesData data) {
   if (!data.hasAny) {
-    return 'You do not have any favourites from this artist.';
+    return "You do not have any favourites from this artist.";
   }
 
   final tracks =
@@ -460,7 +461,7 @@ String _favouritesSubtitle(_ArtistFavouritesData data) {
 
   final albums =
       '${data.favouriteAlbums.length} ${data.favouriteAlbums.length == 1 ? 'album' : 'albums'}';
-  return '$tracks · $albums';
+  return "$tracks · $albums";
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -503,21 +504,33 @@ class _ArtistSongsPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const _SectionStateCard(
-        icon: Icons.music_note_rounded,
-        message: 'Loading songs...',
-        child: CircularProgressIndicator(),
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: EmptyStateView(
+            icon: Symbols.music_note_rounded,
+            message: "Loading songs...",
+            iconSize: 32,
+            action: CircularProgressIndicator(),
+          ),
+        ),
       );
     }
 
     if (errorMessage != null) {
-      return _SectionStateCard(
-        icon: Icons.error_outline_rounded,
-        message: errorMessage!,
-        child: FilledButton.tonalIcon(
-          onPressed: onRetry,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Retry'),
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: EmptyStateView(
+            icon: Symbols.error_outline_rounded,
+            message: errorMessage!,
+            iconSize: 32,
+            action: FilledButton.tonalIcon(
+              onPressed: onRetry,
+              icon: const Icon(Symbols.refresh_rounded),
+              label: const Text("Retry"),
+            ),
+          ),
         ),
       );
     }
@@ -632,7 +645,7 @@ class _ArtistAlbumsSectionState extends State<_ArtistAlbumsSection> {
       }
 
       setState(() {
-        _errorMessage = 'Failed to load albums.';
+        _errorMessage = "Failed to load albums.";
         _isInitialLoad = false;
         _isLoadingMore = false;
       });
@@ -644,13 +657,19 @@ class _ArtistAlbumsSectionState extends State<_ArtistAlbumsSection> {
     if (_isInitialLoad && _albums.isEmpty) {
       return const Column(
         children: [
-          _SectionHeader(title: 'Albums'),
+          _SectionHeader(title: "Albums"),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: _SectionStateCard(
-              icon: Icons.album_outlined,
-              message: 'Loading albums...',
-              child: CircularProgressIndicator(),
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: EmptyStateView(
+                  icon: Symbols.album_rounded,
+                  message: "Loading albums...",
+                  iconSize: 32,
+                  action: CircularProgressIndicator(),
+                ),
+              ),
             ),
           ),
         ],
@@ -660,16 +679,22 @@ class _ArtistAlbumsSectionState extends State<_ArtistAlbumsSection> {
     if (_errorMessage != null && _albums.isEmpty) {
       return Column(
         children: [
-          const _SectionHeader(title: 'Albums'),
+          const _SectionHeader(title: "Albums"),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _SectionStateCard(
-              icon: Icons.error_outline_rounded,
-              message: _errorMessage!,
-              child: FilledButton.tonalIcon(
-                onPressed: _loadMoreAlbums,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: EmptyStateView(
+                  icon: Symbols.error_outline_rounded,
+                  message: _errorMessage!,
+                  iconSize: 32,
+                  action: FilledButton.tonalIcon(
+                    onPressed: _loadMoreAlbums,
+                    icon: const Icon(Symbols.refresh_rounded),
+                    label: const Text("Retry"),
+                  ),
+                ),
               ),
             ),
           ),
@@ -683,7 +708,7 @@ class _ArtistAlbumsSectionState extends State<_ArtistAlbumsSection> {
 
     return Column(
       children: [
-        const _SectionHeader(title: 'Albums'),
+        const _SectionHeader(title: "Albums"),
         SizedBox(
           height: albumCarouselCardHeight,
           child: ListView.separated(
@@ -702,49 +727,23 @@ class _ArtistAlbumsSectionState extends State<_ArtistAlbumsSection> {
                     child: _errorMessage != null
                         ? FilledButton.tonalIcon(
                             onPressed: _loadMoreAlbums,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Retry'),
+                            icon: const Icon(Symbols.refresh_rounded),
+                            label: const Text("Retry"),
                           )
                         : const CircularProgressIndicator(),
                   ),
                 );
               }
 
-              return AlbumCarouselCard(_albums[index]);
+              return AlbumCarouselCard(
+                _albums[index],
+                width: 168,
+                height: albumCarouselCardHeight,
+              );
             },
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SectionStateCard extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  final Widget? child;
-
-  const _SectionStateCard({
-    required this.icon,
-    required this.message,
-    this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 32),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            if (child != null) ...[const SizedBox(height: 16), child!],
-          ],
-        ),
-      ),
     );
   }
 }

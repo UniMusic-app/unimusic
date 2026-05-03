@@ -1,3 +1,5 @@
+import "dart:async";
+
 extension ChunkedStream<T> on Stream<List<T>> {
   Stream<List<T>> chunked(int chunkSize) async* {
     List<T> buffer = [];
@@ -89,8 +91,7 @@ extension FlattenStream<T> on Stream<Iterable<T>> {
   }
 }
 
-extension WhereTypeStream<T> on Stream<dynamic> {
-  // ignore: avoid_shadowing_type_parameters
+extension WhereTypeStream on Stream<dynamic> {
   Stream<T> whereType<T>() async* {
     await for (final item in this) {
       if (item is T) {

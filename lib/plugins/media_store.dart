@@ -1,8 +1,15 @@
-import 'package:flutter/services.dart';
-import 'package:unimusic/utils/null.dart';
+import "dart:io";
+import "package:flutter/services.dart";
+import "package:unimusic/utils/null.dart";
 
 class MediaStorePlugin {
-  static const MethodChannel _channel = MethodChannel('media_store');
+  static const MethodChannel _channel = MethodChannel("media_store");
+
+  static void _assertAndroid() {
+    if (!Platform.isAndroid) {
+      throw UnsupportedError("MediaStorePlugin is only supported on Android.");
+    }
+  }
 
   static bool isEmptyValue(String? value) {
     return switch (value) {
@@ -12,95 +19,76 @@ class MediaStorePlugin {
   }
 
   static Future<Uint8List?> readArtwork(Uri artworkUri) async {
-    try {
-      final Uint8List result = await _channel.invokeMethod('readArtwork', {
-        "artworkUri": artworkUri.toString(),
-      });
-      return result;
-    } catch (e) {
-      throw Exception('Failed to read artwork: $e');
-    }
+    _assertAndroid();
+    final Uint8List result = (await _channel.invokeMethod<Uint8List>(
+      "readArtwork",
+      {"artworkUri": artworkUri.toString()},
+    ))!;
+    return result;
   }
 
   static Stream<MediaStoreSong> getSongs() async* {
-    try {
-      final List result = await _channel.invokeMethod('getSongs');
+    _assertAndroid();
+    final result = (await _channel.invokeMethod<List<Object?>>("getSongs"))!;
 
-      for (final value in result) {
-        final map = Map<String, dynamic>.from(value);
-        final song = MediaStoreSong.fromMap(map);
-        yield song;
-      }
-    } catch (e) {
-      throw Exception('Failed to get songs: $e');
+    for (final value in result) {
+      final map = Map<String, dynamic>.from(value as Map);
+      final song = MediaStoreSong.fromMap(map);
+      yield song;
     }
   }
 
   static Stream<MediaStoreSong> getAlbumSongs(String albumId) async* {
-    try {
-      final List result = await _channel.invokeMethod('getAlbumSongs', {
-        "albumId": albumId,
-      });
-      for (final value in result) {
-        final map = Map<String, dynamic>.from(value);
-        final song = MediaStoreSong.fromMap(map);
-        yield song;
-      }
-    } catch (e) {
-      throw Exception('Failed to get album songs: $e');
+    _assertAndroid();
+    final result = (await _channel.invokeMethod<List<Object?>>(
+      "getAlbumSongs",
+      {"albumId": albumId},
+    ))!;
+    for (final value in result) {
+      final map = Map<String, dynamic>.from(value as Map);
+      final song = MediaStoreSong.fromMap(map);
+      yield song;
     }
   }
 
   static Stream<MediaStoreArtist> getArtists() async* {
-    try {
-      final List result = await _channel.invokeMethod('getArtists');
+    _assertAndroid();
+    final result = (await _channel.invokeMethod<List<Object?>>("getArtists"))!;
 
-      for (final value in result) {
-        final map = Map<String, dynamic>.from(value);
-        final artist = MediaStoreArtist.fromMap(map);
-        if (isEmptyValue(artist.name)) {
-          continue;
-        }
-        yield artist;
+    for (final value in result) {
+      final map = Map<String, dynamic>.from(value as Map);
+      final artist = MediaStoreArtist.fromMap(map);
+      if (isEmptyValue(artist.name)) {
+        continue;
       }
-    } catch (e) {
-      throw Exception('Failed to get artists: $e');
+      yield artist;
     }
   }
 
   static Stream<MediaStoreAlbum> getAlbums() async* {
-    try {
-      final List result = await _channel.invokeMethod('getAlbums');
+    _assertAndroid();
+    final result = (await _channel.invokeMethod<List<Object?>>("getAlbums"))!;
 
-      for (final value in result) {
-        final map = Map<String, dynamic>.from(value);
-        final album = MediaStoreAlbum.fromMap(map);
-        if (isEmptyValue(album.artist?.name)) {
-          continue;
-        }
-        yield album;
+    for (final value in result) {
+      final map = Map<String, dynamic>.from(value as Map);
+      final album = MediaStoreAlbum.fromMap(map);
+      if (isEmptyValue(album.artist?.name)) {
+        continue;
       }
-    } catch (e) {
-      throw Exception('Failed to get albums: $e');
+      yield album;
     }
   }
 
   static Future<bool> checkPermission() async {
-    try {
-      final bool result = await _channel.invokeMethod('checkPermission');
-      return result;
-    } catch (e) {
-      throw Exception('Failed to check permission: $e');
-    }
+    _assertAndroid();
+    final result = (await _channel.invokeMethod<bool>("checkPermission"))!;
+    return result;
   }
 
   static Future<bool> requestPermission() async {
-    try {
-      final bool result = await _channel.invokeMethod('requestPermission');
-      return result;
-    } catch (e) {
-      throw Exception('Failed to request permission: $e');
-    }
+    _assertAndroid();
+    final result = (await _channel.invokeMethod<bool>("requestPermission"))!;
+    return result;
   }
 }
 
@@ -137,43 +125,50 @@ class MediaStoreSong {
   });
 
   factory MediaStoreSong.fromMap(Map<String, dynamic> map) {
-    final artworkUri = (map['artwork'] as String?).let(Uri.parse);
+    final artworkUri = (map["artwork"] as String?).let(Uri.parse);
 
-    final bitrateValue = map['bitrate'];
-    final sizeValue = map['size'];
+    final bitrateValue = map["bitrate"];
+    final sizeValue = map["size"];
     final bitrate = bitrateValue is int && bitrateValue > 0
         ? bitrateValue
         : null;
     final size = sizeValue is int && sizeValue > 0 ? sizeValue : null;
 
     return MediaStoreSong(
-      id: map['id'],
-      name: map['name'],
-      artist: switch (map['artist']) {
+      id: map["id"],
+      name: map["name"],
+      artist: switch (map["artist"]) {
         final artist when MediaStorePlugin.isEmptyValue(artist) => null,
-        final artist => MediaStoreArtist(id: map['artistId'], name: artist),
+        final artist => MediaStoreArtist(id: map["artistId"], name: artist),
       },
       album: MediaStoreAlbum(
-        id: map['albumId'],
-        name: map['album'],
-        artist: switch (map['albumArtist']) {
-          String artist => MediaStoreArtist(id: map['albumId'], name: artist),
+        id: map["albumId"],
+        name: map["album"],
+        artist: switch (map["albumArtist"]) {
+          String artist => MediaStoreArtist(id: map["albumId"], name: artist),
           _ => null,
         },
         artwork: artworkUri,
       ),
-      albumTrack: map['albumTrack'],
-      albumDisc: map['albumDisc'],
-      mimeType: map['mimeType'],
+      albumTrack: map["albumTrack"],
+      albumDisc: map["albumDisc"],
+      mimeType: map["mimeType"],
       bitrate: bitrate,
       size: size,
-      duration: Duration(milliseconds: map['duration']),
-      path: Uri.parse(map['path']),
+      duration: Duration(milliseconds: map["duration"]),
+      path: Uri.parse(map["path"] as String),
       artwork: artworkUri,
     );
   }
 
   int get albumHash => "$name/$albumDisc/$albumTrack".hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is MediaStoreSong && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class MediaStoreArtist {
@@ -183,8 +178,15 @@ class MediaStoreArtist {
   MediaStoreArtist({required this.id, required this.name});
 
   factory MediaStoreArtist.fromMap(Map<String, dynamic> map) {
-    return MediaStoreArtist(id: map['id'], name: map['name']);
+    return MediaStoreArtist(id: map["id"], name: map["name"]);
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is MediaStoreArtist && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class MediaStoreAlbum {
@@ -202,13 +204,20 @@ class MediaStoreAlbum {
 
   factory MediaStoreAlbum.fromMap(Map<String, dynamic> map) {
     return MediaStoreAlbum(
-      id: map['id'],
-      name: map['name'],
-      artist: switch (map['artist']) {
+      id: map["id"],
+      name: map["name"],
+      artist: switch (map["artist"]) {
         final artist when MediaStorePlugin.isEmptyValue(artist) => null,
-        final artist => MediaStoreArtist(id: map['artistId'], name: artist),
+        final artist => MediaStoreArtist(id: map["artistId"], name: artist),
       },
-      artwork: (map['artwork'] as String?).let(Uri.parse),
+      artwork: (map["artwork"] as String?).let(Uri.parse),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is MediaStoreAlbum && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

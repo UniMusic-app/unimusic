@@ -1,11 +1,16 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/views/pages/settings_page.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:unimusic/utils/layout.dart";
+import "package:unimusic/views/pages/settings_page.dart";
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // On wider layouts the sidebar provides settings access.
+    final isCompact = MediaQuery.sizeOf(context).width < expandedBreakpoint;
+
     return NestedScrollView(
       floatHeaderSlivers: true,
       headerSliverBuilder: (BuildContext context, _) {
@@ -17,22 +22,17 @@ class HomeView extends StatelessWidget {
             snap: true,
             title: const Text("Home"),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.settings),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsPage(),
-                    ),
-                  );
-                },
-              ),
+              if (isCompact)
+                IconButton(
+                  tooltip: "Settings",
+                  icon: const Icon(Symbols.settings_rounded),
+                  onPressed: () => SettingsPage.open(context),
+                ),
             ],
           ),
         ];
       },
-      body: Column(),
+      body: const Column(),
     );
   }
 }

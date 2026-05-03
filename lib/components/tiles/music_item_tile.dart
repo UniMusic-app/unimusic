@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/components/adaptive_context_menu.dart';
-import 'package:unimusic/components/tiles/album_tile.dart';
-import 'package:unimusic/components/tiles/artist_tile.dart';
-import 'package:unimusic/components/tiles/generic_item_tile.dart';
-import 'package:unimusic/components/tiles/song_tile.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-export 'package:unimusic/components/tiles/generic_item_tile.dart';
+import "package:flutter/material.dart";
+import "package:unimusic/components/adaptive_context_menu.dart";
+import "package:unimusic/components/tiles/album_tile.dart";
+import "package:unimusic/components/tiles/artist_tile.dart";
+import "package:unimusic/components/tiles/generic_item_tile.dart";
+import "package:unimusic/components/tiles/song_tile.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+export "package:unimusic/components/tiles/generic_item_tile.dart";
 
 class MusicItemTile extends StatelessWidget {
   final MusicItem item;
@@ -47,7 +47,6 @@ class MusicItemTile extends StatelessWidget {
         contained: contained,
         containedPosition: containedPosition,
       ),
-      _ => throw Exception("Unknown MusciItem: $item"),
     };
   }
 }

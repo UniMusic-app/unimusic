@@ -1,5 +1,5 @@
 name: unimusic
-description: "A new Flutter project."
+description: "UniMusic - A multi-provider music player for Android, iOS, macOS, Linux, and Windows."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -39,20 +39,22 @@ dependencies:
   audio_session: ^0.2.2
   device_info_plus: ^12.3.0
   android_id: ^0.5.1
-  dynamic_system_colors: ^1.8.0
+  dynamic_system_colors: ^1.9.0
+  flex_seed_scheme: ^4.0.1
+  flex_color_picker: ^3.8.0
   dio_cookie_manager: ^3.3.0
   cookie_jar: ^4.0.8
   blowfish: ^1.0.2
   crypto: ^3.0.7
   sqflite: ^2.4.2
   path: ^1.9.1
-  json_annotation: ^4.9.0
   audio_metadata_reader: ^1.4.1
   mime: ^2.0.0
   image_size_getter: ^2.4.1
   image: ^4.6.0
   path_provider: ^2.1.5
   flutter_secure_storage: ^10.0.0
+  material_symbols_icons: ^4.2928.1
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +68,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.10.4
   json_serializable: ^6.11.3
+  mocktail: ^1.0.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

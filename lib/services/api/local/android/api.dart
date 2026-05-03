@@ -48,30 +48,30 @@ class LocalAndroidApi extends LocalApi {
     final mediaStoreSongs = await MediaStorePlugin.getSongs()
         .map((s) => s.id.toString())
         .toSet();
-    final dbSongs = await DatabaseHelper.getSongsByProvider(providerId);
+    final dbSongs = await DatabaseHelper.songs.getByProvider(providerId);
     for (final dbSong in dbSongs) {
       if (!mediaStoreSongs.contains(dbSong.id)) {
-        await DatabaseHelper.deleteSong(dbSong.id);
+        await DatabaseHelper.songs.delete(dbSong.id);
       }
     }
 
     final mediaStoreAlbums = await MediaStorePlugin.getAlbums()
         .map((a) => a.id.toString())
         .toSet();
-    final dbAlbums = await DatabaseHelper.getAlbumsByProvider(providerId);
+    final dbAlbums = await DatabaseHelper.albums.getByProvider(providerId);
     for (final dbAlbum in dbAlbums) {
       if (!mediaStoreAlbums.contains(dbAlbum.id)) {
-        await DatabaseHelper.deleteAlbum(dbAlbum.id);
+        await DatabaseHelper.albums.delete(dbAlbum.id);
       }
     }
 
     final mediaStoreArtists = await MediaStorePlugin.getArtists()
         .map((a) => a.id.toString())
         .toSet();
-    final dbArtists = await DatabaseHelper.getArtistsByProvider(providerId);
+    final dbArtists = await DatabaseHelper.artists.getByProvider(providerId);
     for (final dbArtist in dbArtists) {
       if (!mediaStoreArtists.contains(dbArtist.id)) {
-        await DatabaseHelper.deleteArtist(dbArtist.id);
+        await DatabaseHelper.artists.delete(dbArtist.id);
       }
     }
 

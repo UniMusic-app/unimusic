@@ -1,10 +1,10 @@
-import 'package:unimusic/services/api/local/api.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:unimusic/services/api/local/api.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class LocalMusicProvider extends MusicProvider {
   final LocalApi api;
 
-  LocalMusicProvider({required this.api}) : super(id: 'local', name: 'Local');
+  LocalMusicProvider({required this.api}) : super(id: "local", name: "Local");
 
   @override
   Stream<Song> getLibrarySongs() async* {

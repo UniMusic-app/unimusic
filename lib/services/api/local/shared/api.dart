@@ -1,15 +1,15 @@
-import 'dart:io';
-import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as path;
-import 'package:audio_metadata_reader/audio_metadata_reader.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:unimusic/services/api/local/shared/items.dart';
-import 'package:unimusic/services/database/database.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/services/database/cache.dart';
-import 'package:image/image.dart' as img;
-import 'package:image_size_getter/image_size_getter.dart';
+import "dart:io";
+import "package:crypto/crypto.dart";
+import "package:flutter/foundation.dart";
+import "package:path/path.dart" as path;
+import "package:audio_metadata_reader/audio_metadata_reader.dart";
+import "package:path_provider/path_provider.dart";
+import "package:unimusic/services/api/local/shared/items.dart";
+import "package:unimusic/services/database/database.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/services/database/cache.dart";
+import "package:image/image.dart" as img;
+import "package:image_size_getter/image_size_getter.dart";
 import "package:unimusic/services/api/local/api.dart";
 
 const providerId = "local";
@@ -23,19 +23,19 @@ class LocalSharedApi extends LocalApi {
     final List<String> directories = [];
 
     if (Platform.isWindows) {
-      final userProfile = Platform.environment['USERPROFILE'];
+      final userProfile = Platform.environment["USERPROFILE"];
       if (userProfile != null) {
         directories.addAll([
-          path.join(userProfile, 'Music'),
-          path.join(userProfile, 'Documents', 'Music'),
+          path.join(userProfile, "Music"),
+          path.join(userProfile, "Documents", "Music"),
         ]);
       }
     } else if (Platform.isMacOS || Platform.isLinux) {
-      final home = Platform.environment['HOME'];
+      final home = Platform.environment["HOME"];
       if (home != null) {
         directories.addAll([
-          path.join(home, 'Music'),
-          path.join(home, 'Documents', 'Music'),
+          path.join(home, "Music"),
+          path.join(home, "Documents", "Music"),
         ]);
       }
     } else if (Platform.isIOS) {
@@ -44,7 +44,7 @@ class LocalSharedApi extends LocalApi {
 
       // We need to create a file in that directory for it to show up for the user
       // That file cannot be hidden
-      final file = File('$directory/README.txt');
+      final file = File("$directory/README.txt");
       await file.writeAsString("Put your Music files here");
     }
 
@@ -52,13 +52,13 @@ class LocalSharedApi extends LocalApi {
   }
 
   static const supportedExtensions = {
-    '.mp3',
-    '.flac',
-    '.m4a',
-    '.aac',
-    '.ogg',
-    '.wav',
-    '.wma',
+    ".mp3",
+    ".flac",
+    ".m4a",
+    ".aac",
+    ".ogg",
+    ".wav",
+    ".wma",
   };
 
   Stream<FileSystemEntity> _scanDirectory(String directoryPath) async* {
@@ -85,7 +85,7 @@ class LocalSharedApi extends LocalApi {
         }
       }
     } catch (error) {
-      debugPrint('Error scanning directory $directoryPath: $error');
+      debugPrint("Error scanning directory $directoryPath: $error");
     }
   }
 
@@ -93,7 +93,7 @@ class LocalSharedApi extends LocalApi {
     try {
       return readMetadata(file, getImage: true);
     } catch (error) {
-      debugPrint('Error reading tags for ${file.path}: $error');
+      debugPrint("Error reading tags for ${file.path}: $error");
       return null;
     }
   }
@@ -109,7 +109,7 @@ class LocalSharedApi extends LocalApi {
 
       final songId = _generateId("song", file.path);
 
-      final songData = await DatabaseHelper.getSong(songId);
+      final songData = await DatabaseHelper.songs.get(songId);
       if (songData != null) {
         return await LocalSong.fromDatabase(this, songData);
       }
@@ -126,7 +126,7 @@ class LocalSharedApi extends LocalApi {
           duration: Duration.zero,
           filePath: file.path,
         );
-        await DatabaseHelper.insertSong(song);
+        await DatabaseHelper.songs.insert(song);
         return song;
       }
 
@@ -141,7 +141,7 @@ class LocalSharedApi extends LocalApi {
       for (final artistName in artistNames) {
         final artistId = _generateId("artist", artistName);
 
-        final existingArtistData = await DatabaseHelper.getArtist(artistId);
+        final existingArtistData = await DatabaseHelper.artists.get(artistId);
 
         final LocalArtist artist;
         if (existingArtistData == null) {
@@ -151,7 +151,7 @@ class LocalSharedApi extends LocalApi {
             name: artistName,
             favourite: false,
           );
-          await DatabaseHelper.insertArtist(artist);
+          await DatabaseHelper.artists.insert(artist);
         } else {
           artist = LocalArtist.fromDatabase(this, existingArtistData);
         }
@@ -164,7 +164,7 @@ class LocalSharedApi extends LocalApi {
       if (albumName != null) {
         final albumId = _generateId("album", albumName);
 
-        final existingAlbumData = await DatabaseHelper.getAlbum(albumId);
+        final existingAlbumData = await DatabaseHelper.albums.get(albumId);
         if (existingAlbumData == null) {
           album = LocalAlbum(
             api: this,
@@ -173,7 +173,7 @@ class LocalSharedApi extends LocalApi {
             favourite: false,
             artists: artists,
           );
-          await DatabaseHelper.insertAlbum(album);
+          await DatabaseHelper.albums.insert(album);
         } else {
           album = await LocalAlbum.fromDatabase(this, existingAlbumData);
         }
@@ -238,7 +238,7 @@ class LocalSharedApi extends LocalApi {
 
           artwork = LocalArtwork(id: songId);
 
-          await DatabaseHelper.insertArtwork(
+          await DatabaseHelper.artworks.insert(
             artwork,
             filePath: filePath,
             mimeType: mimeType,
@@ -263,17 +263,16 @@ class LocalSharedApi extends LocalApi {
       );
 
       // Insert song into database
-      await DatabaseHelper.insertSong(song);
+      await DatabaseHelper.songs.insert(song);
 
       // Insert album-song relationship
       if (album != null) {
-        await DatabaseHelper.insertAlbumSong(album.id, songId);
+        await DatabaseHelper.albums.insertSong(album.id, songId);
       }
 
       return song;
     } catch (error) {
-      // TODO: Handle this better?
-      debugPrint('Error creating song from file ${file.path}: $error');
+      debugPrint("Error creating song from file ${file.path}: $error");
       return null;
     }
   }
@@ -281,7 +280,7 @@ class LocalSharedApi extends LocalApi {
   @override
   Stream<LocalSong> getAllSongs() async* {
     // First check if we have cached songs in database
-    final cachedSongs = await DatabaseHelper.getSongsByProvider(providerId);
+    final cachedSongs = await DatabaseHelper.songs.getByProvider(providerId);
     final Set<String> processedFiles = {};
 
     for (final songData in cachedSongs) {
@@ -310,7 +309,7 @@ class LocalSharedApi extends LocalApi {
 
   @override
   Stream<LocalAlbum> getAllAlbums() async* {
-    final albumsData = await DatabaseHelper.getAlbumsByProvider(providerId);
+    final albumsData = await DatabaseHelper.albums.getByProvider(providerId);
 
     for (final albumData in albumsData) {
       final album = await LocalAlbum.fromDatabase(this, albumData);
@@ -320,7 +319,7 @@ class LocalSharedApi extends LocalApi {
 
   @override
   Stream<LocalArtist> getAllArtists() async* {
-    final artistsData = await DatabaseHelper.getArtistsByProvider(providerId);
+    final artistsData = await DatabaseHelper.artists.getByProvider(providerId);
     final seenArtists = <String>{};
 
     for (final artistData in artistsData) {
@@ -335,7 +334,7 @@ class LocalSharedApi extends LocalApi {
   }
 
   Stream<LocalSong> getAlbumSongs(String albumId) async* {
-    final songData = await DatabaseHelper.getSongsByAlbumId(albumId);
+    final songData = await DatabaseHelper.albums.getSongs(albumId);
     for (final song in songData) {
       final localSong = await LocalSong.fromDatabase(this, song);
       yield localSong;
@@ -427,27 +426,27 @@ class LocalSharedApi extends LocalApi {
 
   @override
   Future<void> cleanupGarbage() async {
-    final dbSongs = await DatabaseHelper.getSongsByProvider(providerId);
+    final dbSongs = await DatabaseHelper.songs.getByProvider(providerId);
     for (final dbSong in dbSongs) {
       if (dbSong.filePath == null || !await File(dbSong.filePath!).exists()) {
-        await DatabaseHelper.deleteSong(dbSong.id);
+        await DatabaseHelper.songs.delete(dbSong.id);
       }
     }
 
-    final dbAlbums = await DatabaseHelper.getAlbumsByProvider(providerId);
+    final dbAlbums = await DatabaseHelper.albums.getByProvider(providerId);
     for (final dbAlbum in dbAlbums) {
-      final albumSongs = await DatabaseHelper.getSongsByAlbumId(dbAlbum.id);
+      final albumSongs = await DatabaseHelper.albums.getSongs(dbAlbum.id);
       if (albumSongs.isEmpty) {
-        await DatabaseHelper.deleteAlbum(dbAlbum.id);
+        await DatabaseHelper.albums.delete(dbAlbum.id);
       }
     }
 
-    final dbArtists = await DatabaseHelper.getArtistsByProvider(providerId);
+    final dbArtists = await DatabaseHelper.artists.getByProvider(providerId);
     for (final dbArtist in dbArtists) {
-      final artistSongs = await DatabaseHelper.getSongsByArtist(dbArtist.id);
-      final artistAlbums = await DatabaseHelper.getAlbumsByArtist(dbArtist.id);
+      final artistSongs = await DatabaseHelper.songs.getByArtist(dbArtist.id);
+      final artistAlbums = await DatabaseHelper.albums.getByArtist(dbArtist.id);
       if (artistSongs.isEmpty && artistAlbums.isEmpty) {
-        await DatabaseHelper.deleteArtist(dbArtist.id);
+        await DatabaseHelper.artists.delete(dbArtist.id);
       }
     }
 

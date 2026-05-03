@@ -1,15 +1,16 @@
-import 'dart:math';
+import "dart:math";
+import "dart:ui";
 
-import 'package:flutter/material.dart';
-import 'package:unimusic/components/music_player/views/audio_source_view.dart';
-import 'package:unimusic/components/music_player/views/controls_view.dart';
-import 'package:unimusic/components/music_player/views/queue_view.dart';
-import 'package:unimusic/services/music_manager.dart';
-import 'package:provider/provider.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:unimusic/components/music_player/views/audio_source_view.dart";
+import "package:unimusic/components/music_player/views/controls_view.dart";
+import "package:unimusic/components/music_player/views/queue_view.dart";
 
 class ExpandedMusicPlayer extends StatefulWidget {
   final double maxHeight;
   final AnimationController animationController;
+
   const ExpandedMusicPlayer({
     super.key,
     required this.maxHeight,
@@ -44,7 +45,7 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
   Future<void> _navigateToPage(int page) async {
     await _pageController.animateToPage(
       page,
-      duration: Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 250),
       curve: Curves.ease,
     );
   }
@@ -52,8 +53,7 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
   @override
   Widget build(BuildContext context) {
     // SafeArea doesn't seem to work outside of Scaffold's body, so we calculate it ourselves
-    final view = View.of(context);
-    final safeAreaPadding = MediaQueryData.fromView(view).padding;
+    final safeAreaPadding = MediaQueryData.fromView(View.of(context)).padding;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 0),
@@ -62,20 +62,22 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
         maxHeight: widget.maxHeight,
         child: Column(
           children: [
-            Padding(
-              padding: EdgeInsets.only(
-                top: max(
-                  8,
-                  safeAreaPadding.top * widget.animationController.value,
+            ExcludeSemantics(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: max(
+                    8,
+                    safeAreaPadding.top * widget.animationController.value,
+                  ),
                 ),
-              ),
-              child: Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    borderRadius: BorderRadius.circular(4),
+                child: Center(
+                  child: Container(
+                    width: 32,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
               ),
@@ -86,7 +88,7 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                   Expanded(
                     child: PageView(
                       controller: _pageController,
-                      children: [MusicControlsView(), MusicQueueView()],
+                      children: const [MusicControlsView(), MusicQueueView()],
                     ),
                   ),
                   Padding(
@@ -97,43 +99,37 @@ class ExpandedMusicPlayerState extends State<ExpandedMusicPlayer> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        IconButton(onPressed: null, icon: Icon(Icons.lyrics)),
+                        const IconButton(
+                          onPressed: null,
+                          icon: Icon(Symbols.lyrics_rounded),
+                          tooltip: "Lyrics",
+                        ),
                         IconButton(
                           isSelected: _isAudioOutputSheetOpen,
+                          tooltip: "Audio output",
                           onPressed: () async {
                             setState(() {
                               _isAudioOutputSheetOpen = true;
                             });
 
-                            final musicManager = context.read<MusicManager>();
-                            await musicManager
-                                .refreshAudioRoutingCapabilities();
-                            await musicManager.refreshAudioRoute();
-                            if (!context.mounted) return;
-
-                            await showModalBottomSheet(
-                              context: context,
-                              useSafeArea: true,
-                              isScrollControlled: true,
-                              showDragHandle: true,
-                              builder: (_) => const AudioSourceView(),
-                            );
+                            await AudioSourceView.show(context);
 
                             if (!context.mounted) return;
                             setState(() {
                               _isAudioOutputSheetOpen = false;
                             });
                           },
-                          icon: Icon(Icons.speaker),
+                          icon: const Icon(Symbols.speaker_rounded),
                         ),
                         IconButton(
                           isSelected: _page == 1,
+                          tooltip: "Queue",
                           onPressed: () async {
                             await _navigateToPage(
                               _pageController.page == 0 ? 1 : 0,
                             );
                           },
-                          icon: Icon(Icons.queue_music),
+                          icon: const Icon(Symbols.queue_music_rounded),
                         ),
                       ],
                     ),

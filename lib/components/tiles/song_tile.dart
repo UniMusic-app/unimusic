@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:unimusic/components/adaptive_context_menu.dart';
-import 'package:unimusic/services/music_manager.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/views/pages/album_page.dart';
-import 'package:unimusic/views/pages/artist_page.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:provider/provider.dart";
+import "package:unimusic/components/adaptive_context_menu.dart";
+import "package:unimusic/services/music_manager.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/views/pages/album_page.dart";
+import "package:unimusic/views/pages/artist_page.dart";
 
-import 'generic_item_tile.dart';
+import "generic_item_tile.dart";
 
 class SongTile extends StatelessWidget {
   final Song song;
@@ -43,7 +44,7 @@ class SongTile extends StatelessWidget {
           action ??
           TileAction(
             text: "Play Now",
-            icon: Icons.play_arrow_rounded,
+            icon: Symbols.play_arrow_rounded,
             onTap: () => _playNow(context),
           ),
 
@@ -51,14 +52,14 @@ class SongTile extends StatelessWidget {
         if (song.album != null)
           MenuAction(
             title: "Go to Album",
-            icon: Icons.album_rounded,
+            icon: Symbols.album_rounded,
             onTap: () => _goToAlbum(context),
           ),
 
         if (song.artists.isNotEmpty)
           MenuAction(
             title: "Go to Artist",
-            icon: Icons.person_rounded,
+            icon: Symbols.person_rounded,
             onTap: () => _goToArtist(context),
           ),
 
@@ -81,7 +82,7 @@ class SongTile extends StatelessWidget {
       return;
     }
 
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ArtistPage(artist: song.artists.first),

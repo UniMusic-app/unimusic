@@ -1,35 +1,33 @@
-import 'package:async/async.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import 'package:unimusic/services/api/deezer/api.dart';
-import 'package:unimusic/services/api/deezer/audio_source.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/services/database/cached_artwork.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
+import "package:async/async.dart";
+import "package:dio/dio.dart";
+import "package:flutter/material.dart";
+import "package:unimusic/services/api/deezer/api.dart";
+import "package:unimusic/services/api/deezer/audio_source.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/services/database/cached_artwork.dart";
+import "package:just_audio/just_audio.dart";
+import "package:just_audio_background/just_audio_background.dart";
 
-mixin DeezerFavouriteItem on MusicItem {
+mixin DeezerFavouriteItem {
   DeezerApi get api;
+  abstract bool favourite;
   bool clientChanged = false;
 
-  @override
   Future<bool> isFavourite() async {
-    if (clientChanged) {
-      return favourite;
-    }
+    if (clientChanged) return favourite;
 
-    // TODO: Try to get favourite some better way?
-    favourite = await api.isFavourite(this);
+    // TODO: Use batch/incremental favourite fetching instead of per-item API calls
+    favourite = await api.isFavourite(this as MusicItem);
     return favourite;
   }
 
-  @override
   Future<void> toggleFavourite(bool value) async {
+    final self = this as MusicItem;
     if (value) {
-      await api.addFavorite(this);
+      await api.addFavorite(self);
       favourite = true;
     } else {
-      await api.removeFavorite(this);
+      await api.removeFavorite(self);
       favourite = false;
     }
     clientChanged = true;
@@ -48,11 +46,12 @@ class DeezerTrack {
       data: {"SNG_ID": trackId},
     );
 
-    if (response.data['results']['DATA']['MD5_ORIGIN'] == null) {
+    final results = response.data["results"]?["DATA"];
+    if (results?["MD5_ORIGIN"] == null) {
       throw Exception("TOKEN EXPIRED");
     }
 
-    return DeezerTrack(api: api, trackInfo: response.data["results"]["DATA"]);
+    return DeezerTrack(api: api, trackInfo: results);
   }
 
   String? get id => trackInfo["SNG_ID"];
@@ -60,8 +59,8 @@ class DeezerTrack {
   String? get album => trackInfo["ALB_TITLE"];
   String? get albumId => trackInfo["ALB_ID"];
   String? get trackToken => trackInfo["TRACK_TOKEN"];
-  int? get discNumber => int.tryParse(trackInfo["DISK_NUMBER"] ?? "");
-  int? get trackNumber => int.tryParse(trackInfo["TRACK_NUMBER"] ?? "");
+  int? get discNumber => int.tryParse((trackInfo["DISK_NUMBER"]) ?? "");
+  int? get trackNumber => int.tryParse((trackInfo["TRACK_NUMBER"]) ?? "");
 
   List<DeezerArtist>? get artists => switch (trackInfo["ARTISTS"]) {
     List<dynamic> artists =>
@@ -86,7 +85,7 @@ class DeezerTrack {
       return null;
     }
     return DateTime.fromMillisecondsSinceEpoch(
-      trackInfo["TRACK_TOKEN_EXPIRE"] * 1000,
+      (trackInfo["TRACK_TOKEN_EXPIRE"] as int) * 1000,
     );
   }
 
@@ -102,11 +101,8 @@ class DeezerSong extends Song<DeezerArtist, DeezerArtwork>
     with DeezerFavouriteItem {
   @override
   final DeezerApi api;
-
   String? albumId;
-
   final DeezerSoundFormat soundFormat;
-
   String? trackToken;
   DateTime? trackTokenExpire;
 
@@ -253,11 +249,11 @@ class DeezerArtwork extends CachedArtwork {
   }
 
   @override
-  String getMimeType() => 'image/jpeg';
+  String getMimeType() => "image/jpeg";
 
   @override
   Uri getImageUri(ArtworkSize size) {
-    final quality = 80;
+    const quality = 80;
     final width = size.width.toInt();
     final height = width;
     return Uri.parse(
@@ -329,7 +325,7 @@ class DeezerArtist extends Artist<DeezerArtwork> with DeezerFavouriteItem {
 
   @override
   Stream<MusicItem> getFavourites() async* {
-    final allFavourites = StreamGroup.merge([
+    final allFavourites = StreamGroup.merge<MusicItem>([
       api.getFavoriteSongs(),
       api.getFavoriteAlbums(),
     ]);
@@ -412,23 +408,6 @@ class DeezerAlbum extends Album<DeezerArtist, DeezerArtwork>
 class DeezerSearchHint extends SearchHint {
   const DeezerSearchHint({required super.title, super.artwork, super.type});
 
-  static DeezerSearchHint? fromDeezerJson(Map<String, dynamic> json) {
-    switch (json["type"]) {
-      case "artist":
-        if (json["nb_album"] == "0") {
-          return null;
-        }
-        return DeezerSearchHint.fromArtistDeezerJson(json);
-      case "album":
-        return DeezerSearchHint.fromAlbumDeezerJson(json);
-      case "track":
-        return DeezerSearchHint.fromTrackDeezerJson(json);
-      default:
-        debugPrint("Unknown deezer search hint type ${json['type']}");
-        return null;
-    }
-  }
-
   DeezerSearchHint.fromArtistDeezerJson(Map<String, dynamic> json)
     : this(
         title: json["name"],
@@ -449,4 +428,21 @@ class DeezerSearchHint extends SearchHint {
         type: LibraryItemType.songs,
         artwork: DeezerArtwork.withType(id: json["md5_image"], type: "cover"),
       );
+
+  static DeezerSearchHint? fromDeezerJson(Map<String, dynamic> json) {
+    switch (json["type"]) {
+      case "artist":
+        if (json["nb_album"] == "0") {
+          return null;
+        }
+        return DeezerSearchHint.fromArtistDeezerJson(json);
+      case "album":
+        return DeezerSearchHint.fromAlbumDeezerJson(json);
+      case "track":
+        return DeezerSearchHint.fromTrackDeezerJson(json);
+      default:
+        debugPrint("Unknown deezer search hint type ${json['type']}");
+        return null;
+    }
+  }
 }

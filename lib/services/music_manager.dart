@@ -1,19 +1,11 @@
-import 'package:async/async.dart';
-import 'package:flutter/foundation.dart';
-import 'package:audio_session/audio_session.dart';
-import 'package:flutter/services.dart';
-import 'package:unimusic/services/api/deezer/api.dart';
-import 'package:unimusic/services/api/jellyfin/api.dart';
-import 'package:unimusic/services/api/local/android/api.dart';
-import 'package:unimusic/services/api/local/api.dart' show LocalApi;
-import 'package:unimusic/services/api/local/shared/api.dart';
-import 'package:unimusic/services/audio_routing_service.dart';
-import 'package:unimusic/services/credentials_service.dart';
-import 'package:unimusic/services/music_providers/deezer_provider.dart';
-import 'package:unimusic/services/music_providers/jellyfin_provider.dart';
-import 'package:unimusic/services/music_providers/local_provider.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:just_audio/just_audio.dart';
+import "dart:async" show unawaited;
+
+import "package:flutter/foundation.dart";
+import "package:audio_session/audio_session.dart";
+import "package:flutter/services.dart";
+import "package:unimusic/services/audio_routing_service.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:just_audio/just_audio.dart";
 
 class MusicManager extends ChangeNotifier {
   final player = AudioPlayer(
@@ -26,26 +18,26 @@ class MusicManager extends ChangeNotifier {
       AudioRoutingCapabilities.unsupported;
   AudioRouteKind currentRouteKind = AudioRouteKind.unknown;
 
-  final Set<MusicProvider> providers = {};
-  final Set<ServiceCredentials> _credentials = {};
-  final Map<ServiceCredentials, MusicProvider> _credentialProviders = {};
-
   double volume = 1.0;
   bool isShuffleEnabled = false;
   LoopMode loopMode = LoopMode.off;
+
+  int queuePosition = 0;
+  List<Song> queue = [];
+  Duration duration = Duration.zero;
+  Duration bufferedPosition = Duration.zero;
+  Duration position = Duration.zero;
 
   MusicManager() {
     _init();
   }
 
   Future<void> _init() async {
-    await _loadServicesFromCredentials();
-
     // Configure an audio session suitable for music playback.
     // Using audio_session keeps this maintainable and compatible across iOS/Android.
     try {
       final session = await AudioSession.instance;
-      await session.configure(AudioSessionConfiguration.music());
+      await session.configure(const AudioSessionConfiguration.music());
 
       // Best-effort route refresh when devices change (e.g. headphones unplugged).
       session.devicesChangedEventStream.listen((_) async {
@@ -55,7 +47,7 @@ class MusicManager extends ChangeNotifier {
     } on MissingPluginException {
       // audio_session may not be available on some desktop targets.
     } catch (e) {
-      debugPrint('Audio session init failed: $e');
+      debugPrint("Audio session init failed: $e");
     }
 
     audioRoutingCapabilities = await _audioRouting.getCapabilities(
@@ -119,76 +111,6 @@ class MusicManager extends ChangeNotifier {
     );
     notifyListeners();
   }
-
-  /// Loads all services from stored credentials.
-  Future<void> _loadServicesFromCredentials() async {
-    final credentials = await CredentialsService.instance.getCredentials();
-    for (final credential in credentials) {
-      try {
-        await addServiceFromCredentials(credential);
-      } catch (e) {
-        debugPrint('Failed to load service $credential: $e');
-      }
-    }
-  }
-
-  Future<void> addServiceFromCredentials(ServiceCredentials credentials) async {
-    removeService(credentials);
-
-    final MusicProvider provider;
-    switch (credentials) {
-      case LocalCredentials credentials:
-        final LocalApi api;
-        final isAndroid =
-            !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-
-        if (isAndroid) {
-          // Android always uses MediaStore
-          api = LocalAndroidApi();
-        } else if (credentials.useDefaultDirectories) {
-          final musicDirectories =
-              await LocalSharedApi.getDefaultMusicDirectories();
-          api = LocalSharedApi(musicDirectories: musicDirectories);
-        } else if (credentials.customDirectory != null) {
-          api = LocalSharedApi(
-            musicDirectories: [credentials.customDirectory!],
-          );
-        } else {
-          throw Exception('Invalid local credentials: no directory specified');
-        }
-        provider = LocalMusicProvider(api: api);
-      case JellyfinCredentials credentials:
-        final api = await JellyfinApi.authenticateByName(
-          serverUri: Uri.parse(credentials.serverUri),
-          username: credentials.username,
-          password: credentials.password,
-        );
-        provider = JellyfinMusicProvider(api: api);
-      case DeezerCredentials credentials:
-        final api = await DeezerApi.create(arl: credentials.arl);
-        provider = DeezerMusicProvider(api: api);
-    }
-
-    providers.add(provider);
-    _credentials.add(credentials);
-    _credentialProviders[credentials] = provider;
-    notifyListeners();
-  }
-
-  /// Removes a service provider by its credentials.
-  void removeService(ServiceCredentials credentials) {
-    final provider = _credentialProviders.remove(credentials);
-    if (provider != null) {
-      providers.remove(provider);
-      _credentials.remove(credentials);
-      notifyListeners();
-    }
-  }
-
-  int queuePosition = 0;
-  List<Song> queue = [];
-  Duration duration = Duration.zero;
-  Duration bufferedPosition = Duration.zero;
 
   Future<void> setVolume(double volume) async {
     this.volume = volume.clamp(0.0, 1.0);
@@ -315,8 +237,6 @@ class MusicManager extends ChangeNotifier {
         await queueAlbum(album, position: position);
       case Artist artist:
         await queueSongStream(artist.getFeaturedSongs(), position: position);
-      default:
-        throw UnimplementedError();
     }
   }
 
@@ -325,12 +245,12 @@ class MusicManager extends ChangeNotifier {
   bool get canPlay => currentItem != null;
   Future<void> play() async {
     if (player.currentIndex == queuePosition) {
-      player.play();
+      unawaited(player.play());
       return;
     }
 
     await player.seek(Duration.zero, index: queuePosition);
-    player.play();
+    unawaited(player.play());
   }
 
   Future<void> playNow(MusicItem item) async {
@@ -381,7 +301,6 @@ class MusicManager extends ChangeNotifier {
     }
   }
 
-  Duration position = Duration.zero;
   Future<void> seek(Duration to) async {
     position = to;
     await player.seek(to);
@@ -404,38 +323,8 @@ class MusicManager extends ChangeNotifier {
 
     final song = queue.removeAt(oldIndex);
     queue.insert(newIndex, song);
-    player.moveAudioSource(oldIndex, newIndex);
+    unawaited(player.moveAudioSource(oldIndex, newIndex));
 
     notifyListeners();
-  }
-
-  Stream<MusicItem> getLibraryItems({LibraryItemType? itemType}) async* {
-    final pendingMusicItems = providers.map(
-      (provider) => provider.getLibraryItems(itemType: itemType),
-    );
-    final mergedStream = StreamGroup.merge(pendingMusicItems);
-    yield* mergedStream;
-  }
-
-  Stream<SearchHint> getSearchHints({
-    required String query,
-    LibraryItemType? itemType,
-  }) async* {
-    final pendingSearchHints = providers.map(
-      (provider) => provider.getSearchHints(query: query, itemType: itemType),
-    );
-    final mergedStream = StreamGroup.merge(pendingSearchHints);
-    yield* mergedStream;
-  }
-
-  Stream<MusicItem> getSearchResults({
-    required String query,
-    LibraryItemType? itemType,
-  }) async* {
-    final pendingSearchResults = providers.map(
-      (provider) => provider.getSearchResults(query: query, itemType: itemType),
-    );
-    final mergedStream = StreamGroup.merge(pendingSearchResults);
-    yield* mergedStream;
   }
 }

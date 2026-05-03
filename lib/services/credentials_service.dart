@@ -1,29 +1,27 @@
-import 'dart:convert';
-import 'dart:io';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import "dart:convert";
+import "package:flutter/foundation.dart";
+import "package:flutter_secure_storage/flutter_secure_storage.dart";
 
-part 'credential_services/local_credentials.dart';
-part 'credential_services/jellyfin_credentials.dart';
-part 'credential_services/deezer_credentials.dart';
+part "credential_services/local_credentials.dart";
+part "credential_services/jellyfin_credentials.dart";
+part "credential_services/deezer_credentials.dart";
 
 enum ServiceType {
-  local('Local Music', 'local'),
-  jellyfin('Jellyfin', 'jellyfin'),
-  deezer('Deezer', 'deezer');
+  local("Local Music", "local"),
+  jellyfin("Jellyfin", "jellyfin"),
+  deezer("Deezer", "deezer");
 
+  const ServiceType(this.displayName, this.id);
   final String displayName;
   final String id;
-  const ServiceType(this.displayName, this.id);
 
-  static ServiceType? fromId(String id) {
-    return ServiceType.values.where((s) => s.id == id).firstOrNull;
+  static ServiceType fromId(String id) {
+    return ServiceType.values.firstWhere(
+      (service) => service.id == id,
+      orElse: () => throw ArgumentError("Unknown service type: $id"),
+    );
   }
 }
-
-bool get isDesktop =>
-    Platform.isWindows || Platform.isMacOS || Platform.isLinux;
-
-bool get isMobile => Platform.isAndroid || Platform.isIOS;
 
 sealed class ServiceCredentials {
   final ServiceType type;
@@ -33,18 +31,17 @@ sealed class ServiceCredentials {
   Map<String, dynamic> toJson();
 
   static ServiceCredentials fromJson(Map<String, dynamic> json) {
-    final type = ServiceType.fromId(json['type'] as String);
+    final type = ServiceType.fromId(json["type"]);
     return switch (type) {
       ServiceType.local => LocalCredentials.fromJson(json),
       ServiceType.jellyfin => JellyfinCredentials.fromJson(json),
       ServiceType.deezer => DeezerCredentials.fromJson(json),
-      null => throw Exception('Unknown service type: ${json['type']}'),
     };
   }
 }
 
 class CredentialsService {
-  static const _storageKey = 'unimusic_service_credentials';
+  static const _storageKey = "unimusic_service_credentials";
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
@@ -52,11 +49,11 @@ class CredentialsService {
     lOptions: LinuxOptions(),
     wOptions: WindowsOptions(),
   );
-
-  CredentialsService._();
   static final instance = CredentialsService._();
 
   List<ServiceCredentials>? _cachedCredentials;
+
+  CredentialsService._();
 
   Future<List<ServiceCredentials>> getCredentials() async {
     if (_cachedCredentials != null) {
@@ -70,14 +67,15 @@ class CredentialsService {
     }
 
     try {
-      final List<dynamic> jsonList = json.decode(jsonString);
+      final jsonList = json.decode(jsonString) as List<dynamic>;
       _cachedCredentials = jsonList
-          .map(
-            (item) => ServiceCredentials.fromJson(item as Map<String, dynamic>),
-          )
+          .map((item) => ServiceCredentials.fromJson(item))
           .toList();
       return _cachedCredentials!;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint(
+        "CredentialsService: failed to parse credentials JSON\n$e\n$st",
+      );
       _cachedCredentials = [];
       return [];
     }

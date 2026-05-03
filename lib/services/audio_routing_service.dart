@@ -1,20 +1,24 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import "package:flutter/material.dart";
+import "package:flutter/services.dart";
+import "package:material_symbols_icons/symbols.dart";
 
 enum AudioRouteKind {
-  builtIn('This device', 'Using built-in speakers', Icons.smartphone_rounded),
-  wired('Headphones / wired', 'Using a wired output', Icons.headphones_rounded),
-  bluetooth(
-    'Bluetooth',
-    'Using a Bluetooth device',
-    Icons.speaker_group_rounded,
+  builtIn("This device", "Using built-in speakers", Symbols.smartphone_rounded),
+  wired(
+    "Headphones / wired",
+    "Using a wired output",
+    Symbols.headphones_rounded,
   ),
-  airplay('AirPlay', 'Streaming via AirPlay', Icons.airplay_rounded),
+  bluetooth(
+    "Bluetooth",
+    "Using a Bluetooth device",
+    Symbols.speaker_group_rounded,
+  ),
+  airplay("AirPlay", "Streaming via AirPlay", Symbols.airplay_rounded),
   unknown(
-    'System output',
-    'Using the current system audio route',
-    Icons.speaker_rounded,
+    "System output",
+    "Using the current system audio route",
+    Symbols.speaker_rounded,
   );
 
   final String title;
@@ -23,21 +27,14 @@ enum AudioRouteKind {
 
   const AudioRouteKind(this.title, this.subtitle, this.icon);
 
-  static AudioRouteKind fromPlatformValue(Object? value) {
-    final raw = value?.toString();
-    switch (raw) {
-      case 'builtIn':
-        return AudioRouteKind.builtIn;
-      case 'wired':
-        return AudioRouteKind.wired;
-      case 'bluetooth':
-        return AudioRouteKind.bluetooth;
-      case 'airplay':
-        return AudioRouteKind.airplay;
-      default:
-        return AudioRouteKind.unknown;
-    }
-  }
+  static AudioRouteKind fromPlatformValue(Object? value) =>
+      switch (value?.toString()) {
+        "builtIn" => AudioRouteKind.builtIn,
+        "wired" => AudioRouteKind.wired,
+        "bluetooth" => AudioRouteKind.bluetooth,
+        "airplay" => AudioRouteKind.airplay,
+        _ => AudioRouteKind.unknown,
+      };
 }
 
 @immutable
@@ -67,10 +64,10 @@ class AudioRoutingCapabilities {
     }
 
     return AudioRoutingCapabilities(
-      canOpenSystemChooser: readBool('canOpenSystemChooser'),
-      hasNativeAirPlayPicker: readBool('hasNativeAirPlayPicker'),
-      hasExternalRoutes: readBool('hasExternalRoutes'),
-      canDetectRoute: readBool('canDetectRoute'),
+      canOpenSystemChooser: readBool("canOpenSystemChooser"),
+      hasNativeAirPlayPicker: readBool("hasNativeAirPlayPicker"),
+      hasExternalRoutes: readBool("hasExternalRoutes"),
+      canDetectRoute: readBool("canDetectRoute"),
     );
   }
 
@@ -83,7 +80,7 @@ class AudioRoutingCapabilities {
 }
 
 class AudioRoutingService {
-  static const MethodChannel _channel = MethodChannel('audio_routing');
+  static const MethodChannel _channel = MethodChannel("audio_routing");
 
   AudioRoutingCapabilities? _cachedCapabilities;
 
@@ -95,7 +92,7 @@ class AudioRoutingService {
     }
     try {
       final result = await _channel.invokeMethod<Map<Object?, Object?>>(
-        'getCapabilities',
+        "getCapabilities",
       );
       if (result == null) {
         return AudioRoutingCapabilities.unsupported;
@@ -111,7 +108,7 @@ class AudioRoutingService {
   Future<AudioRouteKind> getCurrentRouteKind() async {
     try {
       final result = await _channel.invokeMethod<Object?>(
-        'getCurrentRouteKind',
+        "getCurrentRouteKind",
       );
       return AudioRouteKind.fromPlatformValue(result);
     } catch (_) {
@@ -122,45 +119,12 @@ class AudioRoutingService {
   Future<bool> openSystemOutputChooser() async {
     try {
       final didOpen = await _channel.invokeMethod<bool>(
-        'openSystemOutputChooser',
+        "openSystemOutputChooser",
       );
       return didOpen == true;
     } catch (_) {
       // Best-effort.
       return false;
     }
-  }
-}
-
-/// iOS-only AirPlay route picker button.
-///
-/// This is intentionally a thin wrapper around the platform-native control.
-class AirPlayRoutePickerButton extends StatelessWidget {
-  final double height;
-
-  const AirPlayRoutePickerButton({super.key, this.height = 44});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!kIsWeb &&
-        {
-          TargetPlatform.iOS,
-          TargetPlatform.macOS,
-        }.contains(defaultTargetPlatform)) {
-      return SizedBox(
-        width: height,
-        height: height,
-        child: defaultTargetPlatform == TargetPlatform.iOS
-            ? UiKitView(
-                viewType: 'audio_routing_airplay_button',
-                layoutDirection: Directionality.of(context),
-              )
-            : AppKitView(
-                viewType: 'audio_routing_airplay_button',
-                layoutDirection: Directionality.of(context),
-              ),
-      );
-    }
-    return const SizedBox.shrink();
   }
 }

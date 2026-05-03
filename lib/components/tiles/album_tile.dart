@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/components/adaptive_context_menu.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/views/pages/album_page.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:unimusic/components/adaptive_context_menu.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/views/pages/album_page.dart";
 
-import 'generic_item_tile.dart';
+import "generic_item_tile.dart";
 
 class AlbumTile extends StatelessWidget {
   final Album album;
@@ -40,7 +41,7 @@ class AlbumTile extends StatelessWidget {
           action ??
           TileAction(
             text: "Go to Album Page",
-            icon: Icons.album_rounded,
+            icon: Symbols.album_rounded,
             onTap: () => _openAlbumPage(context),
           ),
 

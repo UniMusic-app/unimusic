@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/utils/duration.dart';
+import "package:flutter/material.dart";
+import "package:unimusic/components/favourite_button.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/utils/duration.dart";
 
-class AlbumSongTile extends StatefulWidget {
+class AlbumSongTile extends StatelessWidget {
   final Song song;
   final void Function()? onTap;
   final String? subtitle;
@@ -10,40 +11,20 @@ class AlbumSongTile extends StatefulWidget {
   const AlbumSongTile(this.song, {super.key, this.onTap, this.subtitle});
 
   @override
-  State<AlbumSongTile> createState() => _AlbumSongTileState();
-}
-
-class _AlbumSongTileState extends State<AlbumSongTile> {
-  void _toggleFavourite() async {
-    await widget.song.toggleFavourite(!widget.song.favourite);
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  @override
-  void didUpdateWidget(AlbumSongTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.song.favourite != widget.song.favourite) {
-      setState(() {});
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final textTimeStyle = Theme.of(
-      context,
-    ).textTheme.labelSmall?.apply(fontFeatures: [FontFeature.tabularFigures()]);
+    final textTimeStyle = Theme.of(context).textTheme.labelSmall?.apply(
+      fontFeatures: [const FontFeature.tabularFigures()],
+    );
 
     return ListTile(
-      onTap: widget.onTap,
+      onTap: onTap,
       dense: true,
-      leading: widget.song.trackNumber != null
+      leading: song.trackNumber != null
           ? SizedBox(
               width: 32,
               child: Center(
                 child: Text(
-                  '${widget.song.trackNumber}',
+                  "${song.trackNumber}",
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -51,34 +32,21 @@ class _AlbumSongTileState extends State<AlbumSongTile> {
               ),
             )
           : null,
-      title: Text(
-        widget.song.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: widget.subtitle != null
-          ? Text(widget.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis)
+      title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: subtitle != null
+          ? Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis)
           : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: widget.song.favourite
-                ? Icon(
-                    Icons.favorite_rounded,
-                    color: Colors.pinkAccent,
-                    size: 16,
-                  )
-                : Icon(
-                    Icons.favorite_outline_rounded,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    size: 16,
-                  ),
-            onPressed: _toggleFavourite,
+          FavouriteButton(
+            item: song,
+            iconSize: 16,
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(8),
           ),
           const SizedBox(width: 8),
-          Text(widget.song.duration.formatted, style: textTimeStyle),
+          Text(song.duration.formatted, style: textTimeStyle),
         ],
       ),
     );

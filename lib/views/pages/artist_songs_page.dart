@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/components/tiles/music_item_tile.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:unimusic/components/empty_state_view.dart";
+import "package:unimusic/components/tiles/music_item_tile.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class ArtistSongsPage extends StatefulWidget {
   final Artist artist;
@@ -84,7 +86,7 @@ class _ArtistSongsPageState extends State<ArtistSongsPage> {
       }
 
       setState(() {
-        _errorMessage = 'Failed to load songs.';
+        _errorMessage = "Failed to load songs.";
         _isInitialLoad = false;
         _isLoadingMore = false;
       });
@@ -96,22 +98,34 @@ class _ArtistSongsPageState extends State<ArtistSongsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${widget.artist.name} Songs',
+          "${widget.artist.name} Songs",
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ),
       body: switch ((_isInitialLoad, _songs.isEmpty, _errorMessage)) {
         (true, true, _) => const Center(child: CircularProgressIndicator()),
-        (_, true, final String error) => _SongsPageStateView(
-          icon: Icons.error_outline_rounded,
-          message: error,
-          actionLabel: 'Retry',
-          onAction: _loadMoreSongs,
+        (_, true, final String error) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: EmptyStateView(
+              icon: Symbols.error_outline_rounded,
+              message: error,
+              action: FilledButton.tonal(
+                onPressed: _loadMoreSongs,
+                child: const Text("Retry"),
+              ),
+            ),
+          ),
         ),
-        (_, true, _) => const _SongsPageStateView(
-          icon: Icons.library_music_outlined,
-          message: 'No songs available for this artist.',
+        (_, true, _) => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: EmptyStateView(
+              icon: Symbols.library_music_rounded,
+              message: "No songs available for this artist.",
+            ),
+          ),
         ),
         _ => ListView.separated(
           controller: _scrollController,
@@ -128,8 +142,8 @@ class _ArtistSongsPageState extends State<ArtistSongsPage> {
                   padding: const EdgeInsets.all(16),
                   child: FilledButton.tonalIcon(
                     onPressed: _loadMoreSongs,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Retry loading more'),
+                    icon: const Icon(Symbols.refresh_rounded),
+                    label: const Text("Retry loading more"),
                   ),
                 );
               }
@@ -145,44 +159,6 @@ class _ArtistSongsPageState extends State<ArtistSongsPage> {
           },
         ),
       },
-    );
-  }
-}
-
-class _SongsPageStateView extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  final String? actionLabel;
-  final Future<void> Function()? onAction;
-
-  const _SongsPageStateView({
-    required this.icon,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 40),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.tonal(
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

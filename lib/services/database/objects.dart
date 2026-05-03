@@ -1,5 +1,5 @@
-import 'package:unimusic/services/database/database.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:unimusic/services/database/database.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 abstract class DatabaseItem {
   final String id;
@@ -21,7 +21,7 @@ abstract class DatabaseArtworkItem extends DatabaseItem {
     if (artworkId == null) {
       return null;
     }
-    return DatabaseHelper.getArtwork(artworkId!, size: size);
+    return DatabaseHelper.artworks.get(artworkId!, size: size);
   }
 }
 
@@ -62,7 +62,7 @@ class SongDatabaseItem extends DatabaseArtworkItem {
       );
 
   Future<List<ArtistDatabaseItem>> getSongArtists() async {
-    return await DatabaseHelper.getSongArtists(id);
+    return await DatabaseHelper.songs.getArtists(id);
   }
 }
 
@@ -183,10 +183,10 @@ class CacheStatsDatabaseItem {
 
   factory CacheStatsDatabaseItem.fromMap(Map<String, dynamic> map) =>
       CacheStatsDatabaseItem(
-        artworkCacheSizeBytes: map["artwork_cache_size_bytes"],
-        artworkCacheFiles: map["artwork_cache_files"],
-        artworkCacheSizeMb: map["artwork_cache_size_mb"],
-        cacheDirectory: map["cache_directory"],
+        artworkCacheSizeBytes: map["artwork_cache_size_bytes"] as int,
+        artworkCacheFiles: map["artwork_cache_files"] as int,
+        artworkCacheSizeMb: map["artwork_cache_size_mb"] as String,
+        cacheDirectory: map["cache_directory"] as String,
       );
 }
 

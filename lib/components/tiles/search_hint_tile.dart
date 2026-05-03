@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/components/lazy_image.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:unimusic/components/lazy_image.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class SearchHintTile extends StatelessWidget {
   final SearchHint searchHint;
   final void Function()? onTap;
 
-  const SearchHintTile({required this.searchHint, this.onTap, super.key})
-    : super();
+  const SearchHintTile({required this.searchHint, this.onTap, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,10 +21,10 @@ class SearchHintTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(searchHint.type?.borderRadius ?? 0),
         child: LazyImage(
           artwork: searchHint.artwork,
-          icon: Icon(searchHint.type?.icon ?? Icons.search),
+          icon: Icon(searchHint.type?.icon ?? Symbols.search_rounded),
           width: 48,
           size: ArtworkSize.small,
-          animationDuration: Duration(milliseconds: 150),
+          animationDuration: const Duration(milliseconds: 150),
         ),
       ),
 

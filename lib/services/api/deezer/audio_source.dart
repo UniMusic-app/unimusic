@@ -1,8 +1,9 @@
-import 'package:dio/dio.dart';
-import 'package:unimusic/services/api/deezer/api.dart';
-import 'package:unimusic/services/api/deezer/items.dart';
-import 'package:unimusic/utils/stream.dart';
-import 'package:just_audio/just_audio.dart';
+// ignore_for_file: experimental_member_use
+import "package:dio/dio.dart";
+import "package:unimusic/services/api/deezer/api.dart";
+import "package:unimusic/services/api/deezer/items.dart";
+import "package:unimusic/utils/stream.dart";
+import "package:just_audio/just_audio.dart";
 
 class DeezerAudioSource extends StreamAudioSource {
   final DeezerSong song;
@@ -24,10 +25,17 @@ class DeezerAudioSource extends StreamAudioSource {
       fullResponse = response;
     }
 
-    final contentType = fullResponse!.data!.headers["content-type"]![0];
-    final sourceLength = int.parse(
-      fullResponse!.data!.headers["content-range"]![0].split("/")[1],
-    );
+    final headers = fullResponse!.data!.headers;
+    final contentType = headers["content-type"]?.first ?? "audio/mpeg";
+    final contentRangeHeader = headers["content-range"]?.first;
+    // if (contentRangeHeader == null) {
+    //   throw StateError("Server did not provide Content-Range header");
+    // }
+    final sourceLength = switch (contentRangeHeader) {
+      null =>
+        null, //throw StateError("Server did not provide Content-Range header"),
+      _ => int.parse(contentRangeHeader.split("/")[1]),
+    };
 
     if (start == null || end == null) {
       Stream<List<int>> stream = fullStream!.stream();

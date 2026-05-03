@@ -1,11 +1,12 @@
-import 'package:async/async.dart';
-import 'package:unimusic/services/api/jellyfin/api.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:async/async.dart";
+import "package:unimusic/services/api/jellyfin/api.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class JellyfinMusicProvider extends MusicProvider {
   final JellyfinApi api;
+
   JellyfinMusicProvider({required this.api})
-    : super(id: 'jellyfin', name: 'Jellyfin');
+    : super(id: "jellyfin", name: "Jellyfin");
 
   @override
   Stream<Song> getLibrarySongs() async* {

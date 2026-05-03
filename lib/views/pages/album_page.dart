@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:unimusic/components/lazy_image.dart';
-import 'package:unimusic/components/tiles/album_song_tile.dart';
-import 'package:unimusic/services/music_manager.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:provider/provider.dart";
+import "package:unimusic/components/lazy_image.dart";
+import "package:unimusic/components/tiles/album_song_tile.dart";
+import "package:unimusic/services/music_manager.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class AlbumPage extends StatefulWidget {
   final Album album;
@@ -28,13 +29,14 @@ class AlbumPage extends StatefulWidget {
               case ConnectionState.none:
               case ConnectionState.waiting:
                 return Scaffold(
-                  body: Center(
+                  appBar: AppBar(),
+                  body: const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 16),
-                        const Text('Loading album information...'),
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text("Loading album information..."),
                       ],
                     ),
                   ),
@@ -44,15 +46,20 @@ class AlbumPage extends StatefulWidget {
                   return AlbumPage(snapshot.data!);
                 } else {
                   return Scaffold(
+                    appBar: AppBar(),
                     body: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error, size: 48, color: Colors.red),
+                          Icon(
+                            Symbols.error_rounded,
+                            size: 48,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                           const SizedBox(height: 16),
-                          const Text(
-                            'Album not found.',
-                            style: TextStyle(fontSize: 18),
+                          Text(
+                            "Album not found.",
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ],
                       ),
@@ -61,13 +68,14 @@ class AlbumPage extends StatefulWidget {
                 }
               case ConnectionState.active:
                 return Scaffold(
-                  body: Center(
+                  appBar: AppBar(),
+                  body: const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 16),
-                        const Text('Loading album...'),
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text("Loading album..."),
                       ],
                     ),
                   ),
@@ -88,7 +96,7 @@ class _AlbumPageState extends State<AlbumPage> {
   final ScrollController _scrollController = ScrollController();
   bool _showTitleInAppBar = false;
   bool _isLoadingSongs = false;
-  String _loadingMessage = 'Loading songs...';
+  String _loadingMessage = "Loading songs...";
 
   @override
   void initState() {
@@ -122,7 +130,7 @@ class _AlbumPageState extends State<AlbumPage> {
             setState(() {
               _songs = songs;
               _isLoadingSongs = false;
-              _loadingMessage = '';
+              _loadingMessage = "";
             });
           }
         })
@@ -130,7 +138,7 @@ class _AlbumPageState extends State<AlbumPage> {
           if (mounted) {
             setState(() {
               _isLoadingSongs = false;
-              _loadingMessage = 'Failed to load songs.';
+              _loadingMessage = "Failed to load songs.";
             });
           }
         });
@@ -157,7 +165,7 @@ class _AlbumPageState extends State<AlbumPage> {
     final musicManager = context.read<MusicManager>();
 
     return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: Theme.of(context).colorScheme.surface,
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -196,18 +204,19 @@ class _AlbumPageState extends State<AlbumPage> {
                             widget.album.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                            style: Theme.of(context).textTheme.headlineSmall,
                           ),
                           Text(
                             widget.album.artists.formatted,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                           if (widget.album.artwork != null) const Spacer(),
                           Align(
                             alignment: Alignment.bottomLeft,
                             child: FilledButton.icon(
-                              icon: const Icon(Icons.play_arrow),
+                              icon: const Icon(Symbols.play_arrow_rounded),
                               label: const Text("Play"),
                               onPressed: _songs == null || _isLoadingSongs
                                   ? null
@@ -238,7 +247,7 @@ class _AlbumPageState extends State<AlbumPage> {
                       const SizedBox(height: 12),
                       Text(
                         _loadingMessage,
-                        style: const TextStyle(fontSize: 14),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
                   ),
@@ -254,11 +263,11 @@ class _AlbumPageState extends State<AlbumPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_songs?.isEmpty == true)
-                        const Text('No songs in this album.')
+                        const Text("No songs in this album.")
                       else if (_loadingMessage.isNotEmpty)
                         Text(_loadingMessage)
                       else
-                        const Text('Loading songs...'),
+                        const Text("Loading songs..."),
                     ],
                   ),
                 ),
@@ -293,10 +302,8 @@ class _AlbumPageState extends State<AlbumPage> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                'Disc $discNumber',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                "Disc $discNumber",
+                style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
           ),

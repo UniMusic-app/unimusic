@@ -1,15 +1,14 @@
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:blowfish/blowfish.dart';
-import 'package:cookie_jar/cookie_jar.dart';
-import 'package:crypto/crypto.dart';
-import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:unimusic/services/api/deezer/items.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
-import 'package:unimusic/utils/stream.dart';
-import 'package:json_annotation/json_annotation.dart';
+import "package:blowfish/blowfish.dart";
+import "package:cookie_jar/cookie_jar.dart";
+import "package:crypto/crypto.dart";
+import "package:dio/dio.dart";
+import "package:dio_cookie_manager/dio_cookie_manager.dart";
+import "package:unimusic/services/api/deezer/items.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
+import "package:unimusic/utils/stream.dart";
 
 const providerId = "deezer";
 
@@ -19,14 +18,13 @@ const imageCdnUrl = "https://e-cdns-images.dzcdn.net/images";
 const searchUrl = "https://api.deezer.com/search";
 final gwUri = Uri.parse("https://www.deezer.com/ajax/gw-light.php");
 
-@JsonEnum(valueField: 'value')
 enum DeezerSoundFormat {
   flac("FLAC"),
   mp3_128kb("MP3_128"),
   mp3_320kb("MP3_320");
 
-  final String value;
   const DeezerSoundFormat(this.value);
+  final String value;
 
   String toJson() => value;
 
@@ -36,7 +34,6 @@ enum DeezerSoundFormat {
   };
 }
 
-@JsonSerializable()
 class DeezerUserData {
   final String accessToken;
   final String licenseToken;
@@ -54,14 +51,17 @@ class DeezerUserData {
 
   factory DeezerUserData.fromDeezerJson(Map<String, dynamic> json) {
     final results = json["results"];
-    final options = results["USER"]["OPTIONS"];
+    final user = results["USER"];
+    final options = user["OPTIONS"];
 
     final accessToken = results["checkForm"];
-    assert(accessToken != null, "ARL expired");
+    if (accessToken == null) {
+      throw StateError("ARL expired: accessToken is null");
+    }
 
     return DeezerUserData(
       accessToken: accessToken,
-      userId: results["USER"]["USER_ID"],
+      userId: user["USER_ID"],
       licenseToken: options["license_token"],
       expirationTimestamp: options["expiration_timestamp"],
       timestamp: options["timestamp"],
@@ -69,7 +69,6 @@ class DeezerUserData {
   }
 }
 
-@JsonSerializable()
 class DeezerApi {
   final Dio dio;
   final String arl;
@@ -106,7 +105,7 @@ class DeezerApi {
     )..interceptors.add(CookieManager(CookieJar()));
   }
 
-  static Future<Response> callGwMethod({
+  static Future<Response<dynamic>> callGwMethod({
     required Dio dio,
     required String method,
     String? accessToken,
@@ -131,7 +130,7 @@ class DeezerApi {
     return response;
   }
 
-  Future<Response> callMethod(String method, {Object? data}) async {
+  Future<Response<dynamic>> callMethod(String method, {Object? data}) async {
     final response = await DeezerApi.callGwMethod(
       method: method,
       dio: dio,
@@ -140,7 +139,7 @@ class DeezerApi {
     );
 
     final responseData = response.data;
-    if (responseData is Map) {
+    if (responseData is Map<String, dynamic>) {
       final error = responseData["error"];
       if (error is Map && error.entries.isNotEmpty) {
         throw Exception("$error");
@@ -175,7 +174,7 @@ class DeezerApi {
     const key = "g4el58wc0zvf9na1";
     final songIdMd5 = md5.convert(utf8.encode(songId)).toString();
 
-    List<int> blowfishKey = [];
+    final List<int> blowfishKey = [];
     for (int i = 0; i < 16; ++i) {
       blowfishKey.add(
         songIdMd5.codeUnitAt(i) ^
@@ -221,16 +220,16 @@ class DeezerApi {
     final response = await dio.post(
       getMediaUrl,
       data: {
-        'license_token': licenseToken,
-        'media': [
+        "license_token": licenseToken,
+        "media": [
           {
-            'type': "FULL",
+            "type": "FULL",
             "formats": [
               {"cipher": "BF_CBC_STRIPE", "format": soundFormat.toJson()},
             ],
           },
         ],
-        'track_tokens': [trackToken],
+        "track_tokens": [trackToken],
       },
       options: Options(contentType: "application/json"),
     );
@@ -306,7 +305,7 @@ class DeezerApi {
 
     final raf = await file.open(mode: FileMode.writeOnly);
     await for (final chunk in decryptStream(
-      stream: response.data.stream,
+      stream: (response.data as ResponseBody).stream,
       blowfishKey: blowfishKey,
     )) {
       await raf.writeFrom(chunk);
@@ -341,7 +340,7 @@ class DeezerApi {
       data: {"sng_ids": songIds},
     );
 
-    for (final trackJson in trackResults["data"]) {
+    for (final trackJson in (trackResults["data"] as List)) {
       final track = DeezerTrack(api: this, trackInfo: trackJson);
       final song = DeezerSong.fromTrack(track, favourite: true);
       favoriteIds[MusicItemType.song]!.add(song.id);
@@ -362,7 +361,7 @@ class DeezerApi {
 
     final artists = results["TAB"]["artists"]["data"];
 
-    for (final artistJson in artists) {
+    for (final artistJson in (artists as List)) {
       final artist = DeezerArtist.fromDeezerJson(
         api: this,
         json: artistJson,
@@ -386,7 +385,7 @@ class DeezerApi {
 
     final albums = results["TAB"]["albums"]["data"];
 
-    for (final albumJson in albums) {
+    for (final albumJson in (albums as List)) {
       final album = DeezerAlbum.fromDeezerJson(
         api: this,
         json: albumJson,
@@ -425,24 +424,24 @@ class DeezerApi {
     int? index,
   }) async {
     final results = await callMethodResults(
-      'artist.getTopTrack',
+      "artist.getTopTrack",
       data: {
-        'ART_ID': artistId,
-        if (limit != null) 'nb': limit,
-        if (index != null) 'start': index,
+        "ART_ID": artistId,
+        if (limit != null) "nb": limit,
+        if (index != null) "start": index,
       },
     );
 
-    final items = results['data'] as List;
+    final items = results["data"] as List;
 
     return items
-        .whereType<Map>()
+        .whereType<Map<String, dynamic>>()
         .map((item) => Map<String, dynamic>.from(item))
         .map(
           (item) => DeezerSong.fromTrack(
             DeezerTrack(api: this, trackInfo: item),
             favourite: favoriteIds[MusicItemType.song]?.contains(
-              item['SNG_ID'].toString(),
+              item["SNG_ID"].toString(),
             ),
           ),
         )
@@ -455,23 +454,23 @@ class DeezerApi {
     int? index,
   }) async {
     final results = await callMethodResults(
-      'album.getDiscography',
+      "album.getDiscography",
       data: {
-        'ART_ID': artistId,
-        'discography_mode': 'all',
-        'nb_songs': 0,
-        if (limit != null) 'nb': limit,
-        if (index != null) 'start': index,
+        "ART_ID": artistId,
+        "discography_mode": "all",
+        "nb_songs": 0,
+        if (limit != null) "nb": limit,
+        if (index != null) "start": index,
       },
     );
 
-    final items = results['data'] as List;
+    final items = results["data"] as List;
 
     return items
         .whereType<Map<String, dynamic>>()
         .where((item) {
-          final isOfficialAlbum = item['ARTISTS_ALBUMS_IS_OFFICIAL'];
-          final isPrimaryArtist = item['ART_ID'].toString() == artistId;
+          final isOfficialAlbum = item["ARTISTS_ALBUMS_IS_OFFICIAL"];
+          final isPrimaryArtist = item["ART_ID"].toString() == artistId;
           return isOfficialAlbum && isPrimaryArtist;
         })
         .map(
@@ -479,7 +478,7 @@ class DeezerApi {
             api: this,
             json: item,
             favourite: favoriteIds[MusicItemType.album]?.contains(
-              item['ALB_ID'].toString(),
+              item["ALB_ID"].toString(),
             ),
           ),
         )
@@ -506,7 +505,7 @@ class DeezerApi {
     for (final key in keys) {
       if (data[key] == null) continue;
 
-      for (final track in data[key]["data"]) {
+      for (final track in (data[key]["data"] as List)) {
         final searchHint = DeezerSearchHint.fromDeezerJson(track);
         if (searchHint != null) {
           yield searchHint;
@@ -536,23 +535,23 @@ class DeezerApi {
     );
 
     final searchResponse = await dio.getUri(searchUri);
-    final data = searchResponse.data["data"];
+    final data = searchResponse.data["data"] as List;
 
-    for (final itemJson in data) {
+    for (final item in data) {
       // Skip artists that have no albums, most of them seem to be automatically
       // generated collaborations, and noone searchers for those
-      if (itemJson["nb_album"] == 0) {
+      if (item["nb_album"] == 0) {
         continue;
       }
 
-      final item = switch (itemJson["type"]) {
-        "track" => DeezerSong.fromDeezerJson(api: this, json: itemJson),
-        "album" => DeezerAlbum.fromDeezerJson(api: this, json: itemJson),
-        "artist" => DeezerArtist.fromDeezerJson(api: this, json: itemJson),
+      final MusicItem musicItem = switch (item["type"]) {
+        "track" => DeezerSong.fromDeezerJson(api: this, json: item),
+        "album" => DeezerAlbum.fromDeezerJson(api: this, json: item),
+        "artist" => DeezerArtist.fromDeezerJson(api: this, json: item),
         final type => throw Exception("Unimplemented item type $type"),
       };
 
-      yield item;
+      yield musicItem;
     }
   }
 
@@ -560,17 +559,17 @@ class DeezerApi {
     switch (item.type) {
       case MusicItemType.song:
         await callMethod(
-          'song.removeFavorites',
+          "song.removeFavorites",
           data: {
-            'IDS': [item.id],
+            "IDS": [item.id],
           },
         );
         break;
       case MusicItemType.album:
-        await callMethod('album.deleteFavorite', data: {'ALB_ID': item.id});
+        await callMethod("album.deleteFavorite", data: {"ALB_ID": item.id});
         break;
       case MusicItemType.artist:
-        await callMethod('artist.deleteFavorite', data: {'ART_ID': item.id});
+        await callMethod("artist.deleteFavorite", data: {"ART_ID": item.id});
         break;
     }
     favoriteIds[item.type]!.remove(item.id);
@@ -580,17 +579,17 @@ class DeezerApi {
     switch (item.type) {
       case MusicItemType.song:
         await callMethod(
-          'song.addFavorites',
+          "song.addFavorites",
           data: {
-            'IDS': [item.id],
+            "IDS": [item.id],
           },
         );
         break;
       case MusicItemType.album:
-        await callMethod('album.addFavorite', data: {'ALB_ID': item.id});
+        await callMethod("album.addFavorite", data: {"ALB_ID": item.id});
         break;
       case MusicItemType.artist:
-        await callMethod('artist.addFavorite', data: {'ART_ID': item.id});
+        await callMethod("artist.addFavorite", data: {"ART_ID": item.id});
         break;
     }
     favoriteIds[item.type]!.add(item.id);
@@ -598,7 +597,7 @@ class DeezerApi {
 
   Future<bool> isFavourite(MusicItem item) async {
     switch (favoriteIds[item.type]) {
-      case final Set ids when ids.isNotEmpty:
+      case final Set<String> ids when ids.isNotEmpty:
         return ids.contains(item.id);
       default:
         return switch (item.type) {

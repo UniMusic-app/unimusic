@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:unimusic/services/music_providers/music_provider.dart';
+import "package:flutter/material.dart";
+import "package:material_symbols_icons/symbols.dart";
+import "package:unimusic/services/music_providers/music_provider.dart";
 
 class LibraryFilters {
   final String titleQuery;
@@ -8,9 +9,9 @@ class LibraryFilters {
   final Set<String> providerIds;
 
   const LibraryFilters({
-    this.titleQuery = '',
-    this.albumQuery = '',
-    this.artistQuery = '',
+    this.titleQuery = "",
+    this.albumQuery = "",
+    this.artistQuery = "",
     this.providerIds = const {},
   });
 
@@ -51,12 +52,12 @@ class LibraryFilterButton extends StatelessWidget {
     return IconButton(
       onPressed: () => _openFilters(context),
       tooltip: activeFilterCount > 0
-          ? 'Filter library ($activeFilterCount active)'
-          : 'Filter library',
+          ? "Filter library ($activeFilterCount active)"
+          : "Filter library",
       icon: Badge(
         isLabelVisible: activeFilterCount > 0,
-        label: Text('$activeFilterCount'),
-        child: const Icon(Icons.filter_list_rounded),
+        label: Text("$activeFilterCount"),
+        child: const Icon(Symbols.filter_list_rounded),
       ),
     );
   }
@@ -159,7 +160,7 @@ class _LibraryFiltersSheetState extends State<_LibraryFiltersSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Filter library',
+                "Filter library",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 16),
@@ -168,8 +169,8 @@ class _LibraryFiltersSheetState extends State<_LibraryFiltersSheet> {
                 textInputAction: TextInputAction.next,
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
-                  labelText: 'Song',
-                  prefixIcon: Icon(Icons.music_note_rounded),
+                  labelText: "Song",
+                  prefixIcon: Icon(Symbols.music_note_rounded),
                 ),
               ),
               const SizedBox(height: 12),
@@ -178,8 +179,8 @@ class _LibraryFiltersSheetState extends State<_LibraryFiltersSheet> {
                 textInputAction: TextInputAction.next,
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
-                  labelText: 'Album',
-                  prefixIcon: Icon(Icons.album_rounded),
+                  labelText: "Album",
+                  prefixIcon: Icon(Symbols.album_rounded),
                 ),
               ),
               const SizedBox(height: 12),
@@ -188,14 +189,14 @@ class _LibraryFiltersSheetState extends State<_LibraryFiltersSheet> {
                 textInputAction: TextInputAction.done,
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
-                  labelText: 'Artist',
-                  prefixIcon: Icon(Icons.person_rounded),
+                  labelText: "Artist",
+                  prefixIcon: Icon(Symbols.person_rounded),
                 ),
               ),
               if (widget.providers.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 Text(
-                  'Providers',
+                  "Providers",
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 12),
@@ -225,20 +226,20 @@ class _LibraryFiltersSheetState extends State<_LibraryFiltersSheet> {
                   if (draftFilters.hasAnyFilters) ...[
                     TextButton.icon(
                       onPressed: _clearDraftFilters,
-                      icon: const Icon(Icons.filter_alt_off_rounded),
-                      label: const Text('Clear filters'),
+                      icon: const Icon(Symbols.filter_alt_off_rounded),
+                      label: const Text("Clear filters"),
                     ),
                     const Spacer(),
                   ] else
                     const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: const Text("Cancel"),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () => Navigator.pop(context, draftFilters),
-                    child: const Text('Apply'),
+                    child: const Text("Apply"),
                   ),
                 ],
               ),

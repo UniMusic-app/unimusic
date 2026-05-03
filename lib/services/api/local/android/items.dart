@@ -4,7 +4,9 @@ import "package:flutter/material.dart";
 import "package:just_audio/just_audio.dart";
 import "package:just_audio_background/just_audio_background.dart";
 import "package:unimusic/plugins/media_store.dart";
+import "package:unimusic/services/api/local/local_utils.dart";
 import "package:unimusic/services/database/database.dart";
+import "package:unimusic/services/database/objects.dart";
 import "package:unimusic/services/music_providers/music_provider.dart";
 import "package:unimusic/utils/null.dart";
 
@@ -24,7 +26,6 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
     LocalAndroidImage key,
     ImageDecoderCallback decode,
   ) async {
-    // TODO: This might not be very efficient
     final bytes = await MediaStorePlugin.readArtwork(artworkUri);
     if (bytes == null) {
       throw Exception("Failed reading artwork from $artworkUri: bytes is null");
@@ -41,7 +42,7 @@ class LocalAndroidImage extends ImageProvider<LocalAndroidImage> {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
-      debugLabel: 'LocalAndroidImage(${key.artworkUri})',
+      debugLabel: "LocalAndroidImage(${key.artworkUri})",
     );
   }
 
@@ -66,7 +67,7 @@ class LocalAndroidArtist extends Artist {
     MediaStoreArtist artist,
   ) async {
     final artistId = artist.id.toString();
-    final existingDbArtist = await DatabaseHelper.getArtist(artistId);
+    final existingDbArtist = await DatabaseHelper.artists.get(artistId);
 
     final localArtist = LocalAndroidArtist(
       id: artistId,
@@ -75,7 +76,7 @@ class LocalAndroidArtist extends Artist {
     );
 
     if (existingDbArtist == null) {
-      await DatabaseHelper.insertArtist(localArtist);
+      await DatabaseHelper.artists.insert(localArtist);
     }
 
     return localArtist;
@@ -83,13 +84,13 @@ class LocalAndroidArtist extends Artist {
 
   @override
   Future<bool> isFavourite() async {
-    final artist = await DatabaseHelper.getArtist(id);
+    final artist = await DatabaseHelper.artists.get(id);
     return artist?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    await DatabaseHelper.setFavourite("artist_items", id, value);
+    await DatabaseHelper.favourites.setArtist(id, value);
     favourite = value;
   }
 
@@ -102,8 +103,8 @@ class LocalAndroidArtist extends Artist {
         .toList();
 
     songs.sort((left, right) {
-      final albumCompare = (left.album ?? '').toLowerCase().compareTo(
-        (right.album ?? '').toLowerCase(),
+      final albumCompare = (left.album ?? "").toLowerCase().compareTo(
+        (right.album ?? "").toLowerCase(),
       );
       if (albumCompare != 0) {
         return albumCompare;
@@ -113,7 +114,7 @@ class LocalAndroidArtist extends Artist {
     });
 
     yield* Stream.fromIterable(
-      _pageItems(songs, limit: limit, startIndex: startIndex),
+      pageItems(songs, limit: limit, startIndex: startIndex),
     );
   }
 
@@ -131,7 +132,7 @@ class LocalAndroidArtist extends Artist {
     );
 
     yield* Stream.fromIterable(
-      _pageItems(albums, limit: limit, startIndex: startIndex),
+      pageItems(albums, limit: limit, startIndex: startIndex),
     );
   }
 
@@ -192,7 +193,7 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
 
   static Future<LocalAndroidAlbum> fromMediaStore(MediaStoreAlbum album) async {
     final albumId = album.id.toString();
-    final existingDbAlbum = await DatabaseHelper.getAlbum(albumId);
+    final existingDbAlbum = await DatabaseHelper.albums.get(albumId);
 
     final artist = await album.artist.let(LocalAndroidArtist.fromMediaStore);
     final artists = [if (artist != null) artist];
@@ -206,17 +207,46 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
     );
 
     if (existingDbAlbum == null) {
-      await DatabaseHelper.insertAlbum(localAlbum);
+      await DatabaseHelper.albums.insert(localAlbum);
     }
 
     return localAlbum;
+  }
+
+  static Future<LocalAndroidAlbum> fromDatabase(AlbumDatabaseItem album) async {
+    final dbArtists = await DatabaseHelper.albums.getArtists(album.id);
+    final artists = dbArtists
+        .map(
+          (a) => LocalAndroidArtist(
+            id: a.id,
+            name: a.name,
+            favourite: a.favourite,
+          ),
+        )
+        .toList();
+
+    LocalAndroidArtwork? artwork;
+    if (album.artworkId != null) {
+      artwork = LocalAndroidArtwork(
+        id: album.artworkId!,
+        uri: Uri.parse(album.artworkId!),
+      );
+    }
+
+    return LocalAndroidAlbum(
+      id: album.id,
+      name: album.name,
+      artists: artists,
+      favourite: album.favourite,
+      artwork: artwork,
+    );
   }
 
   @override
   Stream<LocalAndroidSong> getSongs() async* {
     final Set<int> yieldedSongs = {};
 
-    // TODO: Better recognition of songs<->albums, so this bs isn't needed
+    // TODO: Improve MediaStore song-album mapping to avoid manual deduplication
     await for (final song in MediaStorePlugin.getAlbumSongs(id)) {
       if (yieldedSongs.contains(song.albumHash)) {
         continue;
@@ -228,13 +258,13 @@ class LocalAndroidAlbum extends Album<LocalAndroidArtist, LocalAndroidArtwork> {
 
   @override
   Future<bool> isFavourite() async {
-    final album = await DatabaseHelper.getAlbum(id);
+    final album = await DatabaseHelper.albums.get(id);
     return album?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    await DatabaseHelper.setFavourite("album_items", id, value);
+    await DatabaseHelper.favourites.setAlbum(id, value);
     favourite = value;
   }
 }
@@ -275,7 +305,7 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
 
     final songId = song.id.toString();
 
-    final existingDbSong = await DatabaseHelper.getSong(songId);
+    final existingDbSong = await DatabaseHelper.songs.get(songId);
 
     final bitrateKbps = song.bitrate != null
         ? (song.bitrate! / 1000).round()
@@ -298,9 +328,9 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
     );
 
     if (existingDbSong == null) {
-      await DatabaseHelper.insertSong(localSong);
+      await DatabaseHelper.songs.insert(localSong);
       if (song.album != null) {
-        await DatabaseHelper.insertAlbumSong(
+        await DatabaseHelper.albums.insertSong(
           song.album!.id.toString(),
           localSong.id,
         );
@@ -321,27 +351,28 @@ class LocalAndroidSong extends Song<Artist, LocalAndroidArtwork> {
   }
 
   @override
-  Future<Album> getAlbum() {
-    // TODO: implement getAlbum
-    throw UnimplementedError();
+  Future<Album?> getAlbum() async {
+    final albums = await DatabaseHelper.songs.getAlbums(id);
+    if (albums.isEmpty) return null;
+    return LocalAndroidAlbum.fromDatabase(albums.first);
   }
 
   @override
   Future<bool> isFavourite() async {
-    final song = await DatabaseHelper.getSong(id);
+    final song = await DatabaseHelper.songs.get(id);
     return song?.favourite ?? false;
   }
 
   @override
   Future<void> toggleFavourite(bool value) async {
-    await DatabaseHelper.setFavourite("song_items", id, value);
+    await DatabaseHelper.favourites.setSong(id, value);
     favourite = value;
   }
 
   @override
   Future<StreamInfoParts?> getStreamInfoParts() async {
     final format =
-        _formatFromMimeType(mimeType) ?? _fileExtensionFromPath(filePath);
+        _formatFromMimeType(mimeType) ?? fileExtensionFromPath(filePath);
     return (format: format, bitrateKbps: bitrateKbps, sampleRateHz: null);
   }
 }
@@ -363,14 +394,6 @@ String? _formatFromMimeType(String? mimeType) {
     "audio/x-ms-wma" || "audio/x-wma" => "WMA",
     _ => null,
   };
-}
-
-String? _fileExtensionFromPath(String? path) {
-  if (path == null || path.isEmpty) return null;
-  final lastSegment = path.split(RegExp(r'[\\/]')).last;
-  final dotIndex = lastSegment.lastIndexOf('.');
-  if (dotIndex <= 0 || dotIndex == lastSegment.length - 1) return null;
-  return lastSegment.substring(dotIndex + 1).trim().toUpperCase();
 }
 
 int? _bitrateFromSize(int? sizeBytes, Duration duration) {
@@ -403,16 +426,4 @@ bool _matchesAlbum(
 }) {
   return album.artist?.id.toString() == artistId ||
       album.artist?.name == artistName;
-}
-
-Iterable<T> _pageItems<T>(List<T> items, {int? limit, int? startIndex}) {
-  final start = startIndex ?? 0;
-  if (start >= items.length) {
-    return const [];
-  }
-
-  final end = limit == null
-      ? items.length
-      : (start + limit).clamp(0, items.length);
-  return items.sublist(start, end);
 }
