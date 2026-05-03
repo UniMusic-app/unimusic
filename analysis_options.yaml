@@ -1,0 +1,17 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-raw-types: true
+
+linter:
+  rules:
+    - avoid_print
+    - unawaited_futures
+    - cancel_subscriptions
+    - close_sinks
+    - always_declare_return_types
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_double_quotes
+    - use_super_parameters

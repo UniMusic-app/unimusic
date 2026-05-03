@@ -1,7 +1,0 @@
-{
-	"name": "UniMusic",
-	"integrations": {
-		"capacitor": {}
-	},
-	"type": "vue-vite"
-}
